@@ -26,7 +26,7 @@ test.describe('API Endpoints', () => {
 
   test('debe validar query parameters en /api/attempts', async ({ request }) => {
     // Primero autenticarse
-    const signInResponse = await request.post('/api/auth/signin', {
+    await request.post('/api/auth/signin', {
       data: {
         email: 'matias@paestutor.com',
         password: 'password123',

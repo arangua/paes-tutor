@@ -96,16 +96,17 @@ export function decrypt(encryptedText: string): string {
     // Si falla, intentar método legacy para compatibilidad
     try {
       return decryptLegacy(encryptedText)
-    } catch {
+    } catch (legacyError) {
       logger.error(
         {
           type: 'encryption',
           event: 'decrypt_error',
           error: error instanceof Error ? error.message : String(error),
+          legacyError: legacyError instanceof Error ? legacyError.message : String(legacyError),
         },
-        'Error al desencriptar datos'
+        'Error al desencriptar datos: ambos métodos (AES y legacy) fallaron'
       )
-      return ''
+      throw new Error('No se pudo desencriptar el dato. Los métodos AES y legacy fallaron.')
     }
   }
 }

@@ -1,6 +1,10 @@
 // Sistema de caché con soporte para memoria (desarrollo) y Redis (producción)
 // Preparado para migración fácil a Redis
 
+// Constantes de tiempo de caché
+const DEFAULT_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutos por defecto
+const CACHE_CLEANUP_INTERVAL_MS = 10 * 60 * 1000 // 10 minutos
+
 interface CacheEntry<T> {
   data: T
   expiresAt: number
@@ -15,7 +19,7 @@ interface CacheAdapter {
 
 class MemoryCacheAdapter implements CacheAdapter {
   private store: Map<string, CacheEntry<unknown>> = new Map()
-  private defaultTTL: number = 5 * 60 * 1000 // 5 minutos por defecto
+  private defaultTTL: number = DEFAULT_CACHE_TTL_MS
 
   async get<T>(key: string): Promise<T | null> {
     const entry = this.store.get(key)
@@ -115,7 +119,7 @@ if (cache instanceof MemoryCacheAdapter) {
       () => {
         cache.cleanup()
       },
-      10 * 60 * 1000
+      CACHE_CLEANUP_INTERVAL_MS
     )
   }
 }

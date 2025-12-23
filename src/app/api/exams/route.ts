@@ -7,6 +7,9 @@ import { withRateLimit } from '@/lib/rate-limit-middleware'
 import { logApiRequest } from '@/lib/logger'
 import { getCached, cacheKeys } from '@/lib/cache'
 
+// Constantes para tiempos de caché
+const EXAMS_CACHE_TTL_MS = 10 * 60 * 1000 // 10 minutos
+
 // Especificar Node.js runtime
 export const runtime = 'nodejs'
 
@@ -29,6 +32,12 @@ export async function GET(request: NextRequest) {
 
       const { subjectId, tipo, limit, offset } = validation.data
 
+      // Construir where clause una sola vez para evitar duplicación
+      const whereClause = {
+        ...(subjectId && { subjectId }),
+        ...(tipo && { tipo }),
+      }
+
       // Usar caché para queries frecuentes (exámenes no cambian frecuentemente)
       const cacheKey = cacheKeys.exams(subjectId, tipo, limit, offset)
       const exams = await getCached(
@@ -36,10 +45,7 @@ export async function GET(request: NextRequest) {
         async () => {
           // Optimizar query usando select en lugar de include
           return await prisma.exam.findMany({
-            where: {
-              ...(subjectId && { subjectId }),
-              ...(tipo && { tipo }),
-            },
+            where: whereClause,
             select: {
               id: true,
               titulo: true,
@@ -68,7 +74,7 @@ export async function GET(request: NextRequest) {
             orderBy: { createdAt: 'desc' },
           })
         },
-        10 * 60 * 1000 // Cache por 10 minutos (exámenes cambian poco)
+        EXAMS_CACHE_TTL_MS
       )
 
       // Obtener total para paginación
@@ -76,13 +82,10 @@ export async function GET(request: NextRequest) {
         `${cacheKey}:total`,
         async () => {
           return await prisma.exam.count({
-            where: {
-              ...(subjectId && { subjectId }),
-              ...(tipo && { tipo }),
-            },
+            where: whereClause,
           })
         },
-        10 * 60 * 1000
+        EXAMS_CACHE_TTL_MS
       )
 
       return NextResponse.json({

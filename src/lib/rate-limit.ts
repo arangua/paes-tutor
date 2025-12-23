@@ -1,7 +1,18 @@
+// Constantes de rate limiting
+const MAX_RATE_LIMIT_ENTRIES = 10000 // Limitar tamaño del store
+const GENERAL_RATE_LIMIT_COUNT = 10
+const GENERAL_RATE_LIMIT_WINDOW_MS = 10000 // 10 segundos
+const AUTH_RATE_LIMIT_COUNT = 5
+const AUTH_RATE_LIMIT_WINDOW_MS = 60000 // 1 minuto
+const READ_RATE_LIMIT_COUNT = 30
+const READ_RATE_LIMIT_WINDOW_MS = 10000 // 10 segundos
+const WRITE_RATE_LIMIT_COUNT = 3
+const WRITE_RATE_LIMIT_WINDOW_MS = 300000 // 5 minutos
+
 // Rate limiter en memoria para desarrollo
 class MemoryRateLimit {
   private store: Map<string, { count: number; resetAt: number }> = new Map()
-  private readonly MAX_ENTRIES = 10000 // Limitar tamaño del store
+  private readonly MAX_ENTRIES = MAX_RATE_LIMIT_ENTRIES
 
   async limit(identifier: string, limit: number, window: number) {
     // Limpiar entradas expiradas periódicamente
@@ -101,7 +112,7 @@ export const apiRateLimit = {
       }
     }
     // Fallback a memoria
-    return await memoryRateLimiter.limit(identifier, 10, 10000)
+    return await memoryRateLimiter.limit(identifier, GENERAL_RATE_LIMIT_COUNT, GENERAL_RATE_LIMIT_WINDOW_MS)
   },
 
   // Rate limit más estricto para autenticación
@@ -157,14 +168,14 @@ export const apiRateLimit = {
         })
         const readLimiter = new upstash.Ratelimit({
           redis,
-          limiter: upstash.Ratelimit.slidingWindow(30, '10 s'),
+          limiter: upstash.Ratelimit.slidingWindow(READ_RATE_LIMIT_COUNT, '10 s'),
           analytics: true,
         })
         return await readLimiter.limit(identifier)
       }
     }
     // Fallback a memoria
-    return await memoryRateLimiter.limit(identifier, 30, 10000)
+    return await memoryRateLimiter.limit(identifier, READ_RATE_LIMIT_COUNT, READ_RATE_LIMIT_WINDOW_MS)
   },
 
   // Rate limit estricto para endpoints sensibles (cambio de contraseña, etc.)
@@ -178,13 +189,13 @@ export const apiRateLimit = {
         })
         const sensitiveLimiter = new upstash.Ratelimit({
           redis,
-          limiter: upstash.Ratelimit.slidingWindow(3, '5 m'),
+          limiter: upstash.Ratelimit.slidingWindow(WRITE_RATE_LIMIT_COUNT, '5 m'),
           analytics: true,
         })
         return await sensitiveLimiter.limit(identifier)
       }
     }
     // Fallback a memoria
-    return await memoryRateLimiter.limit(identifier, 3, 300000)
+    return await memoryRateLimiter.limit(identifier, WRITE_RATE_LIMIT_COUNT, WRITE_RATE_LIMIT_WINDOW_MS)
   },
 }

@@ -36,8 +36,11 @@ export async function GET(request: NextRequest) {
 
       const { limit, offset } = validation.data
 
-      // Validar límites razonables para prevenir queries costosas
+      // Constantes de validación y caché
       const MAX_OFFSET = 10000 // Máximo offset permitido
+      const ATTEMPTS_CACHE_TTL_MS = 1 * 60 * 1000 // 1 minuto
+
+      // Validar límites razonables para prevenir queries costosas
       if (offset > MAX_OFFSET) {
         return NextResponse.json(
           {
@@ -83,7 +86,7 @@ export async function GET(request: NextRequest) {
             skip: offset,
           })
         },
-        1 * 60 * 1000 // Cache por 1 minuto
+        ATTEMPTS_CACHE_TTL_MS
       )
 
       // Obtener total para paginación
@@ -94,7 +97,7 @@ export async function GET(request: NextRequest) {
             where: { studentId },
           })
         },
-        1 * 60 * 1000
+        ATTEMPTS_CACHE_TTL_MS
       )
 
       return NextResponse.json({
