@@ -18,7 +18,9 @@ import {
   AlertCircle,
   BarChart3,
   Printer,
+  Trophy,
 } from 'lucide-react'
+import { CreateChallengeButton } from '@/components/challenges/create-challenge-button'
 import { ExportButton } from '@/components/export/export-button'
 import {
   exportExamResultsToPDF,
@@ -27,6 +29,8 @@ import {
   type ExamResultData,
 } from '@/lib/export-utils'
 import { toast } from 'sonner'
+import { useProgressTracker } from '@/hooks/useProgressTracker'
+import { ProgressDialog } from '@/components/ui/progress-dialog'
 
 interface Attempt {
   id: string
@@ -84,6 +88,8 @@ export default function ExamResultsPage() {
   const [attempt, setAttempt] = useState<Attempt | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  const exportProgress = useProgressTracker()
 
   useEffect(() => {
     async function loadResults() {
@@ -197,15 +203,17 @@ export default function ExamResultsPage() {
       return
     }
     try {
-      toast.loading('Exportando a PDF...', { id: 'export-pdf' })
-      await exportExamResultsToPDF(data)
+      exportProgress.start(3 + data.answers.length, 'Iniciando exportación a PDF...')
+      await exportExamResultsToPDF(data, (progress, current, total, message) => {
+        exportProgress.updateProgress(current, total, message)
+      })
+      exportProgress.complete()
       toast.success('Exportación exitosa', {
-        id: 'export-pdf',
         description: 'El archivo PDF se ha descargado correctamente.',
       })
     } catch (error) {
+      exportProgress.fail(error instanceof Error ? error : new Error('Error desconocido'))
       toast.error('Error al exportar', {
-        id: 'export-pdf',
         description:
           error instanceof Error
             ? error.message
@@ -223,15 +231,17 @@ export default function ExamResultsPage() {
       return
     }
     try {
-      toast.loading('Exportando a Excel...', { id: 'export-excel' })
-      await exportExamResultsToExcel(data)
+      exportProgress.start(4, 'Iniciando exportación a Excel...')
+      await exportExamResultsToExcel(data, (progress, current, total, message) => {
+        exportProgress.updateProgress(current, total, message)
+      })
+      exportProgress.complete()
       toast.success('Exportación exitosa', {
-        id: 'export-excel',
         description: 'El archivo Excel se ha descargado correctamente.',
       })
     } catch (error) {
+      exportProgress.fail(error instanceof Error ? error : new Error('Error desconocido'))
       toast.error('Error al exportar', {
-        id: 'export-excel',
         description:
           error instanceof Error
             ? error.message
@@ -249,15 +259,17 @@ export default function ExamResultsPage() {
       return
     }
     try {
-      toast.loading('Exportando a Word...', { id: 'export-word' })
-      await exportExamResultsToWord(data)
+      exportProgress.start(3 + data.answers.length, 'Iniciando exportación a Word...')
+      await exportExamResultsToWord(data, (progress, current, total, message) => {
+        exportProgress.updateProgress(current, total, message)
+      })
+      exportProgress.complete()
       toast.success('Exportación exitosa', {
-        id: 'export-word',
         description: 'El archivo Word se ha descargado correctamente.',
       })
     } catch (error) {
+      exportProgress.fail(error instanceof Error ? error : new Error('Error desconocido'))
       toast.error('Error al exportar', {
-        id: 'export-word',
         description:
           error instanceof Error
             ? error.message
@@ -298,6 +310,16 @@ export default function ExamResultsPage() {
 
   return (
     <>
+      <ProgressDialog
+        open={exportProgress.isActive}
+        title="Exportando resultados"
+        description="Por favor espera mientras se genera el archivo..."
+        progress={exportProgress.progress}
+        current={exportProgress.current}
+        total={exportProgress.total}
+        message={exportProgress.message}
+        estimatedTimeRemaining={exportProgress.estimatedTimeRemaining}
+      />
       <style jsx global>{`
         @media print {
           body {
@@ -493,6 +515,7 @@ export default function ExamResultsPage() {
               Ver Análisis Detallado
             </Button>
           )}
+          <CreateChallengeButton examId={examId} examTitle={attempt.exam.titulo} />
           <Button onClick={() => router.push(`/exams/${examId}/take`)}>
             <TrendingUp className="h-4 w-4 mr-2" />
             Intentar Nuevamente

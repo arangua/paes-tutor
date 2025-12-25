@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,6 +23,8 @@ import {
   ExternalLink,
   Info,
 } from 'lucide-react'
+import { HelpIcon } from '@/components/help/help-icon'
+import { TIME_CONSTANTS } from '@/lib/constants'
 
 interface AIKeysData {
   openaiApiKey: string
@@ -39,6 +41,17 @@ export function AIKeysForm() {
   const [loadingData, setLoadingData] = useState(true)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const savedTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Limpiar timeout al desmontar
+  useEffect(() => {
+    return () => {
+      if (savedTimeoutRef.current) {
+        clearTimeout(savedTimeoutRef.current)
+      }
+    }
+  }, [])
+
   const [showKeys, setShowKeys] = useState({
     openai: false,
     anthropic: false,
@@ -114,7 +127,14 @@ export function AIKeysForm() {
         geminiApiKey: '',
       }))
 
-      setTimeout(() => setSaved(false), 3000)
+      // Limpiar timeout anterior si existe
+      if (savedTimeoutRef.current) {
+        clearTimeout(savedTimeoutRef.current)
+      }
+      savedTimeoutRef.current = setTimeout(
+        () => setSaved(false),
+        TIME_CONSTANTS.SUCCESS_MESSAGE_DISPLAY_MS
+      )
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido')
     } finally {
@@ -164,10 +184,13 @@ export function AIKeysForm() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Bot className="h-5 w-5" />
-          Configuración de Servicios de IA
-        </CardTitle>
+        <div className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2">
+            <Bot className="h-5 w-5" />
+            Configuración de Servicios de IA
+          </CardTitle>
+          <HelpIcon content="Puedes usar las API keys de tus cuentas existentes (ChatGPT Plus, Claude Pro, Gemini) sin costo adicional. Las keys se almacenan de forma encriptada." />
+        </div>
         <CardDescription>
           Configura tus API keys para usar ChatGPT, Claude o Gemini con tus cuentas existentes
         </CardDescription>
@@ -374,7 +397,13 @@ export function AIKeysForm() {
 
           {/* Servicio preferido */}
           <div className="space-y-2">
-            <Label htmlFor="preferredAIService">Servicio Preferido</Label>
+            <Label htmlFor="preferredAIService" className="flex items-center gap-2">
+              Servicio Preferido
+              <HelpIcon
+                content="Si tienes múltiples servicios configurados, puedes elegir cuál usar por defecto. Si no seleccionas ninguno, se usará el primero disponible."
+                side="right"
+              />
+            </Label>
             <Select
               value={formData.preferredAIService || '__none__'}
               onValueChange={value =>

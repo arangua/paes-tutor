@@ -2,8 +2,20 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { BookOpen, FileText, BarChart3, Target, TrendingUp, Award, RotateCcw } from 'lucide-react'
+import {
+  BookOpen,
+  FileText,
+  BarChart3,
+  Target,
+  TrendingUp,
+  Award,
+  RotateCcw,
+  Users,
+  Share2,
+  Trophy,
+} from 'lucide-react'
 import Link from 'next/link'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface QuickAction {
   title: string
@@ -47,6 +59,34 @@ const defaultActions: QuickAction[] = [
     description: 'Repasa preguntas falladas (5-10 preguntas)',
     href: '/review/quick',
     icon: RotateCcw,
+    variant: 'default',
+  },
+  {
+    title: 'Comparación Directa',
+    description: 'Compara tu progreso con el otro estudiante',
+    href: '/comparison',
+    icon: Users,
+    variant: 'default',
+  },
+  {
+    title: 'Exámenes Compartidos',
+    description: 'Ver exámenes compartidos contigo',
+    href: '/shared-exams',
+    icon: Share2,
+    variant: 'outline',
+  },
+  {
+    title: 'Materiales Compartidos',
+    description: 'Ver materiales compartidos contigo',
+    href: '/shared-materials',
+    icon: FileText,
+    variant: 'outline',
+  },
+  {
+    title: 'Desafíos',
+    description: 'Desafía al otro estudiante y compite',
+    href: '/challenges',
+    icon: Trophy,
     variant: 'default',
   },
 ]

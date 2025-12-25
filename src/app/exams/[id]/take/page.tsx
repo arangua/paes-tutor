@@ -18,6 +18,13 @@ import {
 import { toast } from 'sonner'
 import { HelpIcon } from '@/components/help/help-icon'
 import { captureError } from '@/lib/monitoring'
+import { validateIdParam } from '@/lib/validation-helpers'
+import { useKeyboardShortcuts, examShortcuts } from '@/hooks/useKeyboardShortcuts'
+import { getErrorMessage, extractErrorInfo, ERROR_CODES } from '@/lib/error-messages'
+import { ErrorMessageComponent } from '@/components/ui/error-message'
+import { BookmarkButton } from '@/components/bookmarks/bookmark-button'
+import { ProgressWithTime } from '@/components/ui/progress-with-time'
+import { TIME_CONSTANTS } from '@/lib/constants'
 
 interface Exam {
   id: string
@@ -73,6 +80,7 @@ export default function TakeExamPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [autoSaveStatus, setAutoSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved')
+  const [saveMessage, setSaveMessage] = useState<string>('')
   const [showCancelDialog, setShowCancelDialog] = useState(false)
   const [showUnansweredDialog, setShowUnansweredDialog] = useState(false)
   const [unansweredCount, setUnansweredCount] = useState(0)
@@ -81,7 +89,8 @@ export default function TakeExamPage() {
   // Cargar examen y crear/obtener intento
   useEffect(() => {
     // VALIDACIÓN: Verificar que examId sea válido (formato cuid)
-    if (!examId || !/^c[a-z0-9]{24}$/.test(examId)) {
+    // Usar helper de validación para consistencia
+    if (!validateIdParam(examId)) {
       setError('ID de examen inválido')
       setIsLoading(false)
       return
@@ -230,6 +239,10 @@ export default function TakeExamPage() {
     try {
       setAutoSaveStatus('saving')
       const answersArray = Array.from(answers.values())
+      const savedCount = answersArray.length
+      const totalQuestions = exam.totalPreguntas
+      
+      setSaveMessage(`Guardando ${savedCount} de ${totalQuestions} respuesta${savedCount !== 1 ? 's' : ''}...`)
 
       const res = await fetch(`/api/attempts/${attempt.id}`, {
         method: 'PUT',
@@ -238,15 +251,28 @@ export default function TakeExamPage() {
       })
 
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
-        const errorMessage = errorData.error || 'Error al guardar respuestas'
-        const errorDetails = errorData.details ? `: ${errorData.details}` : ''
-        throw new Error(`${errorMessage}${errorDetails}`)
+        const { safeJsonParse } = await import('@/lib/api-helpers')
+        const errorData = await safeJsonParse<{ error?: string; details?: string }>(res, {
+          path: typeof window !== 'undefined' ? window.location.pathname : '/exams/[id]/take',
+          operation: 'guardar respuestas',
+        })
+        const errorInfo = extractErrorInfo(errorData.error || 'Error al guardar respuestas')
+        const errorMessage = getErrorMessage(errorInfo.code, {
+          ...errorInfo.context,
+          details: errorData.details,
+        })
+        throw new Error(`[${errorInfo.code}] ${errorMessage.description}`)
       }
 
       setAutoSaveStatus('saved')
+      setSaveMessage(`Guardado: ${savedCount} respuesta${savedCount !== 1 ? 's' : ''} en el servidor`)
       // Limpiar error si se guardó correctamente
       if (error) setError(null)
+      
+      // Limpiar mensaje después de 2 segundos
+      setTimeout(() => {
+        setSaveMessage('')
+      }, 2000)
     } catch (err) {
       setAutoSaveStatus('error')
       const errorMessage = err instanceof Error ? err.message : 'Error al guardar respuestas'
@@ -293,6 +319,7 @@ export default function TakeExamPage() {
       }
 
       // Guardar respuestas finales
+      setSaveMessage('Guardando respuestas finales...')
       await fetch(`/api/attempts/${attempt.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -300,12 +327,17 @@ export default function TakeExamPage() {
       })
 
       // Finalizar intento
+      setSaveMessage('Procesando finalización del examen...')
       const res = await fetch(`/api/attempts/${attempt.id}/submit`, {
         method: 'POST',
       })
 
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
+        const { safeJsonParse } = await import('@/lib/api-helpers')
+        const errorData = await safeJsonParse<{ error?: string; details?: string }>(res, {
+          path: typeof window !== 'undefined' ? window.location.pathname : '/exams/[id]/take',
+          operation: 'finalizar examen',
+        })
         const errorMessage = errorData.error || 'Error al finalizar examen'
         const errorDetails = errorData.details ? `: ${errorData.details}` : ''
         throw new Error(`${errorMessage}${errorDetails}`)
@@ -367,8 +399,9 @@ export default function TakeExamPage() {
     }, 1000)
 
     return () => clearInterval(interval)
-    // handleSubmit está memoizado con useCallback, es estable
     // eslint-disable-next-line react-hooks/exhaustive-deps
+    // handleSubmit está memoizado con useCallback y es estable, no necesita estar en deps
+    // timeRemaining, attempt e isSubmitting son las únicas dependencias necesarias para el efecto
   }, [timeRemaining, attempt, isSubmitting])
 
   // Auto-guardar respuestas con prevención de race condition
@@ -383,7 +416,7 @@ export default function TakeExamPage() {
     saveTimeoutRef.current = setTimeout(async () => {
       await saveAnswers()
       saveTimeoutRef.current = null
-    }, 2000) // Guardar después de 2 segundos de inactividad
+    }, TIME_CONSTANTS.AUTO_SAVE_DELAY_MS)
 
     return () => {
       if (saveTimeoutRef.current) {
@@ -423,7 +456,7 @@ export default function TakeExamPage() {
     }
   }, [attempt, answers, saveAnswers])
 
-  const handleAnswerSelect = (questionId: string, optionId: string) => {
+  const handleAnswerSelect = useCallback((questionId: string, optionId: string) => {
     setAnswers(prev => {
       const newAnswers = new Map(prev)
       newAnswers.set(questionId, {
@@ -433,7 +466,44 @@ export default function TakeExamPage() {
       })
       return newAnswers
     })
-  }
+  }, [])
+
+  const handleSelectOptionByIndex = useCallback(
+    (index: number) => {
+      if (!exam) return
+      const currentQ = exam.questions[currentQuestion]
+      if (currentQ && currentQ.question.options[index]) {
+        handleAnswerSelect(currentQ.question.id, currentQ.question.options[index].id)
+      }
+    },
+    [exam, currentQuestion, handleAnswerSelect]
+  )
+
+  const handlePrevious = useCallback(() => {
+    setCurrentQuestion(prev => Math.max(0, prev - 1))
+  }, [])
+
+  const handleNext = useCallback(() => {
+    if (!exam) return
+    setCurrentQuestion(prev => Math.min(exam.questions.length - 1, prev + 1))
+  }, [exam])
+
+  const handleBookmark = useCallback(() => {
+    // El BookmarkButton manejará el toggle automáticamente
+  }, [])
+
+  // Atajos de teclado para exámenes (solo cuando el examen está cargado)
+  useKeyboardShortcuts(
+    exam && attempt && exam.questions.length > 0
+      ? examShortcuts(
+          handlePrevious,
+          handleNext,
+          handleSelectOptionByIndex,
+          handleBookmark,
+          handleSubmit
+        )
+      : []
+  )
 
   const handleOmit = (questionId: string) => {
     setAnswers(prev => {
@@ -461,7 +531,11 @@ export default function TakeExamPage() {
         })
 
         if (!res.ok) {
-          const errorData = await res.json().catch(() => ({}))
+          const { safeJsonParse } = await import('@/lib/api-helpers')
+          const errorData = await safeJsonParse<{ error?: string; details?: string }>(res, {
+            path: typeof window !== 'undefined' ? window.location.pathname : '/exams/[id]/take',
+            operation: 'cancelar examen',
+          })
           const errorMessage = errorData.error || 'Error desconocido'
           const errorDetails = errorData.details ? `: ${errorData.details}` : ''
 
@@ -469,13 +543,17 @@ export default function TakeExamPage() {
           setError(`No se pudo guardar el progreso${errorDetails}`)
 
           // Aún así redirigir, pero el usuario sabe que hubo un problema
-          await new Promise(resolve => setTimeout(resolve, 2000))
+          await new Promise<void>(resolve =>
+            setTimeout(() => resolve(), TIME_CONSTANTS.SUCCESS_MESSAGE_DISPLAY_MS)
+          )
         }
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Error desconocido'
         setError(`Error al guardar el progreso: ${errorMessage}`)
         // Esperar un momento para que el usuario vea el error
-        await new Promise(resolve => setTimeout(resolve, 2000))
+        await new Promise<void>(resolve =>
+          setTimeout(() => resolve(), TIME_CONSTANTS.SUCCESS_MESSAGE_DISPLAY_MS)
+        )
       }
     }
     router.push('/dashboard')
@@ -503,19 +581,38 @@ export default function TakeExamPage() {
     )
   }
 
+  // Procesar error para mostrar mensaje estructurado
+  const processedError = error
+    ? getErrorMessage(extractErrorInfo(error).code, { message: error })
+    : null
+
   if (error || !exam || !attempt) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Card className="w-full max-w-md">
+      <div className="flex items-center justify-center min-h-screen p-4">
+        <Card className="w-full max-w-2xl">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-destructive" />
               Error
             </CardTitle>
-            <CardDescription>{error || 'No se pudo cargar el examen'}</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={() => router.push('/dashboard')}>Volver al Dashboard</Button>
+            {processedError ? (
+              <ErrorMessageComponent
+                error={processedError}
+                onAction={() => {
+                  setError(null)
+                  if (examId) {
+                    window.location.reload()
+                  }
+                }}
+              />
+            ) : (
+              <p className="text-muted-foreground">{error || 'No se pudo cargar el examen'}</p>
+            )}
+            <div className="mt-4">
+              <Button onClick={() => router.push('/dashboard')}>Volver al Dashboard</Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -611,39 +708,45 @@ export default function TakeExamPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span>Progreso</span>
-              <span>
-                {answers.size} / {exam.totalPreguntas} respondidas
-              </span>
-            </div>
-            <Progress value={getProgress()} />
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>
-                Pregunta {currentQuestion + 1} de {exam.totalPreguntas}
-              </span>
-              <span className="flex items-center gap-2">
-                {autoSaveStatus === 'saving' && (
-                  <>
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    Guardando...
-                  </>
-                )}
-                {autoSaveStatus === 'saved' && (
-                  <>
-                    <CheckCircle2 className="h-3 w-3 text-green-500" />
-                    Guardado
-                  </>
-                )}
-                {autoSaveStatus === 'error' && (
-                  <>
-                    <XCircle className="h-3 w-3 text-destructive" />
-                    Error al guardar
-                  </>
-                )}
-              </span>
-            </div>
+          <ProgressWithTime
+            value={getProgress()}
+            current={currentQuestion + 1}
+            total={exam.totalPreguntas}
+            estimatedTimeRemaining={
+              timeRemaining !== null && exam.tiempoLimiteMin
+                ? Math.max(0, timeRemaining)
+                : undefined
+            }
+            label="Progreso del examen"
+          />
+          <div className="flex items-center justify-between text-xs text-muted-foreground mt-2">
+            <span>
+              {answers.size} respondida{answers.size !== 1 ? 's' : ''} •{' '}
+              {exam.totalPreguntas - answers.size} pendiente
+              {exam.totalPreguntas - answers.size !== 1 ? 's' : ''}
+            </span>
+            <span className="flex items-center gap-2">
+              {autoSaveStatus === 'saving' && (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span className="text-xs">{saveMessage || 'Guardando cambios en el servidor...'}</span>
+                </>
+              )}
+              {autoSaveStatus === 'saved' && (
+                <>
+                  <CheckCircle2 className="h-3 w-3 text-green-500" />
+                  <span className="text-xs text-green-600 dark:text-green-400">
+                    {saveMessage || 'Guardado'}
+                  </span>
+                </>
+              )}
+              {autoSaveStatus === 'error' && (
+                <>
+                  <XCircle className="h-3 w-3 text-destructive" />
+                  <span className="text-xs text-destructive">Error al guardar</span>
+                </>
+              )}
+            </span>
           </div>
         </CardContent>
       </Card>
@@ -651,7 +754,16 @@ export default function TakeExamPage() {
       {/* Pregunta actual */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle className="text-lg">Pregunta {currentQuestion + 1}</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Pregunta {currentQuestion + 1}</CardTitle>
+            <div className="flex items-center gap-2">
+              <BookmarkButton questionId={currentQ.question.id} size="sm" />
+              <HelpIcon
+                content="Usa las flechas ← → para navegar, números 1-4 para seleccionar opciones, B para marcar favorito, Shift+Enter para finalizar. Presiona ? para ver todos los atajos."
+                side="left"
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-base leading-relaxed">{currentQ.question.enunciado}</p>
@@ -677,7 +789,12 @@ export default function TakeExamPage() {
                     >
                       {isSelected && <div className="w-3 h-3 rounded-full bg-primary-foreground" />}
                     </div>
-                    <span className="font-medium mr-2">{option.letra}.</span>
+                    <span className="font-medium mr-2">
+                      {option.letra}.
+                      <kbd className="ml-2 px-1.5 py-0.5 text-xs bg-muted rounded border">
+                        {currentQ.question.options.indexOf(option) + 1}
+                      </kbd>
+                    </span>
                     <span>{option.texto}</span>
                   </div>
                 </button>

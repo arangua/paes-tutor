@@ -1,5 +1,5 @@
 /**
- * @vitest-environment jsdom
+ * @vitest-environment happy-dom
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
@@ -60,8 +60,8 @@ describe('ErrorBoundary', () => {
   })
 
   it('debe mostrar mensaje de error en desarrollo', () => {
-    const originalEnv = process.env.NODE_ENV
-    process.env.NODE_ENV = 'development'
+    // Mock de process.env.NODE_ENV usando vi.stubEnv
+    vi.stubEnv('NODE_ENV', 'development')
 
     render(
       <ErrorBoundary>
@@ -71,7 +71,7 @@ describe('ErrorBoundary', () => {
 
     expect(screen.getByText(/Test error/i)).toBeInTheDocument()
 
-    process.env.NODE_ENV = originalEnv
+    vi.unstubAllEnvs()
   })
 
   it('debe llamar onError callback si está definido', () => {
@@ -93,9 +93,9 @@ describe('ErrorBoundary', () => {
   })
 
   it('debe permitir resetear el error', () => {
-    // Mock de window.location.reload
+    // Mock de globalThis.window.location.reload
     const reloadSpy = vi.fn()
-    Object.defineProperty(window, 'location', {
+    Object.defineProperty(globalThis, 'location', {
       value: {
         reload: reloadSpy,
       },
@@ -118,18 +118,18 @@ describe('ErrorBoundary', () => {
   })
 
   it('debe redirigir a inicio si se solicita', () => {
-    // Mock de window.location.href
+    // Mock de globalThis.window.location.href
     const hrefSpy = vi.fn()
-    Object.defineProperty(window, 'location', {
+    Object.defineProperty(globalThis, 'location', {
       value: {
         href: '',
       },
       writable: true,
     })
 
-    // Interceptar asignación a window.location.href
-    const originalLocation = window.location
-    Object.defineProperty(window, 'location', {
+    // Interceptar asignación a globalThis.window.location.href
+    const originalLocation = globalThis.location
+    Object.defineProperty(globalThis, 'location', {
       get: () => originalLocation,
       set: value => {
         if (value === '/') {

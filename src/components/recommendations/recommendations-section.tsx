@@ -65,6 +65,14 @@ export function RecommendationsSection() {
         const res = await fetch('/api/recommendations')
 
         if (!res.ok) {
+          // Manejar error 429 (Too Many Requests)
+          if (res.status === 429) {
+            const retryAfter = res.headers.get('Retry-After')
+            const message = retryAfter
+              ? `Demasiadas solicitudes. Intenta nuevamente en ${retryAfter} segundos.`
+              : 'Demasiadas solicitudes. Por favor, espera un momento antes de intentar nuevamente.'
+            throw new Error(message)
+          }
           throw new Error('Error al cargar recomendaciones')
         }
 

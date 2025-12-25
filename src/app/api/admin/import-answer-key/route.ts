@@ -12,7 +12,7 @@ const { PDFParse } = require('pdf-parse')
 
 // Schema de validación
 const answerKeyImportSchema = z.object({
-  pdfFile: z.any(), // File object from FormData
+  pdfFile: z.custom<File>(val => val instanceof File), // File object from FormData
   subjectName: z.string().min(1),
   year: z.string().min(1),
   examId: z.string().optional(), // Opcional: si se proporciona, se usa directamente

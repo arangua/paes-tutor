@@ -41,6 +41,16 @@ interface ExamToImport {
   year: string
 }
 
+/**
+ * Interfaz para resultados de importación de exámenes
+ */
+interface ImportResult {
+  success: boolean
+  examTitle: string
+  message: string
+  details?: string // Solo presente cuando success es true
+}
+
 const SUBJECTS = [
   'Competencia Lectora',
   'Matemática M1',
@@ -189,6 +199,9 @@ export default function ImportExamsPage() {
     setResults([])
 
     try {
+      // Mostrar progreso inicial
+      toast.loading(`Iniciando importación de ${exams.length} examen(es)...`, { id: 'import-progress' })
+      
       // Verificar si hay archivos para subir
       const hasFiles = exams.some(exam => exam.inputType === 'file' && exam.pdfFile)
 
@@ -234,7 +247,7 @@ export default function ImportExamsPage() {
         setResults(results)
 
         // Mostrar resumen con toast
-        const successCount = results.filter((r: any) => r.success).length
+        const successCount = results.filter((r: ImportResult) => r.success).length
         const failCount = results.length - successCount
 
         if (successCount > 0) {
@@ -279,7 +292,7 @@ export default function ImportExamsPage() {
         setResults(results)
 
         // Mostrar resumen con toast
-        const successCount = results.filter((r: any) => r.success).length
+        const successCount = results.filter((r: ImportResult) => r.success).length
         const failCount = results.length - successCount
 
         if (successCount > 0) {
@@ -296,16 +309,25 @@ export default function ImportExamsPage() {
         }
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Error desconocido'
-      toast.error('Error al importar', {
-        description: errorMessage,
+      const errorInfo = extractErrorInfo(error)
+      const structuredError = getErrorMessage(ERROR_CODES.DATA_IMPORT_FAILED, {
+        reason: errorInfo.message,
+      })
+
+      captureError(error instanceof Error ? error : new Error(String(error)), {
+        type: 'exam_import_error',
+        path: typeof window !== 'undefined' ? window.location.pathname : undefined,
+      })
+
+      toast.error(structuredError.title, {
+        description: `${structuredError.description} ${structuredError.solution}`,
         duration: 6000,
       })
       setResults([
         {
           success: false,
           examTitle: 'Error',
-          message: errorMessage,
+          message: structuredError.description,
         },
       ])
     } finally {

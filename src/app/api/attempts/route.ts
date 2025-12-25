@@ -6,6 +6,18 @@ import { attemptQuerySchema, createAttemptSchema } from '@/lib/validations'
 import { withRateLimit } from '@/lib/rate-limit-middleware'
 import { logApiRequest } from '@/lib/logger'
 import { getCached, cacheKeys, invalidateCachePattern } from '@/lib/cache'
+import {
+  LIMIT_CONSTANTS,
+  TIME_CONSTANTS,
+  HTTP_STATUS,
+} from '@/lib/constants'
+
+// Constantes de validación y caché
+const MAX_OFFSET = LIMIT_CONSTANTS.MAX_OFFSET
+const ATTEMPTS_CACHE_TTL_MS = TIME_CONSTANTS.ATTEMPTS_CACHE_TTL_MS
+const NEW_ATTEMPT_THRESHOLD_MS = TIME_CONSTANTS.NEW_ATTEMPT_THRESHOLD_MS
+const HTTP_CREATED = HTTP_STATUS.CREATED
+const HTTP_OK = HTTP_STATUS.OK
 
 // Especificar Node.js runtime
 export const runtime = 'nodejs'
@@ -35,10 +47,6 @@ export async function GET(request: NextRequest) {
       }
 
       const { limit, offset } = validation.data
-
-      // Constantes de validación y caché
-      const MAX_OFFSET = 10000 // Máximo offset permitido
-      const ATTEMPTS_CACHE_TTL_MS = 1 * 60 * 1000 // 1 minuto
 
       // Validar límites razonables para prevenir queries costosas
       if (offset > MAX_OFFSET) {
@@ -241,9 +249,10 @@ export async function POST(request: NextRequest) {
       // Retornar el intento (existente o nuevo)
       const statusCode =
         attempt.startedAt &&
-        Math.abs(new Date().getTime() - new Date(attempt.startedAt).getTime()) < 1000
-          ? 201 // Nuevo intento (creado hace menos de 1 segundo)
-          : 200 // Intento existente
+        Math.abs(new Date().getTime() - new Date(attempt.startedAt).getTime()) <
+          NEW_ATTEMPT_THRESHOLD_MS
+          ? HTTP_CREATED // Nuevo intento (creado hace menos de 1 segundo)
+          : HTTP_OK // Intento existente
 
       return NextResponse.json(attempt, { status: statusCode })
     } catch (error) {

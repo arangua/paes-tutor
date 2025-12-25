@@ -10,6 +10,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Download, FileText, FileSpreadsheet, File, Loader2 } from 'lucide-react'
 import { captureError } from '@/lib/monitoring'
+import { getErrorMessage, extractErrorInfo, ERROR_CODES } from '@/lib/error-messages'
+import { toast } from 'sonner'
 
 interface ExportButtonProps {
   onExportPDF?: () => Promise<void>
@@ -44,7 +46,18 @@ export function ExportButton({
         format,
         path: typeof window !== 'undefined' ? window.location.pathname : undefined,
       })
-      // El toast de error se maneja en las funciones de exportación individuales
+
+      // Mostrar mensaje de error mejorado
+      const errorInfo = extractErrorInfo(error)
+      const errorMessage = getErrorMessage(ERROR_CODES.DATA_EXPORT_FAILED, {
+        reason: errorInfo.message,
+        format: format.toUpperCase(),
+      })
+
+      toast.error(errorMessage.title, {
+        description: `${errorMessage.description} ${errorMessage.solution}`,
+        duration: 6000,
+      })
     } finally {
       setExporting(null)
     }

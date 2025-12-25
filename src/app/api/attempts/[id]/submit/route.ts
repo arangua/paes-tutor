@@ -5,6 +5,8 @@ import { handleApiError } from '@/lib/api-helpers'
 import { withRateLimit } from '@/lib/rate-limit-middleware'
 import { logApiRequest } from '@/lib/logger'
 import { invalidateCachePattern } from '@/lib/cache'
+import { determineChallengeWinner } from '@/lib/challenge-helpers'
+import { TRANSACTION_TIMEOUT_LONG, CHALLENGE_STATUS } from '@/lib/challenge-constants'
 
 // Especificar Node.js runtime
 export const runtime = 'nodejs'
@@ -327,6 +329,122 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       // Invalidar caché de intentos y métricas del estudiante
       await invalidateCachePattern(`student:${studentId}:attempts:*`)
       await invalidateCachePattern(`student:${studentId}:metrics:*`)
+
+      // Verificar si hay desafíos activos para este examen y completarlos
+      try {
+        // Usar transacción para actualizar desafíos de forma atómica
+        // Esto previene condiciones de carrera cuando ambos completan simultáneamente
+        // Obtener desafíos activos DENTRO de la transacción para evitar race conditions
+        await prisma.$transaction(
+          async tx => {
+            // Obtener desafíos activos dentro de la transacción para tener datos frescos
+            const activeChallenges = await tx.challenge.findMany({
+              where: {
+                examId: attempt.exam.id,
+                status: CHALLENGE_STATUS.ACCEPTED,
+                OR: [{ challengerId: studentId }, { challengedId: studentId }],
+              },
+            })
+
+            for (const challenge of activeChallenges) {
+              const isChallenger = challenge.challengerId === studentId
+              const isChallenged = challenge.challengedId === studentId
+
+              if (isChallenger && !challenge.challengerAttemptId) {
+                // El desafiador completó su intento - actualizar el desafío
+                const updatedChallenge = await tx.challenge.update({
+                  where: { id: challenge.id },
+                  data: { challengerAttemptId: id },
+                  select: {
+                    challengerAttemptId: true,
+                    challengedAttemptId: true,
+                    challengerId: true,
+                    challengedId: true,
+                  },
+                })
+
+                // Si el desafiado también completó, determinar ganador
+                if (updatedChallenge.challengedAttemptId) {
+                  const challengedAttempt = await tx.attempt.findUnique({
+                    where: { id: updatedChallenge.challengedAttemptId },
+                    select: { porcentaje: true },
+                  })
+
+                  if (challengedAttempt) {
+                    const winnerId = determineChallengeWinner(
+                      updatedAttempt,
+                      challengedAttempt,
+                      studentId,
+                      updatedChallenge.challengedId
+                    )
+
+                    await tx.challenge.update({
+                      where: { id: challenge.id },
+                      data: {
+                        status: CHALLENGE_STATUS.COMPLETED,
+                        winnerId,
+                        completedAt: new Date(),
+                      },
+                    })
+                  }
+                }
+              } else if (isChallenged && !challenge.challengedAttemptId) {
+                // El desafiado completó su intento - actualizar el desafío
+                const updatedChallenge = await tx.challenge.update({
+                  where: { id: challenge.id },
+                  data: { challengedAttemptId: id },
+                  select: {
+                    challengerAttemptId: true,
+                    challengedAttemptId: true,
+                    challengerId: true,
+                    challengedId: true,
+                  },
+                })
+
+                // Si el desafiador también completó, determinar ganador
+                if (updatedChallenge.challengerAttemptId) {
+                  const challengerAttempt = await tx.attempt.findUnique({
+                    where: { id: updatedChallenge.challengerAttemptId },
+                    select: { porcentaje: true },
+                  })
+
+                  if (challengerAttempt) {
+                    const winnerId = determineChallengeWinner(
+                      challengerAttempt,
+                      updatedAttempt,
+                      updatedChallenge.challengerId,
+                      studentId
+                    )
+
+                    await tx.challenge.update({
+                      where: { id: challenge.id },
+                      data: {
+                        status: CHALLENGE_STATUS.COMPLETED,
+                        winnerId,
+                        completedAt: new Date(),
+                      },
+                    })
+                  }
+                }
+              }
+            }
+          },
+          {
+            timeout: TRANSACTION_TIMEOUT_LONG,
+          }
+        )
+      } catch (challengeError) {
+        // No fallar el submit si hay error con desafíos
+        const { logger } = await import('@/lib/logger')
+        logger.error(
+          {
+            attemptId: id,
+            error:
+              challengeError instanceof Error ? challengeError.message : String(challengeError),
+          },
+          'Error al actualizar desafíos después de completar examen'
+        )
+      }
 
       return NextResponse.json(updatedAttempt)
     } catch (error) {

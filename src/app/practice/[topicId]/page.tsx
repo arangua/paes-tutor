@@ -185,7 +185,11 @@ export default function PracticeTopicPage() {
       })
 
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
+        const { safeJsonParse } = await import('@/lib/api-helpers')
+        const errorData = await safeJsonParse<{ error?: string }>(res, {
+          path: typeof window !== 'undefined' ? window.location.pathname : '/practice/[topicId]',
+          operation: 'guardar sesión de práctica',
+        })
         throw new Error(errorData.error || 'Error al guardar sesión')
       }
 

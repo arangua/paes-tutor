@@ -30,6 +30,16 @@ export async function GET(request: NextRequest) {
 
       const { subjectId, topicId, tipo, limit, offset } = validation.data
 
+      // Construir where clause una sola vez para evitar duplicación
+      const whereClause = {
+        ...(subjectId && { subjectId }),
+        ...(topicId && { topicId }),
+        ...(tipo && { tipo }),
+      }
+
+      // Constantes para tiempos de caché
+      const MATERIALS_CACHE_TTL_MS = 10 * 60 * 1000 // 10 minutos
+
       // Usar caché para queries frecuentes
       const cacheKey = cacheKeys.materials(subjectId, topicId, tipo, limit, offset)
       const materials = await getCached(
@@ -38,11 +48,7 @@ export async function GET(request: NextRequest) {
           // Búsqueda mejorada basada en malla curricular chilena
           // Prioriza materiales por relevancia: tema específico > asignatura > eje temático
           const materials = await prisma.studyMaterial.findMany({
-            where: {
-              ...(subjectId && { subjectId }),
-              ...(topicId && { topicId }),
-              ...(tipo && { tipo }),
-            },
+            where: whereClause,
             select: {
               id: true,
               titulo: true,
@@ -90,7 +96,7 @@ export async function GET(request: NextRequest) {
             return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
           })
         },
-        10 * 60 * 1000 // Cache por 10 minutos
+        MATERIALS_CACHE_TTL_MS
       )
 
       // Obtener total para paginación
@@ -98,14 +104,10 @@ export async function GET(request: NextRequest) {
         `${cacheKey}:total`,
         async () => {
           return await prisma.studyMaterial.count({
-            where: {
-              ...(subjectId && { subjectId }),
-              ...(topicId && { topicId }),
-              ...(tipo && { tipo }),
-            },
+            where: whereClause,
           })
         },
-        10 * 60 * 1000
+        MATERIALS_CACHE_TTL_MS
       )
 
       return NextResponse.json({

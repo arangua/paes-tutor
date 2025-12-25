@@ -12,11 +12,13 @@ function getLogger() {
   if (typeof window !== 'undefined') {
     return null
   }
-  
+
   // Esta parte solo se ejecuta en servidor, Next.js no la empaquetará para el cliente
   // gracias a la verificación de typeof window arriba
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
+    // require() es necesario aquí porque logger solo está disponible en servidor
+    // y necesitamos cargarlo condicionalmente sin afectar el bundle del cliente
     // @ts-expect-error - logger solo disponible en servidor
     const loggerModule = require('./logger')
     return loggerModule.logger
@@ -59,7 +61,7 @@ class MonitoringService {
     }
 
     const serverLogger = getLogger()
-    
+
     switch (this.service) {
       case 'sentry':
         // Integración con Sentry (requiere @sentry/nextjs)
@@ -105,17 +107,14 @@ class MonitoringService {
     }
 
     const serverLogger = getLogger()
-    
+
     switch (this.service) {
       case 'sentry':
         // if (typeof window !== 'undefined' && window.Sentry) {
         //   window.Sentry.captureMessage(message, 'warning', { contexts: { custom: warningContext } })
         // }
         if (serverLogger) {
-          serverLogger.warn(
-            { type: 'monitoring', service: 'sentry', ...warningContext },
-            message
-          )
+          serverLogger.warn({ type: 'monitoring', service: 'sentry', ...warningContext }, message)
         } else {
           console.warn('[Sentry] Warning:', message, warningContext)
         }
@@ -124,10 +123,7 @@ class MonitoringService {
       case 'console':
       default:
         if (serverLogger) {
-          serverLogger.warn(
-            { type: 'monitoring', service: 'console', ...warningContext },
-            message
-          )
+          serverLogger.warn({ type: 'monitoring', service: 'console', ...warningContext }, message)
         } else {
           console.warn('[Monitoring] Warning:', message, warningContext)
         }
@@ -148,7 +144,7 @@ class MonitoringService {
     }
 
     const serverLogger = getLogger()
-    
+
     switch (this.service) {
       case 'sentry':
         // if (typeof window !== 'undefined' && window.Sentry) {

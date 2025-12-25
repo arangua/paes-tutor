@@ -69,10 +69,60 @@ export async function getAIConfig(
       })
 
       if (user) {
+        // Desencriptar cada API key de forma segura
+        let openaiApiKey: string | null = null
+        let anthropicApiKey: string | null = null
+        let geminiApiKey: string | null = null
+
+        if (user.openaiApiKey) {
+          try {
+            openaiApiKey = decrypt(user.openaiApiKey)
+          } catch (error) {
+            logger.warn(
+              {
+                error: error instanceof Error ? error.message : String(error),
+                userId,
+                keyType: 'openai',
+              },
+              'No se pudo desencriptar OpenAI API key del usuario'
+            )
+          }
+        }
+
+        if (user.anthropicApiKey) {
+          try {
+            anthropicApiKey = decrypt(user.anthropicApiKey)
+          } catch (error) {
+            logger.warn(
+              {
+                error: error instanceof Error ? error.message : String(error),
+                userId,
+                keyType: 'anthropic',
+              },
+              'No se pudo desencriptar Anthropic API key del usuario'
+            )
+          }
+        }
+
+        if (user.geminiApiKey) {
+          try {
+            geminiApiKey = decrypt(user.geminiApiKey)
+          } catch (error) {
+            logger.warn(
+              {
+                error: error instanceof Error ? error.message : String(error),
+                userId,
+                keyType: 'gemini',
+              },
+              'No se pudo desencriptar Gemini API key del usuario'
+            )
+          }
+        }
+
         userConfig = {
-          openaiApiKey: user.openaiApiKey ? decrypt(user.openaiApiKey) : null,
-          anthropicApiKey: user.anthropicApiKey ? decrypt(user.anthropicApiKey) : null,
-          geminiApiKey: user.geminiApiKey ? decrypt(user.geminiApiKey) : null,
+          openaiApiKey,
+          anthropicApiKey,
+          geminiApiKey,
           preferredAIService: user.preferredAIService,
         }
       }

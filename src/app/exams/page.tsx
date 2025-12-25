@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -17,6 +17,8 @@ import { BookOpen, Search, Filter, Home, FileText, Loader2, AlertCircle } from '
 import { ExportButton } from '@/components/export/export-button'
 import { exportExamsListToExcel } from '@/lib/export-utils'
 import { toast } from 'sonner'
+import { useProgressTracker } from '@/hooks/useProgressTracker'
+import { ProgressDialog } from '@/components/ui/progress-dialog'
 import { useExams } from '@/hooks/useExams'
 import { useDebounce } from '@/hooks/useDebounce'
 import { ExamCard } from '@/components/ExamCard'
@@ -26,6 +28,7 @@ import { BackButton } from '@/components/navigation/back-button'
 
 export default function ExamsPage() {
   const router = useRouter()
+  const exportProgress = useProgressTracker()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedSubject, setSelectedSubject] = useState<string>('all')
   const [selectedTipo, setSelectedTipo] = useState<string>('all')
@@ -51,16 +54,21 @@ export default function ExamsPage() {
     setCurrentPage(1)
   }, [selectedSubject, selectedTipo, searchQuery])
 
-  const handleStartExam = (examId: string) => {
-    // Validar formato del ID antes de navegar
-    if (!examId || !/^c[a-z0-9]{24}$/.test(examId)) {
-      // ID inválido, no navegar
-      return
-    }
-    router.push(`/exams/${examId}/take`)
-  }
+  const handleStartExam = useCallback(
+    (examId: string) => {
+      // Validar formato del ID antes de navegar
+      if (!examId || !/^c[a-z0-9]{24}$/.test(examId)) {
+        toast.error('ID de examen inválido', {
+          description: 'El ID del examen no es válido. Por favor, selecciona otro examen.',
+        })
+        return
+      }
+      router.push(`/exams/${examId}/take`)
+    },
+    [router]
+  )
 
-  const handleExportExcel = async () => {
+  const handleExportExcel = useCallback(async () => {
     if (filteredExams.length === 0) {
       toast.error('No hay exámenes para exportar', {
         description:
@@ -70,7 +78,7 @@ export default function ExamsPage() {
     }
 
     try {
-      toast.loading(`Exportando ${filteredExams.length} examen(es)...`, { id: 'export-exams' })
+      exportProgress.start(3, `Exportando ${filteredExams.length} examen(es)...`)
       const examsData = filteredExams.map(exam => ({
         id: exam.id,
         titulo: exam.titulo,
@@ -85,21 +93,34 @@ export default function ExamsPage() {
         createdAt: exam.createdAt,
       }))
 
-      await exportExamsListToExcel(examsData)
+      await exportExamsListToExcel(examsData, (progress, current, total, message) => {
+        exportProgress.updateProgress(current, total, message)
+      })
+      exportProgress.complete()
       toast.success('Exportación exitosa', {
-        id: 'export-exams',
         description: `Se exportaron ${filteredExams.length} examen(es) correctamente.`,
       })
     } catch (error) {
+      exportProgress.fail(error instanceof Error ? error : new Error('Error desconocido'))
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'No se pudo exportar la lista de exámenes. Por favor, intenta nuevamente.'
+
       toast.error('Error al exportar', {
-        id: 'export-exams',
-        description:
-          error instanceof Error
-            ? error.message
-            : 'No se pudo exportar la lista de exámenes. Por favor, intenta nuevamente.',
+        description: errorMessage,
       })
+
+      // Log del error para debugging
+      if (typeof window !== 'undefined' && (window as any).captureError) {
+        ;(window as any).captureError(error instanceof Error ? error : new Error(String(error)), {
+          type: 'export_error',
+          action: 'export_exams_list',
+          context: { examCount: filteredExams.length },
+        })
+      }
     }
-  }
+  }, [filteredExams])
 
   if (isLoading) {
     return (
@@ -125,8 +146,19 @@ export default function ExamsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <>
+      <ProgressDialog
+        open={exportProgress.isActive}
+        title="Exportando lista de exámenes"
+        description="Por favor espera mientras se genera el archivo..."
+        progress={exportProgress.progress}
+        current={exportProgress.current}
+        total={exportProgress.total}
+        message={exportProgress.message}
+        estimatedTimeRemaining={exportProgress.estimatedTimeRemaining}
+      />
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-4 md:p-8">
+        <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
           <div className="flex items-start justify-between flex-wrap gap-4">
@@ -290,7 +322,8 @@ export default function ExamsPage() {
             )}
           </>
         )}
+        </div>
       </div>
-    </div>
+    </>
   )
 }

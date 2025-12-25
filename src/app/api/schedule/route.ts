@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getCurrentUser } from '@/lib/get-session'
+import { getCurrentUser, getAuthenticatedUserWithStudent } from '@/lib/get-session'
 import { withRateLimit } from '@/lib/rate-limit-middleware'
 import { z } from 'zod'
 import { logger } from '@/lib/logger'
@@ -44,17 +44,12 @@ const scheduleIdQuerySchema = z.object({
 export async function GET(request: NextRequest) {
   return withRateLimit(request, async () => {
     try {
-      const user = await getCurrentUser()
-      if (!user?.email) {
+      const dbUser = await getAuthenticatedUserWithStudent()
+      if (!dbUser?.email) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
       }
 
-      const dbUser = await prisma.user.findUnique({
-        where: { email: user.email },
-        include: { student: true },
-      })
-
-      if (!user?.student) {
+      if (!dbUser?.student) {
         return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 })
       }
 
@@ -80,7 +75,7 @@ export async function GET(request: NextRequest) {
         }
         completed?: boolean
       } = {
-        studentId: user.student.id,
+        studentId: dbUser.student.id,
       }
 
       if (startDate || endDate) {
@@ -141,17 +136,12 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   return withRateLimit(request, async () => {
     try {
-      const user = await getCurrentUser()
-      if (!user?.email) {
+      const dbUser = await getAuthenticatedUserWithStudent()
+      if (!dbUser?.email) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
       }
 
-      const dbUser = await prisma.user.findUnique({
-        where: { email: user.email },
-        include: { student: true },
-      })
-
-      if (!user?.student) {
+      if (!dbUser?.student) {
         return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 })
       }
 
@@ -231,17 +221,12 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   return withRateLimit(request, async () => {
     try {
-      const user = await getCurrentUser()
-      if (!user?.email) {
+      const dbUser = await getAuthenticatedUserWithStudent()
+      if (!dbUser?.email) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
       }
 
-      const dbUser = await prisma.user.findUnique({
-        where: { email: user.email },
-        include: { student: true },
-      })
-
-      if (!user?.student) {
+      if (!dbUser?.student) {
         return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 })
       }
 
@@ -272,7 +257,7 @@ export async function PUT(request: NextRequest) {
       const existingSchedule = await prisma.studySchedule.findFirst({
         where: {
           id: scheduleId,
-          studentId: user.student.id,
+          studentId: dbUser.student.id,
         },
       })
 
@@ -339,17 +324,12 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   return withRateLimit(request, async () => {
     try {
-      const user = await getCurrentUser()
-      if (!user?.email) {
+      const dbUser = await getAuthenticatedUserWithStudent()
+      if (!dbUser?.email) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
       }
 
-      const dbUser = await prisma.user.findUnique({
-        where: { email: user.email },
-        include: { student: true },
-      })
-
-      if (!user?.student) {
+      if (!dbUser?.student) {
         return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 })
       }
 
@@ -370,7 +350,7 @@ export async function DELETE(request: NextRequest) {
       const schedule = await prisma.studySchedule.findFirst({
         where: {
           id: scheduleId,
-          studentId: user.student.id,
+          studentId: dbUser.student.id,
         },
       })
 

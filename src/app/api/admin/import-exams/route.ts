@@ -20,7 +20,7 @@ const { PDFParse } = require('pdf-parse')
 const examImportSchema = z
   .object({
     pdfUrl: z.string().url().optional(),
-    pdfFile: z.any().optional(), // File object from FormData
+    pdfFile: z.custom<File>(val => val instanceof File).optional(), // File object from FormData
     inputType: z.enum(['url', 'file']),
     subjectName: z.string().min(1),
     examTitle: z.string().min(1),
@@ -89,9 +89,9 @@ function downloadFileAlternative(url: string, dest: string): Promise<void> {
     let hasError = false
     let responseStarted = false
 
-    const options: any = {
+    const options: https.RequestOptions = {
       hostname: urlObj.hostname,
-      port: urlObj.port || (urlObj.protocol === 'https:' ? 443 : 80),
+      port: urlObj.port ? parseInt(urlObj.port, 10) : urlObj.protocol === 'https:' ? 443 : 80,
       path: urlObj.pathname + urlObj.search,
       method: 'GET',
       headers: {
@@ -105,7 +105,7 @@ function downloadFileAlternative(url: string, dest: string): Promise<void> {
     const req = protocol.request(options)
 
     // Capturar errores de parsing pero intentar continuar
-    req.on('response', (response: any) => {
+    req.on('response', (response: http.IncomingMessage) => {
       responseStarted = true
 
       // Manejar redirecciones
@@ -458,7 +458,7 @@ function parseQuestionsFromText(text: string): Array<{
 async function mapQuestionToTopic(
   question: { enunciado: string },
   subjectId: string,
-  prismaClient: any = prisma
+  prismaClient: typeof prisma = prisma
 ): Promise<string | null> {
   const topics = await prismaClient.topic.findMany({
     where: { subjectId },

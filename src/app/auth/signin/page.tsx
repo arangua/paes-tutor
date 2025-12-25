@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { AlertCircle, Loader2 } from 'lucide-react'
+import { validateEmail, validatePassword } from '@/lib/validation-helpers'
 
 function SignInForm() {
   const router = useRouter()
@@ -29,10 +30,18 @@ function SignInForm() {
     setError('')
     setLoading(true)
 
-    // Validación básica de email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      setError('Por favor ingresa un email válido')
+    // Validación de email usando helper
+    const emailValidation = validateEmail(email)
+    if (!emailValidation.isValid) {
+      setError(emailValidation.error || 'Por favor ingresa un email válido')
+      setLoading(false)
+      return
+    }
+
+    // Validación de contraseña usando helper
+    const passwordValidation = validatePassword(password)
+    if (!passwordValidation.isValid) {
+      setError(passwordValidation.error || 'Contraseña inválida')
       setLoading(false)
       return
     }

@@ -133,6 +133,56 @@ export async function validateBody<T>(
 }
 
 /**
+ * Parsea JSON de forma segura con logging estructurado
+ * Útil para manejar errores de parsing JSON en respuestas de API
+ * Funciona tanto en cliente como en servidor
+ * 
+ * @example
+ * const errorData = await safeJsonParse<{ error?: string }>(res, {
+ *   path: '/api/user',
+ *   operation: 'actualizar usuario',
+ * })
+ */
+export async function safeJsonParse<T = Record<string, unknown>>(
+  response: Response,
+  context?: { path?: string; operation?: string }
+): Promise<T> {
+  try {
+    return await response.json()
+  } catch (error) {
+    // Usar logger estructurado si está disponible (servidor), sino console.warn (cliente)
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    const logData = {
+      type: 'json_parse_error',
+      path: context?.path,
+      operation: context?.operation,
+      error: errorMessage,
+      status: response.status,
+      statusText: response.statusText,
+    }
+
+    // Intentar usar logger estructurado (solo en servidor)
+    try {
+      if (typeof window === 'undefined') {
+        logger.warn(logData, 'Error al parsear JSON de respuesta')
+      } else {
+        // En cliente, usar console.warn solo en desarrollo
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('Error al parsear JSON de respuesta:', logData)
+        }
+      }
+    } catch {
+      // Si logger falla, usar console como fallback
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('Error al parsear JSON de respuesta:', errorMessage, context)
+      }
+    }
+
+    return {} as T
+  }
+}
+
+/**
  * Maneja errores de forma consistente
  */
 export function handleApiError(

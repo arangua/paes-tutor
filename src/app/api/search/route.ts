@@ -4,6 +4,13 @@ import { withRateLimit } from '@/lib/rate-limit-middleware'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { logger } from '@/lib/logger'
+import {
+  LIMIT_CONSTANTS,
+  SEARCH_CONSTANTS,
+  SEARCH_WEIGHT_PRESETS,
+  SEARCH_TYPES,
+  type SearchType,
+} from '@/lib/constants'
 
 export const runtime = 'nodejs'
 
@@ -35,10 +42,10 @@ function calculateRelevance(
   weights: { title?: number; content?: number; subject?: number; topic?: number } = {}
 ): number {
   const defaultWeights = {
-    title: 10,
-    content: 2,
-    subject: 5,
-    topic: 8,
+    title: SEARCH_CONSTANTS.RELEVANCE_WEIGHTS.TITLE,
+    content: SEARCH_CONSTANTS.RELEVANCE_WEIGHTS.CONTENT,
+    subject: SEARCH_CONSTANTS.RELEVANCE_WEIGHTS.SUBJECT,
+    topic: SEARCH_CONSTANTS.RELEVANCE_WEIGHTS.TOPIC,
     ...weights,
   }
 
@@ -47,7 +54,7 @@ function calculateRelevance(
 
   // Búsqueda exacta (mayor peso)
   if (lowerText.includes(query.toLowerCase())) {
-    relevance += 20
+    relevance += SEARCH_CONSTANTS.RELEVANCE_WEIGHTS.EXACT_MATCH
   }
 
   // Búsqueda por palabras
@@ -55,8 +62,16 @@ function calculateRelevance(
     if (lowerText.includes(word)) {
       // Peso según posición
       const index = lowerText.indexOf(word)
-      const positionWeight = index < 50 ? 5 : index < 200 ? 3 : 1
-      relevance += positionWeight
+      // Validar que la palabra fue encontrada (indexOf retorna -1 si no encuentra)
+      if (index !== -1) {
+        const positionWeight =
+          index < SEARCH_CONSTANTS.POSITION_THRESHOLDS.NEAR_START
+            ? SEARCH_CONSTANTS.POSITION_WEIGHTS.NEAR_START
+            : index < SEARCH_CONSTANTS.POSITION_THRESHOLDS.MIDDLE
+              ? SEARCH_CONSTANTS.POSITION_WEIGHTS.MIDDLE
+              : SEARCH_CONSTANTS.POSITION_WEIGHTS.FAR
+        relevance += positionWeight
+      }
     }
   })
 
@@ -117,7 +132,7 @@ async function searchExams(
       `${exam.titulo} ${exam.descripcion || ''} ${exam.subject.nombre}`,
       query,
       queryWords,
-      { title: 10, content: 2, subject: 5 }
+      SEARCH_WEIGHT_PRESETS.EXAM
     ),
     url: `/exams/${exam.id}/take`,
   }))
@@ -171,7 +186,7 @@ async function searchMaterials(
     type: 'material' as const,
     id: material.id,
     title: material.titulo,
-    description: material.contenido.substring(0, 200),
+    description: material.contenido.substring(0, LIMIT_CONSTANTS.MAX_SEARCH_DESCRIPTION_LENGTH),
     subject: material.subject.nombre,
     subjectCode: material.subject.codigo,
     topic: material.topic?.nombre,
@@ -181,7 +196,7 @@ async function searchMaterials(
       `${material.titulo} ${material.contenido} ${material.subject.nombre} ${material.topic?.nombre || ''} ${material.topic?.ejeTematico || ''}`,
       query,
       queryWords,
-      { title: 10, content: 2, subject: 5, topic: 8 }
+      SEARCH_WEIGHT_PRESETS.MATERIAL
     ),
     url: `/materials/${material.id}`,
   }))
@@ -229,7 +244,7 @@ async function searchTopics(query: string, queryWords: string[], limit: number, 
       `${topic.nombre} ${topic.descripcion || ''} ${topic.ejeTematico} ${topic.subject.nombre}`,
       query,
       queryWords,
-      { title: 10, content: 2, subject: 5, topic: 8 }
+      SEARCH_WEIGHT_PRESETS.TOPIC
     ),
     url: `/materials?topicId=${topic.id}`,
   }))
@@ -289,7 +304,7 @@ async function searchAttempts(
       `${attempt.exam.titulo} ${attempt.exam.descripcion || ''} ${attempt.exam.subject.nombre}`,
       query,
       queryWords,
-      { title: 10, content: 2, subject: 5 }
+      SEARCH_WEIGHT_PRESETS.EXAM
     ),
     url:
       attempt.estado === 'completado'
@@ -299,58 +314,155 @@ async function searchAttempts(
 }
 
 /**
+ * Interfaz para metadata de sugerencias de búsqueda
+ */
+interface SuggestionMetadata {
+  codigo?: string
+  ejeTematico?: string
+  examId?: string
+  materialId?: string
+  topicId?: string
+}
+
+/**
+ * Interfaz para sugerencias de búsqueda
+ */
+interface SearchSuggestion {
+  text: string
+  type: string
+  relevance: number
+  metadata?: SuggestionMetadata
+}
+
+/**
  * Obtiene sugerencias de búsqueda basadas en el query
+ * Mejorado con ranking por relevancia y contexto del usuario
  */
 async function getSuggestions(query: string, studentId: string) {
   if (query.length < 2) return []
 
-  const suggestions: string[] = []
+  const suggestions: SearchSuggestion[] = []
   const queryLower = query.toLowerCase()
+  const queryWords = queryLower.split(/\s+/).filter(w => w.length > 0)
 
-  // Sugerencias de asignaturas
+  // Sugerencias de asignaturas (mayor relevancia si coincide al inicio)
+  // SQLite no soporta mode: 'insensitive', usar contains sin mode
   const subjects = await prisma.subject.findMany({
     where: {
-      nombre: { contains: query },
+      OR: [
+        { nombre: { contains: query } },
+        { codigo: { contains: query } },
+      ],
     },
-    take: 3,
+    take: SEARCH_CONSTANTS.SUGGESTION_LIMITS.SUBJECTS_TAKE,
   })
   subjects.forEach(subject => {
-    if (!suggestions.includes(subject.nombre)) {
-      suggestions.push(subject.nombre)
+    const nombreLower = subject.nombre.toLowerCase()
+    const codigoLower = subject.codigo.toLowerCase()
+    let relevance = SEARCH_CONSTANTS.SUGGESTION_RELEVANCE.SUBJECT_DEFAULT
+
+    // Mayor relevancia si coincide al inicio
+    if (nombreLower.startsWith(queryLower) || codigoLower.startsWith(queryLower)) {
+      relevance = SEARCH_CONSTANTS.SUGGESTION_RELEVANCE.SUBJECT_STARTS_WITH
+    } else if (nombreLower.includes(queryLower) || codigoLower.includes(queryLower)) {
+      relevance = SEARCH_CONSTANTS.SUGGESTION_RELEVANCE.SUBJECT_INCLUDES
+    }
+
+    // Verificar si no existe ya
+    if (!suggestions.some(s => s.text === subject.nombre)) {
+      suggestions.push({
+        text: subject.nombre,
+        type: 'subject',
+        relevance,
+        metadata: { codigo: subject.codigo },
+      })
     }
   })
 
-  // Sugerencias de temas
+  // Sugerencias de temas (con ranking por relevancia)
+  // SQLite no soporta mode: 'insensitive', usar contains sin mode
   const topics = await prisma.topic.findMany({
     where: {
-      OR: [{ nombre: { contains: query } }, { ejeTematico: { contains: query } }],
+      OR: [
+        { nombre: { contains: query } },
+        { ejeTematico: { contains: query } },
+      ],
     },
-    take: 3,
+    take: SEARCH_CONSTANTS.SUGGESTION_LIMITS.TOPICS_TAKE,
   })
   topics.forEach(topic => {
-    if (!suggestions.includes(topic.nombre)) {
-      suggestions.push(topic.nombre)
+    const nombreLower = topic.nombre.toLowerCase()
+    const ejeLower = topic.ejeTematico.toLowerCase()
+    let relevance = SEARCH_CONSTANTS.SUGGESTION_RELEVANCE.TOPIC_DEFAULT
+
+    if (nombreLower.startsWith(queryLower)) {
+      relevance = SEARCH_CONSTANTS.SUGGESTION_RELEVANCE.TOPIC_STARTS_WITH
+    } else if (nombreLower.includes(queryLower)) {
+      relevance = SEARCH_CONSTANTS.SUGGESTION_RELEVANCE.TOPIC_INCLUDES
+    } else if (ejeLower.includes(queryLower)) {
+      relevance = SEARCH_CONSTANTS.SUGGESTION_RELEVANCE.TOPIC_EJE_INCLUDES
     }
-    if (!suggestions.includes(topic.ejeTematico)) {
-      suggestions.push(topic.ejeTematico)
+
+    if (!suggestions.some(s => s.text === topic.nombre)) {
+      suggestions.push({
+        text: topic.nombre,
+        type: 'topic',
+        relevance,
+        metadata: { ejeTematico: topic.ejeTematico },
+      })
     }
   })
 
-  // Sugerencias de títulos de exámenes
+  // Sugerencias de títulos de exámenes (con contexto del estudiante)
+  // SQLite no soporta mode: 'insensitive', usar contains sin mode
   const examTitles = await prisma.exam.findMany({
     where: {
       titulo: { contains: query },
     },
-    select: { titulo: true },
-    take: 3,
+    select: { titulo: true, id: true },
+    take: SEARCH_CONSTANTS.SUGGESTION_LIMITS.EXAMS_TAKE,
   })
+
+  // Obtener intentos del estudiante para priorizar exámenes que ha visto
+  const studentAttempts = studentId
+    ? await prisma.attempt.findMany({
+        where: { studentId },
+        select: { examId: true },
+        distinct: ['examId'],
+      })
+    : []
+
+  const attemptedExamIds = new Set(studentAttempts.map(a => a.examId))
+
   examTitles.forEach(exam => {
-    if (!suggestions.includes(exam.titulo)) {
-      suggestions.push(exam.titulo)
+    const tituloLower = exam.titulo.toLowerCase()
+    let relevance = SEARCH_CONSTANTS.SUGGESTION_RELEVANCE.EXAM_DEFAULT
+
+    if (tituloLower.startsWith(queryLower)) {
+      relevance = SEARCH_CONSTANTS.SUGGESTION_RELEVANCE.EXAM_STARTS_WITH
+    } else if (tituloLower.includes(queryLower)) {
+      relevance = SEARCH_CONSTANTS.SUGGESTION_RELEVANCE.EXAM_INCLUDES
+    }
+
+    // Priorizar exámenes que el estudiante ya ha intentado
+    if (attemptedExamIds.has(exam.id)) {
+      relevance += SEARCH_CONSTANTS.SUGGESTION_RELEVANCE.EXAM_ATTEMPTED_BONUS
+    }
+
+    if (!suggestions.some(s => s.text === exam.titulo)) {
+      suggestions.push({
+        text: exam.titulo,
+        type: 'exam',
+        relevance,
+      })
     }
   })
 
-  return suggestions.slice(0, 8) // Máximo 8 sugerencias
+  // Ordenar por relevancia y retornar top N sugerencias
+  return suggestions
+    .sort((a, b) => b.relevance - a.relevance)
+    .slice(0, SEARCH_CONSTANTS.SUGGESTION_LIMITS.MAX_SUGGESTIONS)
+    .map(s => s.text)
 }
 
 export async function GET(request: NextRequest) {
@@ -371,16 +483,34 @@ export async function GET(request: NextRequest) {
         types: z
           .string()
           .optional()
-          .transform(val => (val ? val.split(',') : undefined)),
+          .transform((val): string[] | undefined => {
+            if (!val) return undefined
+            const split = val.split(',')
+            // Validar que todos los valores sean strings válidos
+            return split.filter(t => typeof t === 'string' && t.trim().length > 0)
+          })
+          .pipe(z.array(z.string()).optional()),
         limit: z
           .string()
           .optional()
-          .transform(val => (val ? parseInt(val, 10) : 10))
+          .transform((val): number => {
+            if (!val) return 10
+            const parsed = parseInt(val, 10)
+            // Validar que el parseo fue exitoso
+            if (isNaN(parsed)) return 10
+            return parsed
+          })
           .pipe(z.number().int().min(1).max(100)),
         offset: z
           .string()
           .optional()
-          .transform(val => (val ? parseInt(val, 10) : 0))
+          .transform((val): number => {
+            if (!val) return 0
+            const parsed = parseInt(val, 10)
+            // Validar que el parseo fue exitoso
+            if (isNaN(parsed)) return 0
+            return parsed
+          })
           .pipe(z.number().int().min(0)),
       })
 
@@ -402,37 +532,41 @@ export async function GET(request: NextRequest) {
         })
       }
 
-      const types =
+      const types: SearchType[] =
         typesParam && typesParam.length > 0
-          ? (typesParam.filter(t =>
-              ['exams', 'materials', 'topics', 'attempts'].includes(t)
-            ) as Array<'exams' | 'materials' | 'topics' | 'attempts'>)
-          : ['exams', 'materials', 'topics', 'attempts']
+          ? (typesParam.filter(t => SEARCH_TYPES.includes(t as SearchType)) as SearchType[])
+          : ([...SEARCH_TYPES] as SearchType[])
       const queryWords = query
         .toLowerCase()
         .split(/\s+/)
         .filter(w => w.length > 0)
 
       // Buscar en paralelo (usar limit * 2 para tener más resultados para ordenar por relevancia)
+      // Limitar a MAX_SEARCH_RESULTS para prevenir problemas de performance
+      const searchLimit = Math.min(limit * 2, LIMIT_CONSTANTS.MAX_SEARCH_RESULTS)
       const [exams, materials, topics, attempts] = await Promise.all([
         types.includes('exams')
-          ? searchExams(query, queryWords, studentId, limit * 2, 0)
+          ? searchExams(query, queryWords, studentId, searchLimit, 0)
           : Promise.resolve([]),
         types.includes('materials')
-          ? searchMaterials(query, queryWords, studentId, limit * 2, 0)
+          ? searchMaterials(query, queryWords, studentId, searchLimit, 0)
           : Promise.resolve([]),
         types.includes('topics')
-          ? searchTopics(query, queryWords, limit * 2, 0)
+          ? searchTopics(query, queryWords, searchLimit, 0)
           : Promise.resolve([]),
         types.includes('attempts')
-          ? searchAttempts(query, queryWords, studentId, limit * 2, 0)
+          ? searchAttempts(query, queryWords, studentId, searchLimit, 0)
           : Promise.resolve([]),
       ])
 
       // Combinar y ordenar por relevancia
-      const allResults = [...exams, ...materials, ...topics, ...attempts]
-        .sort((a, b) => b.relevance - a.relevance)
-        .slice(offset, offset + limit)
+      const allResultsUnsliced = [...exams, ...materials, ...topics, ...attempts].sort(
+        (a, b) => b.relevance - a.relevance
+      )
+
+      // Calcular total antes del slice para paginación correcta
+      const totalResults = allResultsUnsliced.length
+      const allResults = allResultsUnsliced.slice(offset, offset + limit)
 
       // Obtener sugerencias
       const suggestions = await getSuggestions(query, studentId)
@@ -440,7 +574,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         results: allResults,
         suggestions,
-        total: allResults.length,
+        total: totalResults,
         query,
       })
     } catch (error) {

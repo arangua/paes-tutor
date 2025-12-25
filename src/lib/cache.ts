@@ -1,9 +1,11 @@
 // Sistema de caché con soporte para memoria (desarrollo) y Redis (producción)
 // Preparado para migración fácil a Redis
 
+import { TIME_CONSTANTS } from './constants'
+
 // Constantes de tiempo de caché
-const DEFAULT_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutos por defecto
-const CACHE_CLEANUP_INTERVAL_MS = 10 * 60 * 1000 // 10 minutos
+const DEFAULT_CACHE_TTL_MS = TIME_CONSTANTS.DEFAULT_CACHE_TTL_MS
+const CACHE_CLEANUP_INTERVAL_MS = TIME_CONSTANTS.CACHE_CLEANUP_INTERVAL_MS
 
 interface CacheEntry<T> {
   data: T
@@ -108,6 +110,9 @@ function getCacheAdapter(): CacheAdapter {
 const cache = getCacheAdapter()
 
 // Si es memoria, configurar cleanup periódico
+// NOTA: Este setInterval se ejecuta a nivel de módulo y no se limpia explícitamente
+// Esto es intencional: el cleanup del caché debe ejecutarse mientras la aplicación esté corriendo
+// En producción, considerar usar un sistema de tareas programadas (cron) o un worker thread
 if (cache instanceof MemoryCacheAdapter) {
   // Limpiar caché cada 10 minutos (solo en Node.js runtime)
   if (
@@ -115,12 +120,21 @@ if (cache instanceof MemoryCacheAdapter) {
     typeof process !== 'undefined' &&
     process.env.NEXT_RUNTIME !== 'edge'
   ) {
-    setInterval(
-      () => {
-        cache.cleanup()
-      },
-      CACHE_CLEANUP_INTERVAL_MS
-    )
+    // Guardar referencia al interval para poder limpiarlo si es necesario
+    // En Next.js, esto se ejecuta una vez al cargar el módulo
+    const cleanupInterval = setInterval(() => {
+      cache.cleanup()
+    }, CACHE_CLEANUP_INTERVAL_MS)
+
+    // Limpiar en caso de que el proceso termine (opcional, pero buena práctica)
+    if (typeof process !== 'undefined' && process.on) {
+      process.on('SIGTERM', () => {
+        clearInterval(cleanupInterval)
+      })
+      process.on('SIGINT', () => {
+        clearInterval(cleanupInterval)
+      })
+    }
   }
 }
 

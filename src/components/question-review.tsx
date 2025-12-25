@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { BookmarkButton } from '@/components/bookmarks/bookmark-button'
 import { CreateFlashcardButton } from '@/components/flashcards/create-flashcard-button'
 import { CreateNoteButton } from '@/components/notes/create-note-button'
+import { ContentTypeIcon } from '@/components/ui/content-type-icon'
 
 interface QuestionOption {
   id: string
@@ -19,6 +20,7 @@ interface Question {
   id: string
   enunciado: string
   explicacion: string
+  tipo?: string
   options: QuestionOption[]
   topic?: {
     nombre: string
@@ -67,6 +69,13 @@ export function QuestionReview({ answer, index, showTopic = true }: QuestionRevi
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
               <Badge variant="outline">Pregunta {index + 1}</Badge>
+              {answer.question.tipo && (
+                <ContentTypeIcon 
+                  type="question" 
+                  questionType={answer.question.tipo} 
+                  size={16} 
+                />
+              )}
               <BookmarkButton questionId={answer.question.id} />
               <CreateFlashcardButton
                 questionId={answer.question.id}

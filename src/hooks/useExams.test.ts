@@ -3,7 +3,7 @@ import { renderHook, waitFor } from '@testing-library/react'
 import { useExams } from './useExams'
 
 // Mock de fetch
-global.fetch = vi.fn()
+globalThis.fetch = vi.fn()
 
 describe('useExams', () => {
   beforeEach(() => {

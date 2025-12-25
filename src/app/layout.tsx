@@ -5,6 +5,8 @@ import { ErrorBoundaryWrapper } from '@/components/ErrorBoundaryWrapper'
 import { Header } from '@/components/layout/header'
 import { Toaster } from 'sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { KeyboardShortcutsProvider } from '@/components/keyboard-shortcuts-provider'
+import { GlobalUndoRedoProvider } from '@/hooks/useGlobalUndoRedo'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -31,9 +33,13 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <TooltipProvider>
           <ErrorBoundaryWrapper>
-            <Header />
-            <main className="min-h-[calc(100vh-4rem)]">{children}</main>
-            <Toaster position="top-right" richColors closeButton />
+            <GlobalUndoRedoProvider>
+              <KeyboardShortcutsProvider>
+                <Header />
+                <main className="min-h-[calc(100vh-4rem)]">{children}</main>
+                <Toaster position="top-right" richColors closeButton />
+              </KeyboardShortcutsProvider>
+            </GlobalUndoRedoProvider>
           </ErrorBoundaryWrapper>
         </TooltipProvider>
       </body>

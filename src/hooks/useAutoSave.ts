@@ -79,15 +79,25 @@ export function useAutoSave<T>({
         timeoutRef.current = null
       }
 
-      // Guardar datos pendientes si hay cambios (solo si el componente aún está montado)
-      if (isMounted && !isSavingRef.current) {
+      // Guardar datos pendientes si hay cambios (solo si no estamos guardando)
+      if (!isSavingRef.current) {
         // Comparar datos de forma segura (maneja referencias circulares, etc.)
         const hasChanges = !safeDeepEqual(previousDataRef.current, data)
         if (hasChanges) {
           // Ejecutar save de forma segura, capturando errores silenciosamente
-          onSave(data).catch(() => {
-            // Silenciar errores en cleanup - el componente ya se está desmontando
-          })
+          // Solo actualizar refs, no estado (el componente ya se está desmontando)
+          onSave(data)
+            .then(() => {
+              // Solo actualizar ref si el componente aún está montado
+              // (aunque en cleanup esto siempre será false, es por seguridad)
+              if (isMounted) {
+                previousDataRef.current = data
+              }
+            })
+            .catch(() => {
+              // Silenciar errores en cleanup - el componente ya se está desmontando
+              // No intentar actualizar estado
+            })
         }
       }
     }

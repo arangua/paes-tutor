@@ -4,6 +4,8 @@ import { withRateLimit } from '@/lib/rate-limit-middleware'
 import { logger } from '@/lib/logger'
 import * as cheerio from 'cheerio'
 import axios from 'axios'
+import https from 'https'
+import http from 'http'
 
 export const runtime = 'nodejs'
 
@@ -106,9 +108,9 @@ async function fetchHTMLAlternative(url: string): Promise<string> {
     const urlObj = new URL(url)
     const protocol = urlObj.protocol === 'https:' ? https : http
 
-    const options: any = {
+    const options: https.RequestOptions = {
       hostname: urlObj.hostname,
-      port: urlObj.port || (urlObj.protocol === 'https:' ? 443 : 80),
+      port: urlObj.port ? parseInt(urlObj.port, 10) : urlObj.protocol === 'https:' ? 443 : 80,
       path: urlObj.pathname + urlObj.search,
       method: 'GET',
       headers: {
@@ -125,7 +127,7 @@ async function fetchHTMLAlternative(url: string): Promise<string> {
     let responseData = Buffer.alloc(0)
     let headersReceived = false
 
-    const req = protocol.request(options, (res: any) => {
+    const req = protocol.request(options, (res: http.IncomingMessage) => {
       headersReceived = true
 
       if (!res.statusCode || res.statusCode < 200 || res.statusCode >= 400) {

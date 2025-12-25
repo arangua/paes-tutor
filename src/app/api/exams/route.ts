@@ -6,9 +6,10 @@ import { examQuerySchema } from '@/lib/validations'
 import { withRateLimit } from '@/lib/rate-limit-middleware'
 import { logApiRequest } from '@/lib/logger'
 import { getCached, cacheKeys } from '@/lib/cache'
+import { TIME_CONSTANTS } from '@/lib/constants'
 
 // Constantes para tiempos de caché
-const EXAMS_CACHE_TTL_MS = 10 * 60 * 1000 // 10 minutos
+const EXAMS_CACHE_TTL_MS = TIME_CONSTANTS.EXAMS_CACHE_TTL_MS
 
 // Especificar Node.js runtime
 export const runtime = 'nodejs'

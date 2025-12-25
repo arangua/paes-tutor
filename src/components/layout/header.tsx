@@ -18,6 +18,7 @@ import {
   Bot,
   Search,
   HelpCircle,
+  Trash2,
 } from 'lucide-react'
 import { GlobalSearch } from '@/components/search/global-search'
 import {
@@ -28,6 +29,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { OnlineIndicator } from '@/components/ui/online-indicator'
+import { TrashDialog } from '@/components/trash/trash-dialog'
+import { GlobalUndoRedoToolbar } from '@/components/ui/undo-redo-global-toolbar'
 
 interface UserInfo {
   nombre?: string
@@ -41,6 +45,7 @@ export function Header() {
   const [isLoading, setIsLoading] = useState(true)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [isTrashOpen, setIsTrashOpen] = useState(false)
 
   useEffect(() => {
     async function fetchUserInfo() {
@@ -53,7 +58,7 @@ export function Header() {
             email: data.email,
           })
         }
-      } catch (error) {
+      } catch {
         // Silenciar errores de autenticación
       } finally {
         setIsLoading(false)
@@ -74,14 +79,13 @@ export function Header() {
         callbackUrl: '/auth/signin',
         redirect: true,
       })
-    } catch (error) {
+    } catch {
       // En caso de error, redirigir de todas formas
       router.push('/auth/signin')
     }
   }
 
   const isAuthenticated = !!userInfo
-  const isHomePage = pathname === '/'
   const isAuthPage = pathname?.startsWith('/auth')
 
   // No mostrar header en página de login
@@ -100,7 +104,9 @@ export function Header() {
 
   // Atajo de teclado para búsqueda (Cmd/Ctrl+K)
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    if (typeof window === 'undefined') return
+
+    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault()
         setIsSearchOpen(true)
@@ -109,11 +115,12 @@ export function Header() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
+  }, [setIsSearchOpen])
 
   return (
     <>
       <GlobalSearch open={isSearchOpen} onOpenChange={setIsSearchOpen} />
+      <TrashDialog open={isTrashOpen} onOpenChange={setIsTrashOpen} />
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between px-4">
           {/* Logo y título */}
@@ -160,6 +167,18 @@ export function Header() {
 
           {/* Usuario y acciones */}
           <div className="flex items-center gap-2">
+            {/* Toolbar de Undo/Redo - visible solo cuando está autenticado */}
+            {isAuthenticated && (
+              <div className="hidden md:flex">
+                <GlobalUndoRedoToolbar />
+              </div>
+            )}
+            {/* Indicador de conexión - visible solo cuando está autenticado */}
+            {isAuthenticated && (
+              <div className="hidden md:block">
+                <OnlineIndicator />
+              </div>
+            )}
             {isLoading ? (
               <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />
             ) : isAuthenticated ? (
@@ -203,6 +222,13 @@ export function Header() {
                         <User className="h-4 w-4" />
                         Mi Perfil
                       </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setIsTrashOpen(true)}
+                      className="flex items-center gap-2 cursor-pointer"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Papelera
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuLabel>Administración</DropdownMenuLabel>

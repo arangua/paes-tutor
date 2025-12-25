@@ -18,7 +18,10 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useDebounce } from '@/hooks/useDebounce'
+import { useSearchHistory } from '@/hooks/useSearchHistory'
 import { toast } from 'sonner'
+import { getErrorMessage, extractErrorInfo, ERROR_CODES } from '@/lib/error-messages'
+import { TIME_CONSTANTS } from '@/lib/constants'
 
 interface SearchResult {
   type: 'exam' | 'material' | 'topic' | 'attempt'
@@ -71,35 +74,14 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(0)
-  const [recentSearches, setRecentSearches] = useState<string[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
   const resultsRef = useRef<HTMLDivElement>(null)
 
   const debouncedQuery = useDebounce(query, 300)
+  const { history, addToHistory, getSuggestions } = useSearchHistory()
 
-  // Cargar búsquedas recientes del localStorage
-  useEffect(() => {
-    const stored = localStorage.getItem('paes-tutor-recent-searches')
-    if (stored) {
-      try {
-        setRecentSearches(JSON.parse(stored))
-      } catch {
-        // Ignorar errores de parseo
-      }
-    }
-  }, [])
-
-  // Guardar búsqueda reciente
-  const saveRecentSearch = useCallback(
-    (searchQuery: string) => {
-      if (!searchQuery.trim()) return
-
-      const updated = [searchQuery, ...recentSearches.filter(s => s !== searchQuery)].slice(0, 5)
-      setRecentSearches(updated)
-      localStorage.setItem('paes-tutor-recent-searches', JSON.stringify(updated))
-    },
-    [recentSearches]
-  )
+  // Obtener sugerencias del historial
+  const historySuggestions = getSuggestions(query, 5)
 
   // Buscar
   useEffect(() => {
@@ -124,8 +106,12 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
         setResults(data.results || [])
         setSuggestions(data.suggestions || [])
       } catch (error) {
-        toast.error('Error al buscar', {
-          description: 'No se pudo realizar la búsqueda. Por favor, intenta nuevamente.',
+        const errorInfo = extractErrorInfo(error)
+        const errorMessage = getErrorMessage(ERROR_CODES.NETWORK_SERVER_ERROR, {
+          message: errorInfo.message,
+        })
+        toast.error(errorMessage.title, {
+          description: `${errorMessage.description} ${errorMessage.solution}`,
         })
         setResults([])
         setSuggestions([])
@@ -140,11 +126,12 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   // Enfocar input cuando se abre
   useEffect(() => {
     if (open) {
-      setTimeout(() => {
+      const timeout = setTimeout(() => {
         inputRef.current?.focus()
-      }, 100)
+      }, TIME_CONSTANTS.FOCUS_DELAY_MS)
       setQuery('')
       setSelectedIndex(0)
+      return () => clearTimeout(timeout)
     }
   }, [open])
 
@@ -161,7 +148,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
       if (e.key === 'ArrowDown') {
         e.preventDefault()
         setSelectedIndex(prev => {
-          const maxIndex = results.length + suggestions.length - 1
+          const maxIndex = results.length + suggestions.length + historySuggestions.length - 1
           return prev < maxIndex ? prev + 1 : prev
         })
         return
@@ -188,38 +175,46 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
     if (index < results.length) {
       // Seleccionar resultado
       const result = results[index]
-      saveRecentSearch(query)
+      addToHistory(query, result.type)
       onOpenChange(false)
       router.push(result.url)
     } else if (index < results.length + suggestions.length) {
-      // Seleccionar sugerencia
+      // Seleccionar sugerencia del servidor
       const suggestion = suggestions[index - results.length]
       setQuery(suggestion)
-      saveRecentSearch(suggestion)
+      addToHistory(suggestion)
+    } else {
+      // Seleccionar sugerencia del historial
+      const historyIndex = index - results.length - suggestions.length
+      const historyItem = historySuggestions[historyIndex]
+      if (historyItem) {
+        setQuery(historyItem.query)
+        addToHistory(historyItem.query, historyItem.type)
+      }
     }
   }
 
   const handleResultClick = (result: SearchResult) => {
-    saveRecentSearch(query)
+    addToHistory(query, result.type)
     onOpenChange(false)
     router.push(result.url)
   }
 
   const handleSuggestionClick = (suggestion: string) => {
     setQuery(suggestion)
-    saveRecentSearch(suggestion)
+    addToHistory(suggestion)
   }
 
-  const handleRecentSearchClick = (recent: string) => {
-    setQuery(recent)
-    saveRecentSearch(recent)
+  const handleRecentSearchClick = (item: SearchHistoryItem) => {
+    setQuery(item.query)
+    addToHistory(item.query, item.type)
   }
 
   if (!open) return null
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh] px-4"
+      className="fixed inset-0 z-[80] flex items-start justify-center pt-[20vh] px-4"
       onClick={e => {
         if (e.target === e.currentTarget) {
           onOpenChange(false)
@@ -265,22 +260,22 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
             </div>
           )}
 
-          {!isLoading && !query && recentSearches.length > 0 && (
+          {!isLoading && !query && history.length > 0 && (
             <div className="p-4">
               <div className="text-sm font-semibold text-muted-foreground mb-2">
                 Búsquedas recientes
               </div>
               <div className="flex flex-wrap gap-2">
-                {recentSearches.map((recent, idx) => (
+                {history.slice(0, 5).map((item, idx) => (
                   <Button
                     key={idx}
                     variant="outline"
                     size="sm"
-                    onClick={() => handleRecentSearchClick(recent)}
+                    onClick={() => handleRecentSearchClick(item)}
                     className="text-xs"
                   >
                     <Clock className="h-3 w-3 mr-1" />
-                    {recent}
+                    {item.query}
                   </Button>
                 ))}
               </div>
@@ -360,7 +355,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
             </div>
           )}
 
-          {/* Sugerencias */}
+          {/* Sugerencias del servidor */}
           {!isLoading && suggestions.length > 0 && (
             <div className="p-4 border-t">
               <div className="text-sm font-semibold text-muted-foreground mb-2">Sugerencias</div>
@@ -378,6 +373,33 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                     >
                       <Search className="h-4 w-4 mr-2 text-muted-foreground" />
                       {suggestion}
+                    </Button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Sugerencias del historial */}
+          {!isLoading && query && historySuggestions.length > 0 && (
+            <div className="p-4 border-t">
+              <div className="text-sm font-semibold text-muted-foreground mb-2">
+                Búsquedas anteriores
+              </div>
+              <div className="space-y-1">
+                {historySuggestions.map((item, idx) => {
+                  const historyIndex = results.length + suggestions.length + idx
+                  const isSelected = historyIndex === selectedIndex
+
+                  return (
+                    <Button
+                      key={idx}
+                      variant="ghost"
+                      className={`w-full justify-start ${isSelected ? 'bg-accent' : ''}`}
+                      onClick={() => handleRecentSearchClick(item)}
+                    >
+                      <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
+                      {item.query}
                     </Button>
                   )
                 })}

@@ -409,5 +409,137 @@ describe('exam-generator', () => {
       expect(result.answerKey![0]).toBeDefined()
       expect(result.answerKey![1]).toBeUndefined()
     })
+
+    // Tests para funciones refactorizadas (validadas indirectamente)
+    it('debe validar que existe la asignatura (validateTopicContext)', async () => {
+      // Simular que no se encuentra la asignatura
+      vi.mocked(prisma.topic.findMany).mockResolvedValue([])
+      vi.mocked(prisma.studyMaterial.findMany).mockResolvedValue([])
+
+      await expect(generateExamWithAI(baseParams)).rejects.toThrow(
+        'No se encontraron temas para la asignatura'
+      )
+    })
+
+    it('debe validar que hay temas disponibles (validateTopicContext)', async () => {
+      vi.mocked(prisma.topic.findMany).mockResolvedValue([])
+      vi.mocked(prisma.studyMaterial.findMany).mockResolvedValue([])
+
+      await expect(generateExamWithAI(baseParams)).rejects.toThrow(
+        'No se encontraron temas para la asignatura'
+      )
+    })
+
+    it('debe validar que existe configuración de IA (validateAndGetAIConfig)', async () => {
+      vi.mocked(prisma.topic.findMany).mockResolvedValue(mockTopics as any)
+      vi.mocked(prisma.studyMaterial.findMany).mockResolvedValue(mockMaterials as any)
+      vi.mocked(aiService.getAIConfig).mockResolvedValue(null)
+
+      await expect(generateExamWithAI(baseParams)).rejects.toThrow(
+        'No hay configuración de IA disponible'
+      )
+    })
+
+    it('debe validar estructura del examen (validateExamStructure)', async () => {
+      vi.mocked(prisma.topic.findMany).mockResolvedValue(mockTopics as any)
+      vi.mocked(prisma.studyMaterial.findMany).mockResolvedValue(mockMaterials as any)
+      vi.mocked(aiService.getAIConfig).mockResolvedValue({
+        service: 'anthropic',
+        apiKey: 'test-key',
+      })
+
+      // Simular respuesta sin preguntas
+      vi.mocked(aiService.sendAIMessage).mockResolvedValue({
+        ...mockAIResponse,
+        content: JSON.stringify({
+          titulo: 'Examen sin preguntas',
+          descripcion: 'Test',
+          questions: [],
+        }),
+      })
+
+      await expect(generateExamWithAI(baseParams)).rejects.toThrow(
+        'El examen generado no contiene preguntas'
+      )
+    })
+
+    it('debe validar que el examen tiene array de preguntas (validateExamStructure)', async () => {
+      vi.mocked(prisma.topic.findMany).mockResolvedValue(mockTopics as any)
+      vi.mocked(prisma.studyMaterial.findMany).mockResolvedValue(mockMaterials as any)
+      vi.mocked(aiService.getAIConfig).mockResolvedValue({
+        service: 'anthropic',
+        apiKey: 'test-key',
+      })
+
+      // Simular respuesta sin array de preguntas
+      vi.mocked(aiService.sendAIMessage).mockResolvedValue({
+        ...mockAIResponse,
+        content: JSON.stringify({
+          titulo: 'Examen inválido',
+          descripcion: 'Test',
+          // Sin questions
+        }),
+      })
+
+      await expect(generateExamWithAI(baseParams)).rejects.toThrow(
+        'El examen generado no tiene preguntas válidas'
+      )
+    })
+
+    it('debe procesar examen correctamente (processGeneratedExam)', async () => {
+      vi.mocked(prisma.topic.findMany).mockResolvedValue(mockTopics as any)
+      vi.mocked(prisma.studyMaterial.findMany).mockResolvedValue(mockMaterials as any)
+      vi.mocked(aiService.getAIConfig).mockResolvedValue({
+        service: 'anthropic',
+        apiKey: 'test-key',
+      })
+      vi.mocked(aiService.sendAIMessage).mockResolvedValue(mockAIResponse)
+
+      const result = await generateExamWithAI(baseParams)
+
+      // Verificar que el examen fue procesado correctamente
+      expect(result.titulo).toBe('Examen de Matemática')
+      expect(result.questions).toHaveLength(2)
+      expect(result.answerKey).toBeDefined()
+      expect(result.questions[0].opciones).toHaveLength(4)
+      expect(result.questions[0].opciones.find(o => o.esCorrecta)).toBeDefined()
+    })
+
+    it('debe asociar temas automáticamente en processGeneratedExam', async () => {
+      const responseSinTopic = {
+        ...mockAIResponse,
+        content: JSON.stringify({
+          titulo: 'Examen Test',
+          descripcion: 'Test',
+          questions: [
+            {
+              enunciado: 'Pregunta test',
+              opciones: [
+                { letra: 'A', texto: 'A', esCorrecta: false },
+                { letra: 'B', texto: 'B', esCorrecta: true },
+                { letra: 'C', texto: 'C', esCorrecta: false },
+                { letra: 'D', texto: 'D', esCorrecta: false },
+              ],
+              explicacion: 'Test',
+              dificultad: 1,
+              ejeTematico: 'Expresiones algebraicas', // Coincide con topic-1
+            },
+          ],
+        }),
+      }
+
+      vi.mocked(prisma.topic.findMany).mockResolvedValue(mockTopics as any)
+      vi.mocked(prisma.studyMaterial.findMany).mockResolvedValue(mockMaterials as any)
+      vi.mocked(aiService.getAIConfig).mockResolvedValue({
+        service: 'anthropic',
+        apiKey: 'test-key',
+      })
+      vi.mocked(aiService.sendAIMessage).mockResolvedValue(responseSinTopic)
+
+      const result = await generateExamWithAI(baseParams)
+
+      expect(result.questions[0].topicId).toBe('topic-1')
+      expect(result.questions[0].ejeTematico).toBe('Expresiones algebraicas')
+    })
   })
 })

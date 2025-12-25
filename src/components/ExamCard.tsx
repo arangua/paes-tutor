@@ -5,6 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { BookOpen, Clock } from 'lucide-react'
+import { ShareExamButton } from './exams/share-exam-button'
+import { SubjectIcon } from '@/lib/subject-icons'
+import { ContentTypeIcon } from '@/components/ui/content-type-icon'
 
 interface ExamCardProps {
   exam: {
@@ -38,7 +41,10 @@ export const ExamCard = React.memo(
       <Card className="hover:shadow-lg transition-shadow">
         <CardHeader>
           <div className="flex items-start justify-between gap-2">
-            <CardTitle className="text-lg line-clamp-2">{exam.titulo}</CardTitle>
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <SubjectIcon codigo={exam.subject.codigo} size={24} />
+              <CardTitle className="text-lg line-clamp-2 flex-1">{exam.titulo}</CardTitle>
+            </div>
             <Badge variant="outline">{exam.subject.codigo}</Badge>
           </div>
           <CardDescription className="line-clamp-2">
@@ -54,7 +60,10 @@ export const ExamCard = React.memo(
             </div>
             <div className="flex items-center justify-between">
               <span className="text-gray-600 dark:text-gray-400">Tipo:</span>
-              <Badge variant="secondary">{exam.tipo}</Badge>
+              <div className="flex items-center gap-2">
+                <ContentTypeIcon type="exam" examType={exam.tipo} size={16} />
+                <Badge variant="secondary">{exam.tipo}</Badge>
+              </div>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-gray-600 dark:text-gray-400">Preguntas:</span>
@@ -73,11 +82,14 @@ export const ExamCard = React.memo(
             )}
           </div>
 
-          {/* Botón para iniciar */}
-          <Button className="w-full" onClick={handleStartClick}>
-            <BookOpen className="h-4 w-4 mr-2" />
-            Iniciar Examen
-          </Button>
+          {/* Botones de acción */}
+          <div className="flex gap-2">
+            <Button className="flex-1" onClick={handleStartClick}>
+              <BookOpen className="h-4 w-4 mr-2" />
+              Iniciar Examen
+            </Button>
+            <ShareExamButton examId={exam.id} examTitle={exam.titulo} />
+          </div>
         </CardContent>
       </Card>
     )

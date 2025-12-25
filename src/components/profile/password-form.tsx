@@ -1,11 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2, CheckCircle2, AlertCircle, Lock, Eye, EyeOff } from 'lucide-react'
+import { HelpIcon } from '@/components/help/help-icon'
+import { TIME_CONSTANTS } from '@/lib/constants'
 
 interface PasswordFormProps {
   onSuccess?: () => void
@@ -21,6 +23,18 @@ export function PasswordForm({ onSuccess }: PasswordFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+
+  // Ref para limpiar timeout al desmontar
+  const successTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Limpiar timeout al desmontar
+  useEffect(() => {
+    return () => {
+      if (successTimeoutRef.current) {
+        clearTimeout(successTimeoutRef.current)
+      }
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -92,7 +106,14 @@ export function PasswordForm({ onSuccess }: PasswordFormProps) {
       }
 
       // Ocultar mensaje de éxito después de 3 segundos
-      setTimeout(() => setSuccess(false), 3000)
+      // Limpiar timeout anterior si existe
+      if (successTimeoutRef.current) {
+        clearTimeout(successTimeoutRef.current)
+      }
+      successTimeoutRef.current = setTimeout(
+        () => setSuccess(false),
+        TIME_CONSTANTS.SUCCESS_MESSAGE_DISPLAY_MS
+      )
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cambiar contraseña')
     } finally {
@@ -105,10 +126,13 @@ export function PasswordForm({ onSuccess }: PasswordFormProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Lock className="h-5 w-5" />
-          Cambiar Contraseña
-        </CardTitle>
+        <div className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2">
+            <Lock className="h-5 w-5" />
+            Cambiar Contraseña
+          </CardTitle>
+          <HelpIcon content="Tu contraseña debe tener al menos 8 caracteres, incluyendo mayúsculas, minúsculas y números. Cámbiala regularmente por seguridad." />
+        </div>
         <CardDescription>Actualiza tu contraseña para mantener tu cuenta segura</CardDescription>
       </CardHeader>
       <CardContent>
@@ -172,9 +196,15 @@ export function PasswordForm({ onSuccess }: PasswordFormProps) {
                 {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Debe contener al menos 8 caracteres, una mayúscula, una minúscula y un número
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-muted-foreground">
+                Debe contener al menos 8 caracteres, una mayúscula, una minúscula y un número
+              </p>
+              <HelpIcon
+                content="Ejemplo de contraseña segura: MiClave123. Evita usar información personal o palabras comunes."
+                side="right"
+              />
+            </div>
           </div>
 
           <div className="space-y-2">

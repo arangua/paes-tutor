@@ -6,6 +6,7 @@ import { encrypt, decrypt, maskApiKey } from '@/lib/encryption'
 import { z } from 'zod'
 import { validateBody } from '@/lib/api-helpers'
 import { logger } from '@/lib/logger'
+import type { Prisma } from '@prisma/client'
 
 export const runtime = 'nodejs'
 
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
       const { openaiApiKey, anthropicApiKey, geminiApiKey, preferredAIService } = validation.data
 
       // Preparar datos de actualización
-      const updateData: any = {}
+      const updateData: Prisma.UserUpdateInput = {}
 
       // Solo actualizar si se proporciona un valor
       if (openaiApiKey !== undefined) {

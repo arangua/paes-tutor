@@ -3,6 +3,10 @@
  */
 
 import { logger } from './logger'
+import { LIMIT_CONSTANTS } from './constants'
+
+// Constantes de seguridad
+const MAX_STRING_LENGTH = LIMIT_CONSTANTS.MAX_STRING_LENGTH
 
 /**
  * Sanitiza un string para prevenir XSS
@@ -20,18 +24,20 @@ export function sanitizeString(input: string | null | undefined): string {
   sanitized = sanitized.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
 
   // Limitar longitud máxima (prevenir DoS)
-  const MAX_LENGTH = 10000
-  if (sanitized.length > MAX_LENGTH) {
-    logger.warn(
-      {
-        type: 'security',
-        event: 'string_truncated',
-        originalLength: input.length,
-        truncatedLength: MAX_LENGTH,
-      },
-      'String truncado por exceder MAX_LENGTH. Puede causar pérdida de datos.'
-    )
-    sanitized = sanitized.substring(0, MAX_LENGTH)
+  if (sanitized.length > MAX_STRING_LENGTH) {
+    // Solo loguear en servidor (evitar problemas con pino-pretty en cliente)
+    if (typeof window === 'undefined') {
+      logger.warn(
+        {
+          type: 'security',
+          event: 'string_truncated',
+          originalLength: input.length,
+          truncatedLength: MAX_STRING_LENGTH,
+        },
+        'String truncado por exceder MAX_STRING_LENGTH. Puede causar pérdida de datos.'
+      )
+    }
+    sanitized = sanitized.substring(0, MAX_STRING_LENGTH)
   }
 
   return sanitized

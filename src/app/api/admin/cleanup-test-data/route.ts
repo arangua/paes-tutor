@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/get-session'
 import { withRateLimit } from '@/lib/rate-limit-middleware'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import type { Prisma } from '@prisma/client'
 
 export const runtime = 'nodejs'
 
@@ -50,7 +51,7 @@ async function cleanupTestData(data: z.infer<typeof cleanupSchema>): Promise<Cle
       // 1. Eliminar intentos (attempts) primero (dependencias)
       if (data.deleteAttempts) {
         try {
-          let whereClause: any = {}
+          let whereClause: Prisma.AttemptWhereInput = {}
 
           if (data.onlyTestData) {
             // Buscar intentos de exámenes de prueba
@@ -127,7 +128,7 @@ async function cleanupTestData(data: z.infer<typeof cleanupSchema>): Promise<Cle
       // 2. Eliminar exámenes
       if (data.deleteExams) {
         try {
-          let whereClause: any = {}
+          let whereClause: Prisma.ExamWhereInput = {}
 
           if (data.onlyTestData) {
             whereClause.OR = [
@@ -176,7 +177,7 @@ async function cleanupTestData(data: z.infer<typeof cleanupSchema>): Promise<Cle
       // 3. Eliminar preguntas
       if (data.deleteQuestions) {
         try {
-          let whereClause: any = {}
+          let whereClause: Prisma.QuestionWhereInput = {}
 
           if (data.onlyTestData) {
             whereClause.OR = [
@@ -220,7 +221,7 @@ async function cleanupTestData(data: z.infer<typeof cleanupSchema>): Promise<Cle
       // 4. Eliminar temas (topics)
       if (data.deleteTopics) {
         try {
-          let whereClause: any = {}
+          let whereClause: Prisma.TopicWhereInput = {}
 
           if (data.onlyTestData) {
             whereClause.OR = [
@@ -263,7 +264,7 @@ async function cleanupTestData(data: z.infer<typeof cleanupSchema>): Promise<Cle
       // 5. Eliminar usuarios de prueba (último, por dependencias)
       if (data.deleteTestUsers) {
         try {
-          let whereClause: any = {}
+          let whereClause: Prisma.UserWhereInput = {}
 
           if (data.onlyTestData) {
             whereClause.OR = [

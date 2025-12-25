@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -79,21 +79,22 @@ export default function ComparisonPage() {
     }
   }
 
-  const getPercentileColor = (percentile: number) => {
+  // Memoizar funciones de utilidad para evitar recrearlas en cada render
+  const getPercentileColor = useCallback((percentile: number) => {
     if (percentile >= 90) return 'text-green-600'
     if (percentile >= 75) return 'text-blue-600'
     if (percentile >= 50) return 'text-yellow-600'
     if (percentile >= 25) return 'text-orange-600'
     return 'text-red-600'
-  }
+  }, [])
 
-  const getPercentileLabel = (percentile: number) => {
+  const getPercentileLabel = useCallback((percentile: number) => {
     if (percentile >= 90) return 'Excelente'
     if (percentile >= 75) return 'Muy Bueno'
     if (percentile >= 50) return 'Bueno'
     if (percentile >= 25) return 'Regular'
     return 'Necesita Mejora'
-  }
+  }, [])
 
   if (loading) {
     return (

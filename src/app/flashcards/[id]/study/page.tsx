@@ -42,7 +42,11 @@ export default function StudyFlashcardPage() {
       setLoading(true)
       const res = await fetch('/api/flashcards')
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
+        const { safeJsonParse } = await import('@/lib/api-helpers')
+        const errorData = await safeJsonParse<{ error?: string }>(res, {
+          path: typeof window !== 'undefined' ? window.location.pathname : '/flashcards/[id]/study',
+          operation: 'cargar flashcard',
+        })
         throw new Error(errorData.error || 'Error al cargar flashcard')
       }
       const data = await res.json()
@@ -81,7 +85,11 @@ export default function StudyFlashcardPage() {
       })
 
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
+        const { safeJsonParse } = await import('@/lib/api-helpers')
+        const errorData = await safeJsonParse<{ error?: string }>(res, {
+          path: typeof window !== 'undefined' ? window.location.pathname : '/flashcards/[id]/study',
+          operation: 'guardar repaso de flashcard',
+        })
         throw new Error(errorData.error || 'Error al guardar repaso')
       }
 

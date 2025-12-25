@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getCurrentUser } from '@/lib/get-session'
+import { getAuthenticatedUserWithStudent } from '@/lib/get-session'
 import { withRateLimit } from '@/lib/rate-limit-middleware'
 import { z } from 'zod'
 
@@ -21,18 +21,12 @@ const createSessionSchema = z.object({
 export async function POST(request: NextRequest) {
   return withRateLimit(request, async () => {
     try {
-      const user = await getCurrentUser()
-      if (!user?.email) {
+      const dbUser = await getAuthenticatedUserWithStudent()
+      if (!dbUser?.email) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
       }
 
-      // Obtener estudiante
-      const dbUser = await prisma.user.findUnique({
-        where: { email: user.email },
-        include: { student: true },
-      })
-
-      if (!dbUser?.student) {
+      if (!dbUser.student) {
         return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 })
       }
 

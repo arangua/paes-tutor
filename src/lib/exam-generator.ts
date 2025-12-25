@@ -8,6 +8,7 @@ import { getAIConfig, sendAIMessage, type AIMessage } from './ai-service'
 import { prisma } from './prisma'
 import { logger } from './logger'
 import type { Prisma } from '@prisma/client'
+import { LIMIT_CONSTANTS, EXAM_CONSTANTS } from './constants'
 
 export interface ExamGenerationParams {
   subjectId: string
@@ -82,7 +83,7 @@ async function getTopicContext(subjectId: string, topicIds?: string[]) {
         },
       },
     },
-    take: 10, // Limitar a 10 materiales más relevantes
+    take: LIMIT_CONSTANTS.MAX_MATERIALS_CONTEXT, // Limitar materiales más relevantes
   })
 
   return {
@@ -199,7 +200,11 @@ ${tipo === 'objetiva' ? '- Cada pregunta debe tener exactamente 4 opciones (A, B
 /**
  * Parsea la respuesta de la IA y extrae el JSON del examen
  */
-function parseAIResponse(response: { content: string; service: string; model: string }): GeneratedExam {
+function parseAIResponse(response: {
+  content: string
+  service: string
+  model: string
+}): GeneratedExam {
   try {
     // Intentar extraer JSON de la respuesta
     const jsonMatch = response.content.match(/\{[\s\S]*\}/)
@@ -244,9 +249,6 @@ function validateAndFixQuestions(
     )
   }
 
-  const OPTION_LETTERS = ['A', 'B', 'C', 'D'] as const
-  const REQUIRED_OPTIONS_COUNT = 4
-
   return questions.map((q, index) => {
     // Para tipo mixta, algunas preguntas pueden ser de desarrollo (sin opciones)
     // Para tipo objetiva, todas deben tener opciones
@@ -254,9 +256,9 @@ function validateAndFixQuestions(
 
     if (tipo === 'objetiva') {
       // Todas las preguntas objetivas deben tener 4 opciones
-      if (!q.opciones || q.opciones.length !== REQUIRED_OPTIONS_COUNT) {
+      if (!q.opciones || q.opciones.length !== EXAM_CONSTANTS.REQUIRED_OPTIONS_COUNT) {
         throw new Error(
-          `La pregunta ${index + 1} no tiene ${REQUIRED_OPTIONS_COUNT} opciones (tipo objetiva requiere opciones)`
+          `La pregunta ${index + 1} no tiene ${EXAM_CONSTANTS.REQUIRED_OPTIONS_COUNT} opciones (tipo objetiva requiere opciones)`
         )
       }
 
@@ -272,20 +274,20 @@ function validateAndFixQuestions(
       // Asegurar que las letras sean A, B, C, D
       q.opciones = q.opciones.map((opt, i) => ({
         ...opt,
-        letra: OPTION_LETTERS[i],
+        letra: EXAM_CONSTANTS.OPTION_LETTERS[i],
       }))
     } else if (tipo === 'mixta') {
       // Para tipo mixta, validar si tiene opciones (es objetiva) o no (es desarrollo)
       if (q.opciones && q.opciones.length > 0) {
         // Es pregunta objetiva, debe tener 4 opciones
-        if (q.opciones.length !== REQUIRED_OPTIONS_COUNT) {
+        if (q.opciones.length !== EXAM_CONSTANTS.REQUIRED_OPTIONS_COUNT) {
           // Si no tiene 4, intentar corregir o eliminar opciones
-          if (q.opciones.length < REQUIRED_OPTIONS_COUNT) {
+          if (q.opciones.length < EXAM_CONSTANTS.REQUIRED_OPTIONS_COUNT) {
             // No tiene suficientes opciones, convertir a desarrollo
             q.opciones = []
           } else {
             // Tiene más de 4, tomar las primeras 4
-            q.opciones = q.opciones.slice(0, REQUIRED_OPTIONS_COUNT)
+            q.opciones = q.opciones.slice(0, EXAM_CONSTANTS.REQUIRED_OPTIONS_COUNT)
           }
         }
 
@@ -300,7 +302,7 @@ function validateAndFixQuestions(
         // Asegurar que las letras sean A, B, C, D
         q.opciones = q.opciones.map((opt, i) => ({
           ...opt,
-          letra: OPTION_LETTERS[i],
+          letra: EXAM_CONSTANTS.OPTION_LETTERS[i],
         }))
       } else {
         // Es pregunta de desarrollo, no requiere opciones
@@ -353,67 +355,114 @@ function generateAnswerKey(questions: GeneratedQuestion[]): Record<number, strin
 }
 
 /**
- * Genera un examen usando IA basado en temarios
+ * Valida que el contexto del temario sea válido para generar el examen
  */
-export async function generateExamWithAI(params: ExamGenerationParams): Promise<GeneratedExam> {
-  const {
-    subjectId,
-    topicIds,
-    numQuestions,
-    difficulty = 'mixta',
-    tipo = 'objetiva',
-    userId,
-    includeAnswerKey = true,
-  } = params
-
-  // Obtener contexto del temario
-  const context = await getTopicContext(subjectId, topicIds)
-
-  if (!context.subject || context.topics.length === 0) {
-    throw new Error('No se encontraron temas para la asignatura seleccionada')
+function validateTopicContext(
+  context: Awaited<ReturnType<typeof getTopicContext>>,
+  subjectId: string
+): void {
+  if (!context.subject) {
+    throw new Error(`No se encontró la asignatura con ID: ${subjectId}`)
   }
 
-  // Obtener configuración de IA
+  if (context.topics.length === 0) {
+    throw new Error(
+      `No se encontraron temas para la asignatura "${context.subject.nombre}". Por favor, importa un temario primero.`
+    )
+  }
+}
+
+/**
+ * Valida y obtiene la configuración de IA del usuario
+ */
+async function validateAndGetAIConfig(userId?: string) {
   const aiConfig = await getAIConfig(userId)
   if (!aiConfig) {
     throw new Error(
       'No hay configuración de IA disponible. Por favor, configura tus API keys en tu perfil.'
     )
   }
+  return aiConfig
+}
+
+/**
+ * Valida la estructura básica del examen generado
+ */
+function validateExamStructure(examData: GeneratedExam): void {
+  if (!examData.questions || !Array.isArray(examData.questions)) {
+    throw new Error('El examen generado no tiene preguntas válidas')
+  }
+
+  if (examData.questions.length === 0) {
+    throw new Error('El examen generado no contiene preguntas')
+  }
+}
+
+/**
+ * Procesa el examen generado: valida, corrige y genera clavijero si es necesario
+ */
+function processGeneratedExam(
+  examData: GeneratedExam,
+  params: ExamGenerationParams,
+  context: Awaited<ReturnType<typeof getTopicContext>>
+): GeneratedExam {
+  // Validar estructura básica
+  validateExamStructure(examData)
+
+  // Validar y corregir preguntas
+  examData.questions = validateAndFixQuestions(
+    examData.questions,
+    params.tipo,
+    params.numQuestions,
+    context
+  )
+
+  // Generar clavijero si se solicita
+  if (params.includeAnswerKey) {
+    examData.answerKey = generateAnswerKey(examData.questions)
+  }
+
+  return examData
+}
+
+/**
+ * Genera un examen usando IA basado en temarios
+ *
+ * Esta función orquesta todo el proceso de generación:
+ * 1. Obtiene y valida el contexto del temario
+ * 2. Obtiene y valida la configuración de IA
+ * 3. Construye el prompt y genera el examen con IA
+ * 4. Parsea, valida y procesa el examen generado
+ */
+export async function generateExamWithAI(params: ExamGenerationParams): Promise<GeneratedExam> {
+  const { subjectId, topicIds, userId } = params
 
   try {
-    // Construir prompt para la IA
-    const messages = buildPromptForExamGeneration(context, params)
+    // 1. Obtener y validar contexto del temario
+    const context = await getTopicContext(subjectId, topicIds)
+    validateTopicContext(context, subjectId)
 
-    // Generar examen con IA
+    // 2. Obtener y validar configuración de IA
+    const aiConfig = await validateAndGetAIConfig(userId)
+
+    // 3. Construir prompt y generar examen con IA
+    const messages = buildPromptForExamGeneration(context, params)
     const response = await sendAIMessage(messages, aiConfig, userId)
 
-    // Parsear respuesta JSON
+    // 4. Parsear respuesta JSON
     const examData = parseAIResponse(response)
 
-    // Validar estructura
-    if (!examData.questions || !Array.isArray(examData.questions)) {
-      throw new Error('El examen generado no tiene preguntas válidas')
-    }
-
-    // Validar y corregir preguntas
-    examData.questions = validateAndFixQuestions(examData.questions, tipo, numQuestions, context)
-
-    // Generar clavijero si se solicita
-    if (includeAnswerKey) {
-      examData.answerKey = generateAnswerKey(examData.questions)
-    }
-
-    return examData
+    // 5. Procesar examen (validar, corregir, generar clavijero)
+    return processGeneratedExam(examData, params, context)
   } catch (error) {
     logger.error(
       {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
         subjectId,
-        numQuestions,
-        tipo,
-        difficulty,
+        numQuestions: params.numQuestions,
+        tipo: params.tipo,
+        difficulty: params.difficulty,
         userId,
       },
       'Error al generar examen con IA'

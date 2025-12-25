@@ -69,8 +69,8 @@ export default function GenerateExamPage() {
         if (!res.ok) throw new Error('Error al cargar asignaturas')
         const data = await res.json()
         setSubjects(data.subjects || [])
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Error desconocido')
+      } catch (error) {
+        setError(error instanceof Error ? error.message : 'Error desconocido')
       } finally {
         setLoadingData(false)
       }
@@ -93,7 +93,7 @@ export default function GenerateExamPage() {
         setTopics(data.topics || [])
         setSelectedTopics([]) // Resetear selección de temas
       } catch (err) {
-        captureError(err instanceof Error ? err : new Error(String(err)), {
+        captureError(error instanceof Error ? error : new Error(String(error)), {
           type: 'admin_generate_exam_error',
           action: 'load_topics',
           subjectId: selectedSubject,
@@ -111,7 +111,9 @@ export default function GenerateExamPage() {
       setTiempoLimiteMin(Math.ceil(numQuestions * 1.5))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [numQuestions]) // Solo recalcular cuando cambia numQuestions
+    // Solo recalcular cuando cambia numQuestions, tiempoLimiteMin no debe estar en deps
+    // para evitar loops infinitos cuando el usuario establece manualmente el tiempo
+  }, [numQuestions])
 
   const handleTopicToggle = (topicId: string) => {
     setSelectedTopics(prev =>
@@ -163,8 +165,8 @@ export default function GenerateExamPage() {
         setFuente('')
         setSelectedTopics([])
       }, 3000)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido')
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Error desconocido')
     } finally {
       setLoading(false)
     }

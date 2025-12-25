@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Loader2, FileText, Plus, Search, Edit, Trash2, BookOpen, Tag } from 'lucide-react'
+import { Loader2, FileText, Plus, Search, Edit, Trash2, BookOpen, Tag, History } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
 import { NoteDialog } from '@/components/notes/note-dialog'
+import { NoteVersions } from '@/components/notes/note-versions'
 import { HelpIcon } from '@/components/help/help-icon'
 
 interface StudyNote {
@@ -49,6 +50,7 @@ export default function NotesPage() {
   const [activeTab, setActiveTab] = useState<'all' | 'questions' | 'topics'>('all')
   const [editingNote, setEditingNote] = useState<StudyNote | null>(null)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [versionsNoteId, setVersionsNoteId] = useState<string | null>(null)
 
   useEffect(() => {
     loadNotes()
@@ -247,6 +249,14 @@ export default function NotesPage() {
                       <div className="flex items-start justify-between">
                         <CardTitle className="text-lg line-clamp-2 flex-1">{note.title}</CardTitle>
                         <div className="flex items-center gap-1 ml-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setVersionsNoteId(note.id)}
+                            title="Ver versiones"
+                          >
+                            <History className="h-3 w-3" />
+                          </Button>
                           <Button variant="ghost" size="sm" onClick={() => setEditingNote(note)}>
                             <Edit className="h-3 w-3" />
                           </Button>
@@ -317,6 +327,19 @@ export default function NotesPage() {
           defaultContent={editingNote.content}
           onSuccess={() => {
             setEditingNote(null)
+            loadNotes()
+          }}
+        />
+      )}
+
+      {/* Versions Dialog */}
+      {versionsNoteId && (
+        <NoteVersions
+          noteId={versionsNoteId}
+          open={!!versionsNoteId}
+          onOpenChange={open => !open && setVersionsNoteId(null)}
+          onRestore={() => {
+            setVersionsNoteId(null)
             loadNotes()
           }}
         />

@@ -114,8 +114,8 @@ export default function SchedulePage() {
       if (!res.ok) throw new Error('Error al cargar calendario')
       const data = await res.json()
       setSchedules(data.schedules || [])
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido')
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Error desconocido')
       toast.error('Error al cargar calendario')
     } finally {
       setLoading(false)
@@ -129,8 +129,8 @@ export default function SchedulePage() {
         const data = await res.json()
         setTopics(data.topics || [])
       }
-    } catch (err) {
-      captureError(err instanceof Error ? err : new Error(String(err)), {
+    } catch (error) {
+      captureError(error instanceof Error ? error : new Error(String(error)), {
         type: 'schedule_load_error',
         action: 'load_topics',
         path: typeof window !== 'undefined' ? window.location.pathname : undefined,
@@ -145,8 +145,8 @@ export default function SchedulePage() {
         const data = await res.json()
         setExams(data.exams || [])
       }
-    } catch (err) {
-      captureError(err instanceof Error ? err : new Error(String(err)), {
+    } catch (error) {
+      captureError(error instanceof Error ? error : new Error(String(error)), {
         type: 'schedule_load_error',
         action: 'load_exams',
         path: typeof window !== 'undefined' ? window.location.pathname : undefined,
@@ -214,15 +214,19 @@ export default function SchedulePage() {
       })
 
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
+        const { safeJsonParse } = await import('@/lib/api-helpers')
+        const errorData = await safeJsonParse<{ error?: string }>(res, {
+          path: typeof window !== 'undefined' ? window.location.pathname : '/schedule',
+          operation: 'guardar sesión',
+        })
         throw new Error(errorData.error || 'Error al guardar sesión')
       }
 
       toast.success(editingSchedule ? 'Sesión actualizada' : 'Sesión creada')
       setDialogOpen(false)
       loadSchedules()
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Error desconocido'
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido'
       toast.error('Error', {
         description: errorMessage,
       })
@@ -241,7 +245,7 @@ export default function SchedulePage() {
 
       toast.success('Sesión eliminada')
       loadSchedules()
-    } catch (err) {
+    } catch (error) {
       toast.error('Error al eliminar sesión')
     }
   }
@@ -260,7 +264,7 @@ export default function SchedulePage() {
 
       toast.success(schedule.completed ? 'Sesión marcada como pendiente' : 'Sesión completada')
       loadSchedules()
-    } catch (err) {
+    } catch (error) {
       toast.error('Error al actualizar sesión')
     }
   }

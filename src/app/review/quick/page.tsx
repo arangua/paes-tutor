@@ -214,10 +214,16 @@ export default function QuickReviewPage() {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <RotateCcw className="h-6 w-6" />
-              Repaso Rápido
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold flex items-center gap-2">
+                <RotateCcw className="h-6 w-6" />
+                Repaso Rápido
+              </h1>
+              <HelpIcon
+                content="Este repaso rápido muestra preguntas que has fallado anteriormente. Es ideal para reforzar conceptos difíciles. Recibirás feedback inmediato después de cada respuesta."
+                side="right"
+              />
+            </div>
             <p className="text-muted-foreground text-sm mt-1">
               Preguntas que has fallado anteriormente
             </p>

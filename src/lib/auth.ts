@@ -23,9 +23,9 @@ if (!process.env.NEXTAUTH_SECRET) {
     .update(projectPath)
     .digest('base64')
     .substring(0, 32)
-  
+
   process.env.NEXTAUTH_SECRET = `dev-secret-${stableSecret}`
-  
+
   logger.warn(
     { type: 'security', event: 'nextauth_secret_generated' },
     '⚠️ NEXTAUTH_SECRET no está definido. Usando secret persistente para desarrollo. Configura NEXTAUTH_SECRET en .env.local para producción.'

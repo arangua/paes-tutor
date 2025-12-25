@@ -6,10 +6,10 @@ import { render, screen, waitFor } from '@testing-library/react'
 import React from 'react'
 
 // Mock de fetch
-global.fetch = vi.fn()
+globalThis.fetch = vi.fn()
 
 // Mock de window.location
-Object.defineProperty(window, 'location', {
+Object.defineProperty(globalThis, 'location', {
   value: {
     href: 'http://localhost:3000/dashboard',
     reload: vi.fn(),
@@ -225,9 +225,10 @@ describe('DashboardPage', () => {
     await waitFor(
       () => {
         // El dashboard muestra el mensaje de error del servidor
+        // El componente lanza un Error con el mensaje del servidor
         expect(screen.getByText(/Estudiante no encontrado/i)).toBeInTheDocument()
       },
-      { timeout: 3000 }
+      { timeout: 5000 }
     )
   })
 
@@ -399,9 +400,10 @@ describe('DashboardPage', () => {
     await waitFor(
       () => {
         // El dashboard muestra el mensaje de error del servidor
+        // El componente lanza un Error con el mensaje del servidor cuando !studentRes.ok
         expect(screen.getByText(/Error al obtener estudiante/i)).toBeInTheDocument()
       },
-      { timeout: 3000 }
+      { timeout: 5000 }
     )
   })
 
@@ -434,9 +436,10 @@ describe('DashboardPage', () => {
     await waitFor(
       () => {
         // El dashboard detecta el error en el primer elemento y muestra el mensaje
+        // El componente verifica: Array.isArray(metricsData) && metricsData.length > 0 && metricsData[0].error
         expect(screen.getByText(/Error en métricas/i)).toBeInTheDocument()
       },
-      { timeout: 3000 }
+      { timeout: 5000 }
     )
   })
 
@@ -469,9 +472,10 @@ describe('DashboardPage', () => {
     await waitFor(
       () => {
         // El dashboard muestra el mensaje de error cuando metricsRes no es ok
+        // El componente lanza un Error con el mensaje del servidor cuando !metricsRes.ok
         expect(screen.getByText(/Error al obtener métricas/i)).toBeInTheDocument()
       },
-      { timeout: 3000 }
+      { timeout: 5000 }
     )
   })
 

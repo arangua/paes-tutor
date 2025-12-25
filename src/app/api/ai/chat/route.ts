@@ -147,7 +147,17 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       let requestType = 'unknown'
       try {
-        const body = await request.json().catch(() => ({}))
+        const body = await request.json().catch((error) => {
+          // Log error de parsing JSON
+          logger.warn(
+            {
+              error: error instanceof Error ? error.message : String(error),
+              path: request.nextUrl.pathname,
+            },
+            'Error al parsear JSON de body en API de IA'
+          )
+          return {}
+        })
         requestType = body.type || 'unknown'
       } catch {
         // Ignorar error al leer body

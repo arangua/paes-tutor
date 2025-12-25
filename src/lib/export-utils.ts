@@ -79,10 +79,23 @@ export interface AnalyticsData {
 /**
  * Exporta resultados de examen a PDF
  */
-export async function exportExamResultsToPDF(data: ExamResultData): Promise<void> {
+export async function exportExamResultsToPDF(
+  data: ExamResultData,
+  onProgress?: (progress: number, current: number, total: number, message: string) => void
+): Promise<void> {
   const doc = new jsPDF()
+  const totalSteps = 3 + data.answers.length // Configuración + Resumen + Título sección + cada pregunta
+  let currentStep = 0
+
+  const updateProgress = (message: string) => {
+    currentStep++
+    if (onProgress) {
+      onProgress(Math.round((currentStep / totalSteps) * 100), currentStep, totalSteps, message)
+    }
+  }
 
   // Configuración
+  updateProgress('Configurando documento PDF...')
   const pageWidth = doc.internal.pageSize.getWidth()
   const margin = 15
   let yPos = margin
@@ -99,6 +112,7 @@ export async function exportExamResultsToPDF(data: ExamResultData): Promise<void
   yPos += 15
 
   // Resumen
+  updateProgress('Generando resumen del examen...')
   doc.setFontSize(14)
   doc.setFont('helvetica', 'bold')
   doc.text('Resumen del Examen', margin, yPos)
@@ -138,6 +152,7 @@ export async function exportExamResultsToPDF(data: ExamResultData): Promise<void
   doc.setFont('helvetica', 'normal')
 
   data.answers.forEach((answer, index) => {
+    updateProgress(`Procesando pregunta ${index + 1} de ${data.answers.length}...`)
     // Verificar si necesitamos nueva página
     if (yPos > doc.internal.pageSize.getHeight() - 60) {
       doc.addPage()
@@ -217,6 +232,7 @@ export async function exportExamResultsToPDF(data: ExamResultData): Promise<void
   }
 
   // Guardar
+  updateProgress('Guardando archivo PDF...')
   doc.save(
     `Resultados_${data.examTitle.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.pdf`
   )
@@ -225,10 +241,23 @@ export async function exportExamResultsToPDF(data: ExamResultData): Promise<void
 /**
  * Exporta resultados de examen a Excel
  */
-export async function exportExamResultsToExcel(data: ExamResultData): Promise<void> {
+export async function exportExamResultsToExcel(
+  data: ExamResultData,
+  onProgress?: (progress: number, current: number, total: number, message: string) => void
+): Promise<void> {
   const workbook = XLSX.utils.book_new()
+  const totalSteps = 4 // Resumen + Respuestas + Ajustes + Guardar
+  let currentStep = 0
+
+  const updateProgress = (message: string) => {
+    currentStep++
+    if (onProgress) {
+      onProgress(Math.round((currentStep / totalSteps) * 100), currentStep, totalSteps, message)
+    }
+  }
 
   // Hoja 1: Resumen
+  updateProgress('Generando hoja de resumen...')
   const summaryData = [
     ['Resumen del Examen'],
     [],
@@ -275,6 +304,7 @@ export async function exportExamResultsToExcel(data: ExamResultData): Promise<vo
   XLSX.utils.book_append_sheet(workbook, answersSheet, 'Respuestas')
 
   // Guardar
+  updateProgress('Guardando archivo Excel...')
   const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
   const blob = new Blob([excelBuffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -563,10 +593,23 @@ export async function exportAnalyticsToExcel(
 /**
  * Exporta resultados de examen a Word
  */
-export async function exportExamResultsToWord(data: ExamResultData): Promise<void> {
+export async function exportExamResultsToWord(
+  data: ExamResultData,
+  onProgress?: (progress: number, current: number, total: number, message: string) => void
+): Promise<void> {
   const children: (Paragraph | Table)[] = []
+  const totalSteps = 3 + data.answers.length // Título + Resumen + Título sección + cada pregunta
+  let currentStep = 0
+
+  const updateProgress = (message: string) => {
+    currentStep++
+    if (onProgress) {
+      onProgress(Math.round((currentStep / totalSteps) * 100), currentStep, totalSteps, message)
+    }
+  }
 
   // Título
+  updateProgress('Configurando documento Word...')
   children.push(
     new Paragraph({
       text: data.examTitle,
@@ -646,6 +689,7 @@ export async function exportExamResultsToWord(data: ExamResultData): Promise<voi
   children.push(new Paragraph({ text: '' }))
 
   // Preguntas
+  updateProgress('Generando sección de respuestas...')
   children.push(
     new Paragraph({
       text: 'Revisión de Respuestas',
@@ -653,7 +697,8 @@ export async function exportExamResultsToWord(data: ExamResultData): Promise<voi
     })
   )
 
-  data.answers.forEach(answer => {
+  data.answers.forEach((answer, index) => {
+    updateProgress(`Procesando pregunta ${index + 1} de ${data.answers.length}...`)
     const status = answer.isCorrect ? '✓ Correcta' : answer.isOmitted ? '○ Omitida' : '✗ Incorrecta'
     const statusColor = answer.isCorrect ? '00C853' : answer.isOmitted ? 'FFB300' : 'EF4444'
 
@@ -772,10 +817,12 @@ export async function exportExamsListToExcel(
 
   XLSX.utils.book_append_sheet(workbook, sheet, 'Exámenes')
 
+  updateProgress('Ajustando formato...')
   const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
   const blob = new Blob([excelBuffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   })
+  updateProgress('Guardando archivo Excel...')
   saveAs(blob, `Lista_Examenes_${new Date().toISOString().split('T')[0]}.xlsx`)
 }
 
