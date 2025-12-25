@@ -22,7 +22,9 @@
     "import:demre": "npx tsx scripts/import-demre-exams.ts",
     "sonar": "sonar-scanner",
     "sonar:local": "sonar-scanner -Dsonar.host.url=http://localhost:9000",
-    "test:coverage:sonar": "npm run test:coverage && npm run sonar"
+    "test:coverage:sonar": "npm run test:coverage && npm run sonar",
+    "test:mutation": "stryker run",
+    "test:mutation:deep": "stryker run --mutate src/**/*.{ts,tsx} --maxConcurrentTestRunners 1"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
@@ -41,6 +43,7 @@
     "@auth/prisma-adapter": "^2.11.1",
     "@prisma/adapter-better-sqlite3": "^7.2.0",
     "@prisma/client": "^7.2.0",
+    "@radix-ui/react-checkbox": "^1.3.3",
     "@radix-ui/react-collapsible": "^1.1.12",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
@@ -82,6 +85,9 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.57.0",
+    "@stryker-mutator/core": "^9.4.0",
+    "@stryker-mutator/typescript-checker": "^9.4.0",
+    "@stryker-mutator/vitest-runner": "^9.4.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",
