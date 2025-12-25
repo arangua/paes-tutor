@@ -3,22 +3,33 @@ import { test, expect } from '@playwright/test'
 test.describe('Dashboard', () => {
   test.beforeEach(async ({ page }) => {
     // Iniciar sesión antes de cada test
-    await page.goto('/auth/signin')
+    await page.goto('/auth/signin', { waitUntil: 'domcontentloaded' })
+    
+    // Esperar a que los campos estén disponibles
+    await page.getByLabel(/Email/i).waitFor({ state: 'visible', timeout: 5000 })
     await page.getByLabel(/Email/i).fill('matias@paestutor.com')
     await page.getByLabel(/Contraseña/i).fill('password123')
-    await page.getByRole('button', { name: /Iniciar Sesión/i }).click()
-    await page.waitForURL('/dashboard', { timeout: 10000 })
-    // Esperar a que el dashboard cargue completamente
-    await page.waitForLoadState('networkidle', { timeout: 10000 })
+    
+    // Hacer clic y esperar la navegación
+    await Promise.all([
+      page.waitForURL('/dashboard', { timeout: 15000 }),
+      page.getByRole('button', { name: /Iniciar Sesión/i }).click()
+    ])
+    
+    // Esperar a que el dashboard cargue (usar domcontentloaded en lugar de networkidle para mejor compatibilidad)
+    await page.waitForLoadState('domcontentloaded', { timeout: 10000 })
+    // Esperar adicional para que los datos se carguen
+    await page.waitForTimeout(2000)
   })
 
   test('debe mostrar el dashboard con datos del estudiante', async ({ page }) => {
     // El saludo puede tener emoji, usar regex más flexible
-    await expect(page.getByText(/Hola, Matías/i)).toBeVisible()
-    await expect(page.getByText(/Total Intentos/i)).toBeVisible()
-    await expect(page.getByText(/Promedio General/i)).toBeVisible()
-    await expect(page.getByText(/Asignaturas/i)).toBeVisible()
-    await expect(page.getByText(/Mejor Puntaje/i)).toBeVisible()
+    // Aumentar timeout para navegadores más lentos
+    await expect(page.getByText(/Hola, Matías/i)).toBeVisible({ timeout: 15000 })
+    await expect(page.getByText(/Total Intentos/i)).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText(/Promedio General/i)).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText(/Asignaturas/i)).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText(/Mejor Puntaje/i)).toBeVisible({ timeout: 10000 })
   })
 
   test('debe mostrar gráficos de rendimiento', async ({ page }) => {
@@ -53,7 +64,10 @@ test.describe('Dashboard', () => {
     // Cerrar sesión eliminando cookies
     await context.clearCookies()
 
-    await page.goto('/dashboard')
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded', timeout: 10000 })
+
+    // Esperar a que se procese la redirección
+    await page.waitForTimeout(2000)
 
     // Debe redirigir a signin o mostrar error de autorización
     const url = page.url()

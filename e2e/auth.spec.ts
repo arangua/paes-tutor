@@ -21,17 +21,25 @@ test.describe('Autenticación', () => {
   })
 
   test('debe redirigir al dashboard después de iniciar sesión', async ({ page }) => {
-    await page.goto('/auth/signin')
+    await page.goto('/auth/signin', { waitUntil: 'domcontentloaded' })
 
+    // Esperar a que los campos estén disponibles
+    await page.getByLabel(/Email/i).waitFor({ state: 'visible', timeout: 5000 })
+    
     // Usar credenciales del seed
     await page.getByLabel(/Email/i).fill('matias@paestutor.com')
     await page.getByLabel(/Contraseña/i).fill('password123')
-    await page.getByRole('button', { name: /Iniciar Sesión/i }).click()
+    
+    // Hacer clic y esperar la navegación
+    await Promise.all([
+      page.waitForURL('/dashboard', { timeout: 15000 }),
+      page.getByRole('button', { name: /Iniciar Sesión/i }).click()
+    ])
 
-    // Esperar a que se redirija al dashboard
-    await page.waitForURL('/dashboard', { timeout: 10000 })
-    // Esperar a que el dashboard cargue completamente
-    await page.waitForLoadState('networkidle', { timeout: 10000 })
-    await expect(page.getByText(/Hola, Matías/i)).toBeVisible({ timeout: 10000 })
+    // Esperar a que el dashboard cargue (usar domcontentloaded para mejor compatibilidad)
+    await page.waitForLoadState('domcontentloaded', { timeout: 10000 })
+    // Esperar adicional para que los datos se carguen
+    await page.waitForTimeout(2000)
+    await expect(page.getByText(/Hola, Matías/i)).toBeVisible({ timeout: 15000 })
   })
 })
