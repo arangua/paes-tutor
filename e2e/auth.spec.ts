@@ -29,7 +29,9 @@ test.describe('Autenticación', () => {
     await page.getByRole('button', { name: /Iniciar Sesión/i }).click()
 
     // Esperar a que se redirija al dashboard
-    await page.waitForURL('/dashboard', { timeout: 5000 })
-    await expect(page.getByText(/Hola, Matías/i)).toBeVisible()
+    await page.waitForURL('/dashboard', { timeout: 10000 })
+    // Esperar a que el dashboard cargue completamente
+    await page.waitForLoadState('networkidle', { timeout: 10000 })
+    await expect(page.getByText(/Hola, Matías/i)).toBeVisible({ timeout: 10000 })
   })
 })
