@@ -3,23 +3,35 @@ import { test, expect } from '@playwright/test'
 test.describe('Dashboard', () => {
   test.beforeEach(async ({ page }) => {
     // Iniciar sesión antes de cada test
-    await page.goto('/auth/signin', { waitUntil: 'domcontentloaded' })
+    await page.goto('/auth/signin', { waitUntil: 'networkidle' })
+    
+    // Esperar a que el formulario se cargue completamente (incluyendo Suspense)
+    await page.waitForLoadState('domcontentloaded')
+    await page.waitForTimeout(1000) // Dar tiempo extra para Suspense
     
     // Esperar a que los campos estén disponibles
-    await page.getByLabel(/Email/i).waitFor({ state: 'visible', timeout: 5000 })
-    await page.getByLabel(/Email/i).fill('matias@paestutor.com')
-    await page.getByLabel(/Contraseña/i).fill('password123')
+    const emailField = page.getByLabel(/Email/i)
+    await emailField.waitFor({ state: 'visible', timeout: 10000 })
+    await emailField.fill('matias@paestutor.com')
     
-    // Hacer clic y esperar la navegación
+    const passwordField = page.getByLabel(/Contraseña/i)
+    await passwordField.waitFor({ state: 'visible', timeout: 10000 })
+    await passwordField.fill('password123')
+    
+    // Hacer clic en el botón de login
+    const loginButton = page.getByRole('button', { name: /Iniciar Sesión/i })
+    await loginButton.waitFor({ state: 'visible', timeout: 10000 })
+    
+    // Esperar la navegación al dashboard
     await Promise.all([
-      page.waitForURL('/dashboard', { timeout: 15000 }),
-      page.getByRole('button', { name: /Iniciar Sesión/i }).click()
+      page.waitForURL('/dashboard', { timeout: 20000 }),
+      loginButton.click()
     ])
     
-    // Esperar a que el dashboard cargue (usar domcontentloaded en lugar de networkidle para mejor compatibilidad)
-    await page.waitForLoadState('domcontentloaded', { timeout: 10000 })
-    // Esperar adicional para que los datos se carguen
-    await page.waitForTimeout(2000)
+    // Esperar a que el dashboard cargue completamente
+    await page.waitForLoadState('domcontentloaded', { timeout: 15000 })
+    // Esperar adicional para que los datos asíncronos se carguen
+    await page.waitForTimeout(3000)
   })
 
   test('debe mostrar el dashboard con datos del estudiante', async ({ page }) => {
