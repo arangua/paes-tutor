@@ -1,0 +1,58 @@
+name: deps-major-label-gate
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  major_label_gate:
+    name: Major deps label gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check if PR is Dependabot
+        id: is_dependabot
+        run: |
+          if [ "${{ github.actor }}" = "dependabot[bot]" ]; then
+            echo "is_dependabot=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_dependabot=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Enforce label on major updates
+        if: steps.is_dependabot.outputs.is_dependabot == 'true'
+        uses: dependabot/fetch-metadata@v2
+        id: metadata
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Fail if major update missing approval label
+        if: steps.is_dependabot.outputs.is_dependabot == 'true'
+        run: |
+          UPDATE_TYPE="${{ steps.metadata.outputs.update-type }}"
+          LABELS='${{ toJson(github.event.pull_request.labels.*.name) }}'
+
+          echo "dependabot update-type: $UPDATE_TYPE"
+          echo "labels: $LABELS"
+
+          if [ "$UPDATE_TYPE" != "version-update:semver-major" ]; then
+            echo "Not a major update. Gate passed."
+            exit 0
+          fi
+
+          # Required label for major bumps (governance)
+          REQUIRED="deps-major-approved"
+
+          echo "$LABELS" | grep -q "\"$REQUIRED\"" && {
+            echo "Major update has required label ($REQUIRED). Gate passed."
+            exit 0
+          }
+
+          echo "ERROR: Major dependency update requires label '$REQUIRED' to proceed."
+          echo "Add label '$REQUIRED' after review + (si aplica) Decision Log."
+          exit 1
