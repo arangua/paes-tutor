@@ -60,6 +60,18 @@ Cada decisión debe incluir:
 - Verificación manual: run del workflow → step "Attest build provenance" → UI de Attestations  
 **Referencia:** PASO 9.4.1-9.4.3 — CI Provenance / Build Attestation
 
+### 2025-01-28 — Security Hardening (CodeQL + Security Posture)
+**Decisión:** Implementar análisis de seguridad estático mediante CodeQL (TypeScript) y escaneo de vulnerabilidades con Trivy. Los resultados se integran con GitHub Advanced Security para visibilidad centralizada.  
+**Contexto:** Completar supply-chain security junto con Dependabot (dependencias) y Build Provenance Attestation (artefactos). CodeQL detecta vulnerabilidades en el código, Trivy escanea dependencias y archivos del sistema.  
+**Impacto:**
+- Análisis automático en cada push/PR a `main` y semanalmente (domingos)
+- Detección de vulnerabilidades críticas/altas en código TypeScript
+- Escaneo de vulnerabilidades en dependencias y sistema de archivos
+- Resultados centralizados en GitHub Security → Code scanning
+- Política: vulnerabilidades críticas/altas deben ser mitigadas o documentadas antes del merge
+- Documentación en `docs/BASELINE_INMUTABLE.md` como Single Source of Truth  
+**Referencia:** PASO 10.0 — Security Hardening (CodeQL + posture)
+
 ### 2026-01-10 — Creación del Decision Log
 **Decisión:** Adoptar un Decision Log mínimo post-congelación.  
 **Contexto:** Necesidad de registrar criterios sin crear RFCs innecesarios.  

@@ -156,6 +156,24 @@ Si falla cualquier paso (incluida la attestation), el PR queda bloqueado.
 
 ---
 
+## Security Hardening (CodeQL + Security Posture)
+
+**Estado:** Activo (GitHub Advanced Security)
+**Workflows:** codeql-analysis.yml, security.yml
+**Análisis:** CodeQL (TypeScript) + Trivy (vulnerabilidades)
+
+### Verificación rápida (manual)
+1. Abrir el run del workflow **CodeQL Analysis** asociado al commit.
+2. Revisar resultados en **Security** → **Code scanning** (GitHub UI).
+3. Verificar que no hay vulnerabilidades críticas o altas sin mitigación.
+
+### Política
+- CodeQL ejecuta análisis semanal (domingos) y en cada push/PR a `main`.
+- Trivy escanea vulnerabilidades en dependencias y código.
+- Vulnerabilidades críticas/altas deben ser mitigadas o documentadas antes del merge.
+
+---
+
 ## Regla final
 > **Si no estás seguro de si algo puede cambiarse → no puede.**
 
