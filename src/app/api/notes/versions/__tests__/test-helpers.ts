@@ -552,7 +552,22 @@ export async function assertErrorResponse(
  * ```
  */
 export async function assertSuccessResponse(response: Response, expectedStatus: number = 200) {
-  expect(response.status).toBe(expectedStatus)
+  if (response.status !== expectedStatus) {
+    // Captura body del error para que NO sea ciego el 500
+    let bodyText = ""
+    try {
+      bodyText = await response.text()
+    } catch (e) {
+      bodyText = "<no se pudo leer response.text()>"
+    }
+
+    throw new Error(
+      `assertSuccessResponse: esperado ${expectedStatus}, recibido ${response.status}\n` +
+      `Response body:\n${bodyText}`
+    )
+  }
+
+  // Solo si es success, parsea JSON
   const data = await response.json()
   expect(data).toBeDefined()
   return data
