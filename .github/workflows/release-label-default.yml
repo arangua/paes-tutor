@@ -1,0 +1,40 @@
+name: release-label-default
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  ensure_release_label:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ensure default release label
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const issue_number = context.payload.pull_request.number;
+
+            const pr = context.payload.pull_request;
+            const labels = (pr.labels || []).map(l => l.name);
+
+            const hasReleaseLabel = labels.some(l => l.startsWith("release:"));
+            if (hasReleaseLabel) {
+              core.info(`PR already has release:* label: ${labels.filter(l => l.startsWith("release:")).join(", ")}`);
+              return;
+            }
+
+            const defaultLabel = "release:patch";
+
+            core.info(`Adding default label: ${defaultLabel}`);
+            await github.rest.issues.addLabels({
+              owner,
+              repo,
+              issue_number,
+              labels: [defaultLabel],
+            });
