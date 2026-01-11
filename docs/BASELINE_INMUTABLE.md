@@ -166,4 +166,5 @@ La única vía es un RFC aceptado.
 ## Relación con otros documentos
 - RFC Framework → decisiones mayores
 - Decision Log → decisiones menores
+- Dependency Update Playbook → flujo de actualización de dependencias
 - Este documento → perímetro de protección
