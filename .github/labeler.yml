@@ -1,0 +1,44 @@
+deps:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "package.json"
+          - "package-lock.json"
+          - ".github/dependabot.yml"
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/workflows/**"
+          - "scripts/guard-*.mjs"
+          - "docs/ci/**"
+
+governance:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "docs/BASELINE_INMUTABLE.md"
+          - "docs/decisions/**"
+          - ".github/CODEOWNERS"
+          - ".github/pull_request_template.md"
+
+docs:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "docs/**"
+          - "*.md"
+
+ui:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/components/**"
+
+api:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/app/api/**"
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.test.*"
+          - "**/*.spec.*"
+          - "vitest.config.*"
