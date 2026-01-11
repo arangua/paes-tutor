@@ -273,11 +273,24 @@ export function createMultipleVersions(
  * ```
  */
 export function createTestRequest(options: CreateRequestOptions = {}): NextRequest {
-  const baseUrl = options.baseUrl ?? 'http://localhost/api/notes/versions'
+  const baseUrl = options.baseUrl ?? '/api/notes/versions'
   const method = options.method ?? 'GET'
 
+  // 1. Construir URL absoluta
+  let absoluteUrl: string
+  if (baseUrl.startsWith('http://') || baseUrl.startsWith('https://')) {
+    // Si ya es absoluta, usarla tal cual
+    absoluteUrl = baseUrl
+  } else if (baseUrl.startsWith('/')) {
+    // Si empieza con "/", prefijar "http://localhost"
+    absoluteUrl = `http://localhost${baseUrl}`
+  } else {
+    // Si no empieza con "/", usar "http://localhost/" + url
+    absoluteUrl = `http://localhost/${baseUrl}`
+  }
+
   // Construir URL con query parameters
-  const url = new URL(baseUrl)
+  const url = new URL(absoluteUrl)
   if (options.queryParams) {
     Object.entries(options.queryParams).forEach(([key, value]) => {
       if (value !== null && value !== undefined) {
@@ -286,30 +299,40 @@ export function createTestRequest(options: CreateRequestOptions = {}): NextReque
     })
   }
 
-  // Configurar body si existe
+  // Actualizar absoluteUrl con query params
+  absoluteUrl = url.toString()
+
+  // 2. Configurar body si existe
   const init: RequestInit = {
     method,
     headers: options.headers,
   }
 
   if (options.body && (method === 'POST' || method === 'PATCH' || method === 'PUT')) {
-    const bodyString = JSON.stringify(options.body)
-    init.body = bodyString
-    
-    // Configurar headers con Content-Type
+    // 4. Si recibe body (objeto o string)
+    if (typeof options.body === 'string') {
+      init.body = options.body
+    } else {
+      // Si es objeto, stringify
+      init.body = JSON.stringify(options.body)
+    }
+
+    // Configurar headers con Content-Type si no viene
     const headers = new Headers(options.headers || {})
-    headers.set('Content-Type', 'application/json')
-    headers.set('Content-Length', String(bodyString.length))
+    if (!headers.has('Content-Type')) {
+      headers.set('Content-Type', 'application/json')
+    }
     init.headers = headers
   }
 
-  // Crear un Request estándar con body como string y header content-type
-  const standardRequest = new Request(url.toString(), init)
-  
-  // Convertir a NextRequest
-  const request = new NextRequest(standardRequest)
-  
-  return request
+  // 2. Crear un Request estándar (NO NextRequest)
+  const request = new Request(absoluteUrl, init) as any
+
+  // 3. Agregar campo nextUrl para que request.nextUrl.searchParams funcione
+  request.nextUrl = new URL(absoluteUrl)
+
+  // 5. Devolver Request extendido (cast a any ya está hecho arriba)
+  return request as NextRequest
 }
 
 // ============================================
