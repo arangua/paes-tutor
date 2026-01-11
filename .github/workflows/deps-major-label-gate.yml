@@ -45,14 +45,21 @@ jobs:
             exit 0
           fi
 
-          # Required label for major bumps (governance)
-          REQUIRED="deps-major-approved"
+          # Required labels for major bumps (governance + semver)
+          REQUIRED_APPROVAL="deps-major-approved"
+          REQUIRED_RELEASE="release:major"
 
-          echo "$LABELS" | grep -q "\"$REQUIRED\"" && {
-            echo "Major update has required label ($REQUIRED). Gate passed."
+          has_approval=$(echo "$LABELS" | grep -q "\"$REQUIRED_APPROVAL\"" && echo "yes" || echo "no")
+          has_release=$(echo "$LABELS" | grep -q "\"$REQUIRED_RELEASE\"" && echo "yes" || echo "no")
+
+          if [ "$has_approval" = "yes" ] && [ "$has_release" = "yes" ]; then
+            echo "Major update has required labels ($REQUIRED_APPROVAL, $REQUIRED_RELEASE). Gate passed."
             exit 0
-          }
+          fi
 
-          echo "ERROR: Major dependency update requires label '$REQUIRED' to proceed."
-          echo "Add label '$REQUIRED' after review + (si aplica) Decision Log."
+          echo "ERROR: Major dependency update requires labels:"
+          echo " - $REQUIRED_APPROVAL (aprobación técnica)"
+          echo " - $REQUIRED_RELEASE (semver discipline)"
+          echo ""
+          echo "Agrega ambos labels después de la revisión (y Decision Log si aplica)."
           exit 1
