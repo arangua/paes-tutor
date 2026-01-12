@@ -70,6 +70,7 @@ Builds deterministas y auditables.
 - DECISION_LOG.md
 - Dependency Update Playbook
 - Security Findings Playbook
+- Incident Runbook
 
 ### Automatización
 - CODEOWNERS
