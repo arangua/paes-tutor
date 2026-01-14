@@ -8,9 +8,6 @@ import {
   GraduationCap,
   Target,
   Brain,
-  CheckSquare,
-  Edit,
-  ListChecks,
   FileQuestion,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'

@@ -62,7 +62,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       }
 
       // Determinar qué intento se está agregando
-      let updateData: {
+      const updateData: {
         challengerAttemptId?: string
         challengedAttemptId?: string
         status?: string
@@ -131,17 +131,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         },
       })
 
-      const willHaveChallengerAttempt = challengerAttemptId || currentChallenge?.challengerAttemptId
-      const willHaveChallengedAttempt = challengedAttemptId || currentChallenge?.challengedAttemptId
+      // CORRECCIÓN: Validar que currentChallenge sea un objeto válido antes de acceder a propiedades
+      const safeCurrentChallenge = currentChallenge && typeof currentChallenge === 'object' ? currentChallenge : null
+      const willHaveChallengerAttempt = challengerAttemptId || (safeCurrentChallenge && 'challengerAttemptId' in safeCurrentChallenge ? safeCurrentChallenge.challengerAttemptId : null)
+      const willHaveChallengedAttempt = challengedAttemptId || (safeCurrentChallenge && 'challengedAttemptId' in safeCurrentChallenge ? safeCurrentChallenge.challengedAttemptId : null)
 
       if (willHaveChallengerAttempt && willHaveChallengedAttempt) {
         // Ambos han completado, determinar ganador
+        // CORRECCIÓN: Validar que safeCurrentChallenge sea válido antes de acceder a challengerAttempt y challengedAttempt
         const challengerAttempt = challengerAttemptId
           ? await prisma.attempt.findUnique({ where: { id: challengerAttemptId } })
-          : currentChallenge?.challengerAttempt
+          : (safeCurrentChallenge && 'challengerAttempt' in safeCurrentChallenge ? safeCurrentChallenge.challengerAttempt : null) || null
         const challengedAttempt = challengedAttemptId
           ? await prisma.attempt.findUnique({ where: { id: challengedAttemptId } })
-          : currentChallenge?.challengedAttempt
+          : (safeCurrentChallenge && 'challengedAttempt' in safeCurrentChallenge ? safeCurrentChallenge.challengedAttempt : null) || null
 
         if (challengerAttempt && challengedAttempt) {
           const winnerId = determineChallengeWinner(

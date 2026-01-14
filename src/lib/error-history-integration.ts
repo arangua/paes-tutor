@@ -5,6 +5,7 @@
 
 import type { ErrorMessage } from './error-messages'
 import type { UserError } from '@/hooks/useErrorHistory'
+import { safeToISOString } from '@/app/api/notes/versions/validation-utils'
 
 /**
  * Convierte un ErrorMessage a UserError para el historial
@@ -16,7 +17,7 @@ export function errorMessageToUserError(
 ): UserError {
   return {
     id: `${error.code}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    timestamp: new Date().toISOString(),
+    timestamp: safeToISOString(new Date()),
     code: error.code,
     title: error.title,
     description: error.description,

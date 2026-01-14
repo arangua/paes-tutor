@@ -44,6 +44,11 @@ export interface GeneratedExam {
 
 /**
  * Obtiene información del temario para el contexto de generación
+ * 
+ * @param subjectId - ID de la asignatura
+ * @param topicIds - IDs opcionales de temas específicos. Si no se proporciona, obtiene todos los temas de la asignatura
+ * @returns Contexto con información de la asignatura, temas y materiales de estudio
+ * @throws Error si la asignatura no existe o no tiene temas
  */
 async function getTopicContext(subjectId: string, topicIds?: string[]) {
   const where: Prisma.TopicWhereInput = { subjectId }
@@ -315,20 +320,40 @@ function validateAndFixQuestions(
 
     // Asociar con tema si no está asociado
     if (!q.topicId && context.topics.length > 0) {
-      // Buscar tema por nombre o eje temático
-      const matchingTopic = context.topics.find(
-        t =>
-          t.nombre.toLowerCase().includes(q.ejeTematico?.toLowerCase() || '') ||
-          q.ejeTematico?.toLowerCase().includes(t.nombre.toLowerCase())
+      // Buscar tema por nombre o eje temático con múltiples estrategias de coincidencia
+      const ejeTematicoLower = q.ejeTematico?.toLowerCase() || ''
+      
+      // Estrategia 1: Coincidencia exacta de eje temático (más precisa)
+      let matchingTopic = context.topics.find(
+        t => t.ejeTematico?.toLowerCase() === ejeTematicoLower
       )
+      
+      // Estrategia 2: Coincidencia parcial de eje temático
+      if (!matchingTopic) {
+        matchingTopic = context.topics.find(
+          t =>
+            t.ejeTematico?.toLowerCase().includes(ejeTematicoLower) ||
+            ejeTematicoLower.includes(t.ejeTematico?.toLowerCase() || '')
+        )
+      }
+      
+      // Estrategia 3: Coincidencia por nombre del tema
+      if (!matchingTopic) {
+        matchingTopic = context.topics.find(
+          t =>
+            t.nombre.toLowerCase().includes(ejeTematicoLower) ||
+            ejeTematicoLower.includes(t.nombre.toLowerCase())
+        )
+      }
+      
       if (matchingTopic) {
         q.topicId = matchingTopic.id
         q.ejeTematico = matchingTopic.ejeTematico
       } else {
-        // Asignar tema aleatorio si no hay coincidencia
-        const randomTopic = context.topics[Math.floor(Math.random() * context.topics.length)]
-        q.topicId = randomTopic.id
-        q.ejeTematico = randomTopic.ejeTematico
+        // Asignar el primer tema disponible si no hay coincidencia (más determinístico que aleatorio)
+        const firstTopic = context.topics[0]
+        q.topicId = firstTopic.id
+        q.ejeTematico = firstTopic.ejeTematico
       }
     }
 
@@ -433,6 +458,29 @@ function processGeneratedExam(
  * 2. Obtiene y valida la configuración de IA
  * 3. Construye el prompt y genera el examen con IA
  * 4. Parsea, valida y procesa el examen generado
+ * 
+ * @param params - Parámetros de generación del examen
+ * @param params.subjectId - ID de la asignatura
+ * @param params.topicIds - IDs opcionales de temas específicos
+ * @param params.numQuestions - Número de preguntas a generar
+ * @param params.difficulty - Nivel de dificultad ('baja', 'media', 'alta', 'mixta')
+ * @param params.tipo - Tipo de examen ('objetiva', 'desarrollo', 'mixta')
+ * @param params.userId - ID del usuario que solicita la generación
+ * @param params.includeAnswerKey - Si true, genera también el clavijero con respuestas correctas
+ * @returns Examen generado con preguntas validadas y procesadas
+ * @throws Error si falla la validación del contexto, la configuración de IA, o la generación del examen
+ * 
+ * @example
+ * ```typescript
+ * const exam = await generateExamWithAI({
+ *   subjectId: 'c123...',
+ *   numQuestions: 20,
+ *   difficulty: 'media',
+ *   tipo: 'objetiva',
+ *   userId: 'c456...',
+ *   includeAnswerKey: true
+ * })
+ * ```
  */
 export async function generateExamWithAI(params: ExamGenerationParams): Promise<GeneratedExam> {
   const { subjectId, topicIds, userId } = params

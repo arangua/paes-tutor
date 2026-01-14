@@ -1,219 +1,237 @@
 /**
- * Sistema de monitoreo de errores
- * Preparado para integración con Sentry, Datadog, o servicios similares
- * Compatible con cliente y servidor
+ * Monitoring y APM Básico
+ * 
+ * Sistema básico de Application Performance Monitoring (APM)
+ * para tracking de métricas, errores y performance.
  */
 
-// Logger solo disponible en servidor (Node.js)
-// Usamos una función helper para cargar el logger solo cuando sea necesario
-// Esta función solo se ejecuta en el servidor (Next.js lo detecta por typeof window)
-function getLogger() {
-  // Solo intentar cargar logger en servidor
-  if (typeof window !== 'undefined') {
-    return null
-  }
+import { logger } from './logger'
 
-  // Esta parte solo se ejecuta en servidor, Next.js no la empaquetará para el cliente
-  // gracias a la verificación de typeof window arriba
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    // require() es necesario aquí porque logger solo está disponible en servidor
-    // y necesitamos cargarlo condicionalmente sin afectar el bundle del cliente
-    // @ts-expect-error - logger solo disponible en servidor
-    const loggerModule = require('./logger')
-    return loggerModule.logger
-  } catch {
-    // Logger no disponible, retornar null para usar console como fallback
-    return null
-  }
+export interface MetricData {
+  name: string
+  value: number
+  tags?: Record<string, string>
+  timestamp?: Date
 }
 
-interface ErrorContext {
-  userId?: string
-  path?: string
-  userAgent?: string
-  timestamp?: string
-  [key: string]: unknown
+export interface ErrorData {
+  error: Error
+  context?: Record<string, any>
+  severity?: 'low' | 'medium' | 'high' | 'critical'
 }
 
-class MonitoringService {
-  private enabled: boolean
-  private service: 'sentry' | 'console' | 'none'
-
-  constructor() {
-    // Determinar qué servicio usar basado en variables de entorno
-    this.enabled = process.env.NODE_ENV === 'production'
-    this.service = (process.env.MONITORING_SERVICE as 'sentry' | 'console' | 'none') || 'console'
-  }
-
-  /**
-   * Captura y reporta un error
-   */
-  captureError(error: Error, context?: ErrorContext): void {
-    if (!this.enabled && this.service === 'none') return
-
-    const errorContext: ErrorContext = {
-      ...context,
-      timestamp: new Date().toISOString(),
-      message: error.message,
-      stack: error.stack,
-      name: error.name,
-    }
-
-    const serverLogger = getLogger()
-
-    switch (this.service) {
-      case 'sentry':
-        // Integración con Sentry (requiere @sentry/nextjs)
-        // if (typeof window !== 'undefined' && window.Sentry) {
-        //   window.Sentry.captureException(error, { contexts: { custom: errorContext } })
-        // }
-        if (serverLogger) {
-          serverLogger.error(
-            { type: 'monitoring', service: 'sentry', ...errorContext },
-            'Error capturado por Sentry'
-          )
-        } else {
-          // Fallback: usar console (funciona en cliente y servidor)
-          console.error('[Sentry] Error capturado:', error, errorContext)
-        }
-        break
-
-      case 'console':
-      default:
-        if (serverLogger) {
-          serverLogger.error(
-            { type: 'monitoring', service: 'console', ...errorContext },
-            'Error capturado por Monitoring'
-          )
-        } else {
-          // Fallback: usar console (funciona en cliente y servidor)
-          console.error('[Monitoring] Error capturado:', error, errorContext)
-        }
-        break
-    }
-  }
-
-  /**
-   * Captura un mensaje de advertencia
-   */
-  captureWarning(message: string, context?: ErrorContext): void {
-    if (!this.enabled && this.service === 'none') return
-
-    const warningContext: ErrorContext = {
-      ...context,
-      timestamp: new Date().toISOString(),
-      message,
-    }
-
-    const serverLogger = getLogger()
-
-    switch (this.service) {
-      case 'sentry':
-        // if (typeof window !== 'undefined' && window.Sentry) {
-        //   window.Sentry.captureMessage(message, 'warning', { contexts: { custom: warningContext } })
-        // }
-        if (serverLogger) {
-          serverLogger.warn({ type: 'monitoring', service: 'sentry', ...warningContext }, message)
-        } else {
-          console.warn('[Sentry] Warning:', message, warningContext)
-        }
-        break
-
-      case 'console':
-      default:
-        if (serverLogger) {
-          serverLogger.warn({ type: 'monitoring', service: 'console', ...warningContext }, message)
-        } else {
-          console.warn('[Monitoring] Warning:', message, warningContext)
-        }
-        break
-    }
-  }
-
-  /**
-   * Captura un evento personalizado
-   */
-  captureEvent(eventName: string, data?: Record<string, unknown>): void {
-    if (!this.enabled && this.service === 'none') return
-
-    const eventData = {
-      ...data,
-      eventName,
-      timestamp: new Date().toISOString(),
-    }
-
-    const serverLogger = getLogger()
-
-    switch (this.service) {
-      case 'sentry':
-        // if (typeof window !== 'undefined' && window.Sentry) {
-        //   window.Sentry.addBreadcrumb({ message: eventName, data: eventData, level: 'info' })
-        // }
-        if (serverLogger) {
-          serverLogger.info(
-            { type: 'monitoring', service: 'sentry', event: eventName, ...eventData },
-            `Evento capturado: ${eventName}`
-          )
-        } else {
-          console.log('[Sentry] Event:', eventName, eventData)
-        }
-        break
-
-      case 'console':
-      default:
-        if (serverLogger) {
-          serverLogger.info(
-            { type: 'monitoring', service: 'console', event: eventName, ...eventData },
-            `Evento capturado: ${eventName}`
-          )
-        } else {
-          console.log('[Monitoring] Event:', eventName, eventData)
-        }
-        break
-    }
-  }
-
-  /**
-   * Configura el contexto del usuario para todos los eventos
-   */
-  setUserContext(userId: string, userData?: Record<string, unknown>): void {
-    // if (this.service === 'sentry' && typeof window !== 'undefined' && window.Sentry) {
-    //   window.Sentry.setUser({ id: userId, ...userData })
-    // }
-    const serverLogger = getLogger()
-    if (serverLogger) {
-      serverLogger.info(
-        { type: 'monitoring', event: 'user_context_set', userId, ...userData },
-        'Contexto de usuario configurado'
-      )
-    } else {
-      console.log('[Monitoring] User context set:', userId, userData)
-    }
-  }
+export interface PerformanceData {
+  operation: string
+  duration: number
+  metadata?: Record<string, any>
 }
-
-// Singleton instance
-export const monitoring = new MonitoringService()
 
 /**
- * Helper para capturar errores de forma consistente
+ * Clase para tracking de métricas
  */
-export function captureError(error: Error | unknown, context?: ErrorContext): void {
-  if (error instanceof Error) {
-    monitoring.captureError(error, context)
-  } else {
-    monitoring.captureError(new Error(String(error)), context)
+export class MetricsTracker {
+  private metrics: MetricData[] = []
+  private readonly maxMetrics = 1000 // Límite para evitar memory leaks
+
+  /**
+   * Registrar una métrica
+   */
+  track(metric: MetricData): void {
+    this.metrics.push({
+      ...metric,
+      timestamp: metric.timestamp || new Date(),
+    })
+
+    // Limpiar métricas antiguas si excedemos el límite
+    if (this.metrics.length > this.maxMetrics) {
+      this.metrics = this.metrics.slice(-this.maxMetrics)
+    }
+
+    // Log estructurado para integración con herramientas APM
+    logger.info(
+      {
+        type: 'metric',
+        metric: metric.name,
+        value: metric.value,
+        tags: metric.tags,
+        timestamp: metric.timestamp || new Date().toISOString(),
+      },
+      `Metric: ${metric.name} = ${metric.value}`
+    )
+  }
+
+  /**
+   * Obtener métricas recientes
+   */
+  getMetrics(limit: number = 100): MetricData[] {
+    return this.metrics.slice(-limit)
+  }
+
+  /**
+   * Limpiar métricas
+   */
+  clear(): void {
+    this.metrics = []
   }
 }
 
 /**
- * Helper para capturar errores de API
+ * Clase para tracking de errores
  */
-export function captureApiError(error: Error | unknown, path: string, userId?: string): void {
-  captureError(error, {
-    type: 'api_error',
-    path,
-    userId,
-  })
+export class ErrorTracker {
+  private errors: ErrorData[] = []
+  private readonly maxErrors = 500
+
+  /**
+   * Registrar un error
+   */
+  track(error: ErrorData): void {
+    this.errors.push({
+      ...error,
+      severity: error.severity || 'medium',
+    })
+
+    // Limpiar errores antiguos
+    if (this.errors.length > this.maxErrors) {
+      this.errors = this.errors.slice(-this.maxErrors)
+    }
+
+    // Log estructurado según severidad
+    const logLevel = error.severity === 'critical' || error.severity === 'high' ? 'error' : 'warn'
+    logger[logLevel](
+      {
+        type: 'error',
+        error: {
+          name: error.error.name,
+          message: error.error.message,
+          stack: error.error.stack,
+        },
+        context: error.context,
+        severity: error.severity,
+        timestamp: new Date().toISOString(),
+      },
+      `Error tracked: ${error.error.message}`
+    )
+  }
+
+  /**
+   * Obtener errores recientes
+   */
+  getErrors(limit: number = 50): ErrorData[] {
+    return this.errors.slice(-limit)
+  }
+
+  /**
+   * Limpiar errores
+   */
+  clear(): void {
+    this.errors = []
+  }
+}
+
+/**
+ * Clase para tracking de performance
+ */
+export class PerformanceTracker {
+  private performance: PerformanceData[] = []
+  private readonly maxPerformance = 500
+
+  /**
+   * Registrar una operación de performance
+   */
+  track(perf: PerformanceData): void {
+    this.performance.push(perf)
+
+    // Limpiar datos antiguos
+    if (this.performance.length > this.maxPerformance) {
+      this.performance = this.performance.slice(-this.maxPerformance)
+    }
+
+    // Log estructurado
+    logger.info(
+      {
+        type: 'performance',
+        operation: perf.operation,
+        duration: perf.duration,
+        metadata: perf.metadata,
+        timestamp: new Date().toISOString(),
+      },
+      `Performance: ${perf.operation} took ${perf.duration}ms`
+    )
+  }
+
+  /**
+   * Medir tiempo de ejecución de una operación
+   */
+  async measure<T>(operation: string, fn: () => Promise<T>, metadata?: Record<string, any>): Promise<T> {
+    const start = Date.now()
+    try {
+      const result = await fn()
+      const duration = Date.now() - start
+      this.track({ operation, duration, metadata })
+      return result
+    } catch (error) {
+      const duration = Date.now() - start
+      this.track({
+        operation,
+        duration,
+        metadata: { ...metadata, error: error instanceof Error ? error.message : String(error) },
+      })
+      throw error
+    }
+  }
+
+  /**
+   * Obtener datos de performance recientes
+   */
+  getPerformance(limit: number = 50): PerformanceData[] {
+    return this.performance.slice(-limit)
+  }
+
+  /**
+   * Limpiar datos de performance
+   */
+  clear(): void {
+    this.performance = []
+  }
+}
+
+/**
+ * Instancias globales (singleton pattern)
+ */
+export const metricsTracker = new MetricsTracker()
+export const errorTracker = new ErrorTracker()
+export const performanceTracker = new PerformanceTracker()
+
+/**
+ * Helper para medir tiempo de operaciones
+ */
+export async function measurePerformance<T>(
+  operation: string,
+  fn: () => Promise<T>,
+  metadata?: Record<string, any>
+): Promise<T> {
+  return performanceTracker.measure(operation, fn, metadata)
+}
+
+/**
+ * Helper para trackear métricas
+ */
+export function trackMetric(name: string, value: number, tags?: Record<string, string>): void {
+  metricsTracker.track({ name, value, tags })
+}
+
+/**
+ * Helper para trackear errores
+ */
+export function trackError(error: Error, context?: Record<string, any>, severity?: ErrorData['severity']): void {
+  errorTracker.track({ error, context, severity })
+}
+
+/**
+ * Alias de trackError para compatibilidad con código existente
+ * @deprecated Usar trackError en su lugar. Este alias se mantiene por compatibilidad hacia atrás.
+ */
+export function captureError(error: Error, context?: Record<string, any>, severity?: ErrorData['severity']): void {
+  trackError(error, context, severity)
 }

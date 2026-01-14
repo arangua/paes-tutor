@@ -13,6 +13,8 @@ const questionsQuerySchema = z.object({
     .string()
     .optional()
     .transform(val => (val ? parseInt(val, 10) : undefined)),
+  difficulty: z.enum(['easy', 'medium', 'hard', 'mixed']).optional(),
+  mode: z.enum(['easy', 'medium', 'hard', 'mixed']).optional(), // Alias para difficulty
 })
 
 export async function GET(request: NextRequest) {
@@ -24,11 +26,12 @@ export async function GET(request: NextRequest) {
       }
 
       const { searchParams } = new URL(request.url)
-      const topicId = searchParams.get('topicId')
-      const limit = searchParams.get('limit')
+      const topicId = searchParams.get('topicId') || undefined
+      const limit = searchParams.get('limit') || undefined
+      const difficulty = searchParams.get('difficulty') || searchParams.get('mode') || undefined
 
       // Validar parámetros
-      const validation = questionsQuerySchema.safeParse({ topicId, limit })
+      const validation = questionsQuerySchema.safeParse({ topicId, limit, difficulty })
       if (!validation.success) {
         return NextResponse.json(
           { error: 'Parámetros inválidos', details: validation.error.errors },
@@ -36,7 +39,11 @@ export async function GET(request: NextRequest) {
         )
       }
 
-      const { topicId: validTopicId, limit: validLimit } = validation.data
+      const {
+        topicId: validTopicId,
+        limit: validLimit,
+        difficulty: validDifficulty,
+      } = validation.data
 
       // Verificar que el tema existe
       const topic = await prisma.topic.findUnique({
@@ -48,10 +55,27 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Tema no encontrado' }, { status: 404 })
       }
 
-      // Obtener preguntas del tema (aleatorias)
+      // Construir filtro de dificultad
+      const difficultyFilter: { dificultad?: { in: number[] } } = {}
+      if (validDifficulty && validDifficulty !== 'mixed') {
+        switch (validDifficulty) {
+          case 'easy':
+            difficultyFilter.dificultad = { in: [1, 2] } // Dificultad 1-2
+            break
+          case 'medium':
+            difficultyFilter.dificultad = { in: [3, 4] } // Dificultad 3-4
+            break
+          case 'hard':
+            difficultyFilter.dificultad = { in: [5] } // Dificultad 5
+            break
+        }
+      }
+
+      // Obtener preguntas del tema con filtro de dificultad
       const questions = await prisma.question.findMany({
         where: {
           topicId: validTopicId,
+          ...difficultyFilter,
         },
         include: {
           options: {
@@ -76,8 +100,40 @@ export async function GET(request: NextRequest) {
         },
       })
 
+      // Si no hay suficientes preguntas con el filtro, obtener de todas las dificultades
+      let finalQuestions = questions
+      if (questions.length < (validLimit || 20) && validDifficulty && validDifficulty !== 'mixed') {
+        const allQuestions = await prisma.question.findMany({
+          where: {
+            topicId: validTopicId,
+          },
+          include: {
+            options: {
+              orderBy: { letra: 'asc' },
+            },
+            subject: {
+              select: {
+                nombre: true,
+                codigo: true,
+              },
+            },
+            topic: {
+              select: {
+                nombre: true,
+                ejeTematico: true,
+              },
+            },
+          },
+          take: validLimit || 20,
+          orderBy: {
+            createdAt: 'desc',
+          },
+        })
+        finalQuestions = allQuestions
+      }
+
       // Aleatorizar el orden de las preguntas
-      const shuffledQuestions = questions.sort(() => Math.random() - 0.5)
+      const shuffledQuestions = finalQuestions.sort(() => Math.random() - 0.5)
 
       return NextResponse.json({
         questions: shuffledQuestions,

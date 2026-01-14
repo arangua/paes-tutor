@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -11,7 +11,6 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
-  Users,
   Target,
   AlertCircle,
   ArrowRight,
@@ -91,24 +90,7 @@ export default function ChallengesPage() {
   const [activeTab, setActiveTab] = useState<'all' | 'active' | 'sent' | 'received'>('active')
   const [currentStudentId, setCurrentStudentId] = useState<string | null>(null)
 
-  useEffect(() => {
-    loadCurrentStudent()
-    loadChallenges()
-  }, [activeTab])
-
-  async function loadCurrentStudent() {
-    try {
-      const res = await fetch('/api/student')
-      if (res.ok) {
-        const data = await res.json()
-        setCurrentStudentId(data.id)
-      }
-    } catch (error) {
-      // Error ya manejado por el sistema de monitoreo
-    }
-  }
-
-  async function loadChallenges() {
+  const loadChallenges = useCallback(async () => {
     try {
       setLoading(true)
       const res = await fetch(`/api/challenges?type=${activeTab}`)
@@ -120,7 +102,25 @@ export default function ChallengesPage() {
     } finally {
       setLoading(false)
     }
+  }, [activeTab])
+
+  useEffect(() => {
+    loadCurrentStudent()
+    loadChallenges()
+  }, [activeTab, loadChallenges])
+
+  async function loadCurrentStudent() {
+    try {
+      const res = await fetch('/api/student', { credentials: 'include' })
+      if (res.ok) {
+        const data = await res.json()
+        setCurrentStudentId(data.id)
+      }
+    } catch {
+      // Error ya manejado por el sistema de monitoreo
+    }
   }
+
 
   async function handleAccept(challengeId: string) {
     try {
@@ -243,12 +243,8 @@ export default function ChallengesPage() {
             </Card>
           ) : (
             challenges.map(challenge => {
-              const isChallenger = currentStudentId === challenge.challenger.id
               const isChallenged = currentStudentId === challenge.challenged.id
-              const canAccept = challenge.status === 'pending' && isChallenged
-              const canComplete =
-                challenge.status === 'accepted' &&
-                challenge.exam &&
+              const canAccept = challenge.status === 'pending' && isChallenged &&
                 (!challenge.challengerAttempt || !challenge.challengedAttempt)
 
               // Verificar si el desafío está próximo a expirar (menos de 2 días)

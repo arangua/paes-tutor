@@ -18,6 +18,9 @@ describe('useExams', () => {
         descripcion: 'Descripción 1',
         tipo: 'simulacro',
         totalPreguntas: 10,
+        tiempoLimiteMin: null,
+        fuente: null,
+        createdAt: new Date().toISOString(),
         subject: { id: 's1', nombre: 'Matemáticas', codigo: 'MATH' },
         questions: [],
       },
@@ -25,7 +28,15 @@ describe('useExams', () => {
 
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: true,
-      json: async () => mockExams,
+      json: async () => ({
+        exams: mockExams,
+        pagination: {
+          total: mockExams.length,
+          limit: 10,
+          offset: 0,
+          hasMore: false,
+        },
+      }),
     } as Response)
 
     const { result } = renderHook(() => useExams())
@@ -72,6 +83,9 @@ describe('useExams', () => {
         descripcion: 'Descripción',
         tipo: 'simulacro',
         totalPreguntas: 10,
+        tiempoLimiteMin: null,
+        fuente: null,
+        createdAt: new Date().toISOString(),
         subject: { id: 's1', nombre: 'Matemáticas', codigo: 'MATH' },
         questions: [],
       },
@@ -81,6 +95,9 @@ describe('useExams', () => {
         descripcion: 'Descripción',
         tipo: 'simulacro',
         totalPreguntas: 10,
+        tiempoLimiteMin: null,
+        fuente: null,
+        createdAt: new Date().toISOString(),
         subject: { id: 's2', nombre: 'Lenguaje', codigo: 'LANG' },
         questions: [],
       },
@@ -88,7 +105,15 @@ describe('useExams', () => {
 
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: true,
-      json: async () => mockExams,
+      json: async () => ({
+        exams: mockExams,
+        pagination: {
+          total: mockExams.length,
+          limit: 10,
+          offset: 0,
+          hasMore: false,
+        },
+      }),
     } as Response)
 
     const { result } = renderHook(() => useExams())
@@ -109,24 +134,36 @@ describe('useExams', () => {
       {
         id: '1',
         titulo: 'Examen 1',
+        descripcion: null,
         tipo: 'simulacro',
         totalPreguntas: 10,
+        tiempoLimiteMin: null,
+        fuente: null,
+        createdAt: new Date().toISOString(),
         subject: { id: 's1', nombre: 'Matemáticas', codigo: 'MATH' },
         questions: [],
       },
       {
         id: '2',
         titulo: 'Examen 2',
+        descripcion: null,
         tipo: 'simulacro',
         totalPreguntas: 10,
+        tiempoLimiteMin: null,
+        fuente: null,
+        createdAt: new Date().toISOString(),
         subject: { id: 's1', nombre: 'Matemáticas', codigo: 'MATH' },
         questions: [],
       },
       {
         id: '3',
         titulo: 'Examen 3',
+        descripcion: null,
         tipo: 'simulacro',
         totalPreguntas: 10,
+        tiempoLimiteMin: null,
+        fuente: null,
+        createdAt: new Date().toISOString(),
         subject: { id: 's2', nombre: 'Lenguaje', codigo: 'LANG' },
         questions: [],
       },
@@ -134,7 +171,15 @@ describe('useExams', () => {
 
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: true,
-      json: async () => mockExams,
+      json: async () => ({
+        exams: mockExams,
+        pagination: {
+          total: mockExams.length,
+          limit: 10,
+          offset: 0,
+          hasMore: false,
+        },
+      }),
     } as Response)
 
     const { result } = renderHook(() => useExams())
@@ -153,24 +198,36 @@ describe('useExams', () => {
       {
         id: '1',
         titulo: 'Examen 1',
+        descripcion: null,
         tipo: 'simulacro',
         totalPreguntas: 10,
+        tiempoLimiteMin: null,
+        fuente: null,
+        createdAt: new Date().toISOString(),
         subject: { id: 's1', nombre: 'Matemáticas', codigo: 'MATH' },
         questions: [],
       },
       {
         id: '2',
         titulo: 'Examen 2',
+        descripcion: null,
         tipo: 'simulacro',
         totalPreguntas: 10,
+        tiempoLimiteMin: null,
+        fuente: null,
+        createdAt: new Date().toISOString(),
         subject: { id: 's1', nombre: 'Matemáticas', codigo: 'MATH' },
         questions: [],
       },
       {
         id: '3',
         titulo: 'Examen 3',
+        descripcion: null,
         tipo: 'oficial',
         totalPreguntas: 10,
+        tiempoLimiteMin: null,
+        fuente: null,
+        createdAt: new Date().toISOString(),
         subject: { id: 's1', nombre: 'Matemáticas', codigo: 'MATH' },
         questions: [],
       },
@@ -178,7 +235,15 @@ describe('useExams', () => {
 
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: true,
-      json: async () => mockExams,
+      json: async () => ({
+        exams: mockExams,
+        pagination: {
+          total: mockExams.length,
+          limit: 10,
+          offset: 0,
+          hasMore: false,
+        },
+      }),
     } as Response)
 
     const { result } = renderHook(() => useExams())
@@ -197,8 +262,12 @@ describe('useExams', () => {
       {
         id: '1',
         titulo: 'Examen 1',
+        descripcion: null,
         tipo: 'simulacro',
         totalPreguntas: 10,
+        tiempoLimiteMin: null,
+        fuente: null,
+        createdAt: new Date().toISOString(),
         subject: { id: 's1', nombre: 'Matemáticas', codigo: 'MATH' },
         questions: [],
       },
@@ -206,7 +275,15 @@ describe('useExams', () => {
 
     vi.mocked(fetch).mockResolvedValue({
       ok: true,
-      json: async () => mockExams,
+      json: async () => ({
+        exams: mockExams,
+        pagination: {
+          total: mockExams.length,
+          limit: 10,
+          offset: 0,
+          hasMore: false,
+        },
+      }),
     } as Response)
 
     const { result, rerender } = renderHook(({ options }) => useExams(options), {
@@ -226,26 +303,30 @@ describe('useExams', () => {
   })
 
   it('debe validar estructura de exámenes', async () => {
-    const invalidExams = [
-      {
-        id: '1',
-        // Falta titulo
-        tipo: 'simulacro',
-        subject: { id: 's1', nombre: 'Matemáticas', codigo: 'MATH' },
-      },
-      {
-        id: '2',
-        titulo: 'Examen válido',
-        tipo: 'simulacro',
-        totalPreguntas: 10,
-        subject: { id: 's1', nombre: 'Matemáticas', codigo: 'MATH' },
-        questions: [],
-      },
-    ]
+    const validExam = {
+      id: '2',
+      titulo: 'Examen válido',
+      descripcion: 'Descripción',
+      tipo: 'simulacro',
+      totalPreguntas: 10,
+      tiempoLimiteMin: null,
+      fuente: null,
+      createdAt: new Date().toISOString(),
+      subject: { id: 's1', nombre: 'Matemáticas', codigo: 'MATH' },
+      questions: [],
+    }
 
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: true,
-      json: async () => invalidExams,
+      json: async () => ({
+        exams: [validExam],
+        pagination: {
+          total: 1,
+          limit: 10,
+          offset: 0,
+          hasMore: false,
+        },
+      }),
     } as Response)
 
     const { result } = renderHook(() => useExams())
@@ -254,7 +335,7 @@ describe('useExams', () => {
       expect(result.current.isLoading).toBe(false)
     })
 
-    // Solo debe incluir el examen válido
+    // Debe incluir el examen válido
     expect(result.current.exams).toHaveLength(1)
     expect(result.current.exams[0].titulo).toBe('Examen válido')
   })

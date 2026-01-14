@@ -10,7 +10,6 @@ import {
   TrendingDown,
   Minus,
   Users,
-  Trophy,
   Target,
   BookOpen,
 } from 'lucide-react'
@@ -176,7 +175,36 @@ export function JointProgress() {
         return
       }
 
-      const response = await res.json()
+      // Validar respuesta con Zod para type safety en runtime
+      const { validateResponse } = await import('@/lib/api-helpers')
+      const { jointProgressResponseSchema } = await import('@/lib/validations')
+      
+      const validation = await validateResponse(res, jointProgressResponseSchema, {
+        path: typeof window !== 'undefined' ? window.location.pathname : '/dashboard',
+        operation: 'cargar progreso conjunto',
+      })
+
+      if (!validation.success) {
+        const errorInfo = extractErrorInfo(new Error(validation.error))
+        const errorMessage = getErrorMessage(ERROR_CODES.SYSTEM_LOAD_FAILED, {
+          message: errorInfo.message,
+          context: { endpoint: 'joint-progress', status: res.status },
+        })
+
+        captureError(new Error(`[${errorInfo.code}] ${errorMessage.description}`), {
+          type: 'joint_progress_validation_error',
+          status: res.status,
+          endpoint: '/api/analytics/joint-progress',
+        })
+
+        toast.error(errorMessage.title, {
+          description: errorMessage.description,
+        })
+        setData(null)
+        return
+      }
+
+      const response = validation.data
 
       if (response.message) {
         // No hay suficientes estudiantes, no mostrar el componente

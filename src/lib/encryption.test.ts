@@ -176,7 +176,7 @@ describe('encryption', () => {
 
     it('debe manejar clave antigua por defecto', () => {
       const original = 'test-old-key'
-      const oldKey = 'default-key-change-in-production'
+      const oldKey = 'default-key-change-in-production' // guard:allow-secret
       const legacyEncrypted = Buffer.from(original + oldKey).toString('base64')
 
       const decrypted = decrypt(legacyEncrypted)
@@ -234,7 +234,7 @@ describe('encryption', () => {
         // Si migra, debe poder desencriptarse
         const decrypted = decrypt(migrated)
         expect(decrypted).toBe(original)
-      } catch (error) {
+      } catch {
         // Si falla la migración (porque ya está en AES), está bien
         // Lo importante es que el texto original se pueda desencriptar
         const decrypted = decrypt(aesEncrypted)

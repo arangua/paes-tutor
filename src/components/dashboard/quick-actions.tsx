@@ -8,14 +8,12 @@ import {
   BarChart3,
   Target,
   TrendingUp,
-  Award,
   RotateCcw,
   Users,
   Share2,
   Trophy,
 } from 'lucide-react'
 import Link from 'next/link'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface QuickAction {
   title: string
@@ -55,6 +53,13 @@ const defaultActions: QuickAction[] = [
     variant: 'outline',
   },
   {
+    title: 'Recomendaciones',
+    description: 'Recomendaciones personalizadas de estudio',
+    href: '/recommendations',
+    icon: Target,
+    variant: 'default',
+  },
+  {
     title: 'Repaso Rápido',
     description: 'Repasa preguntas falladas (5-10 preguntas)',
     href: '/review/quick',
@@ -79,6 +84,20 @@ const defaultActions: QuickAction[] = [
     title: 'Materiales Compartidos',
     description: 'Ver materiales compartidos contigo',
     href: '/shared-materials',
+    icon: FileText,
+    variant: 'outline',
+  },
+  {
+    title: 'Flashcards Compartidas',
+    description: 'Ver flashcards compartidas contigo',
+    href: '/shared-flashcards',
+    icon: RotateCcw,
+    variant: 'outline',
+  },
+  {
+    title: 'Notas Compartidas',
+    description: 'Ver notas compartidas contigo',
+    href: '/shared-notes',
     icon: FileText,
     variant: 'outline',
   },

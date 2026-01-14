@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/get-session'
 import { withRateLimit } from '@/lib/rate-limit-middleware'
 import { prisma } from '@/lib/prisma'
-import { generateExamWithAI, type ExamGenerationParams } from '@/lib/exam-generator'
+import { generateExamWithAI } from '@/lib/exam-generator'
 import { z } from 'zod'
 import { validateBody } from '@/lib/api-helpers'
 import { logger } from '@/lib/logger'
@@ -25,8 +25,9 @@ const generateExamSchema = z.object({
 
 export async function POST(request: NextRequest) {
   return withRateLimit(request, async () => {
+    let user: Awaited<ReturnType<typeof getCurrentUser>> = null
     try {
-      const user = await getCurrentUser()
+      user = await getCurrentUser()
 
       if (!user) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
@@ -115,16 +116,57 @@ export async function POST(request: NextRequest) {
             titulo: titulo || generatedExam.titulo,
             descripcion: descripcion || generatedExam.descripcion,
             tipo: tipo === 'objetiva' ? 'objetiva' : tipo === 'desarrollo' ? 'desarrollo' : 'mixta',
-            tiempoLimiteMin: tiempoLimiteMin || Math.ceil(numQuestions * 1.5), // 1.5 min por pregunta por defecto
-            totalPreguntas: generatedExam.questions.length,
+            tiempoLimiteMin: tiempoLimiteMin || (() => {
+              if (Number.isFinite(numQuestions) && numQuestions > 0) {
+                const multiplied = numQuestions * 1.5
+                if (Number.isFinite(multiplied)) {
+                  const ceiled = Math.ceil(multiplied)
+                  return Number.isFinite(ceiled) && ceiled > 0 ? ceiled : 60
+                }
+              }
+              return 60
+            })(), // 1.5 min por pregunta por defecto
+            // CORRECCIÓN: Validar que generatedExam.questions sea un array válido antes de acceder a length
+            totalPreguntas: (() => {
+              if (!generatedExam || typeof generatedExam !== 'object' || !generatedExam.questions) {
+                logger.warn({ generatedExam }, 'admin/generate-exam: generatedExam.questions no existe, usando 0')
+                return 0
+              }
+              if (!Array.isArray(generatedExam.questions)) {
+                logger.warn({ generatedExam }, 'admin/generate-exam: generatedExam.questions no es un array válido, usando 0')
+                return 0
+              }
+              const safeLength = Number.isFinite(generatedExam.questions.length) && generatedExam.questions.length >= 0
+                ? generatedExam.questions.length
+                : 0
+              return safeLength
+            })(),
             fuente: fuente || 'Generado con IA',
           },
         })
 
         // Crear preguntas y opciones
+        // CORRECCIÓN: Validar que generatedExam.questions sea un array válido antes de iterar
+        if (!generatedExam || typeof generatedExam !== 'object' || !generatedExam.questions) {
+          throw new Error('generatedExam.questions no existe o es inválido')
+        }
+        if (!Array.isArray(generatedExam.questions)) {
+          throw new Error('generatedExam.questions no es un array válido')
+        }
+        
+        const safeQuestionsLength = Number.isFinite(generatedExam.questions.length) && generatedExam.questions.length >= 0
+          ? generatedExam.questions.length
+          : 0
+        
         const createdQuestions = []
-        for (let i = 0; i < generatedExam.questions.length; i++) {
-          const q = generatedExam.questions[i]
+        for (let i = 0; i < safeQuestionsLength; i++) {
+          // CORRECCIÓN: Validar que el índice sea válido antes de acceder al array
+          const safeI = Number.isFinite(i) && i >= 0 && i < safeQuestionsLength ? i : 0
+          const q = generatedExam.questions[safeI]
+          if (!q || typeof q !== 'object') {
+            logger.warn({ i: safeI, q, generatedExam }, 'admin/generate-exam: pregunta inválida en índice, omitiendo')
+            continue
+          }
 
           // Buscar o crear tema si no está asociado
           let topicId = q.topicId
@@ -133,7 +175,7 @@ export async function POST(request: NextRequest) {
             const matchingTopic = await tx.topic.findFirst({
               where: {
                 subjectId,
-                ejeTematico: { contains: q.ejeTematico, mode: 'insensitive' },
+                ejeTematico: { contains: q.ejeTematico,  },
               },
             })
             if (matchingTopic) {
@@ -165,14 +207,16 @@ export async function POST(request: NextRequest) {
               fuente: fuente || 'Generado con IA',
               tipo: finalQuestionType,
               // Solo crear opciones si la pregunta es objetiva y tiene opciones
-              ...(finalQuestionType === 'objetiva' && q.opciones && q.opciones.length > 0
+              ...(finalQuestionType === 'objetiva' && Array.isArray(q.opciones) && q.opciones.length > 0
                 ? {
                     options: {
-                      create: q.opciones.map(opt => ({
-                        letra: opt.letra,
-                        texto: opt.texto,
-                        esCorrecta: opt.esCorrecta,
-                      })),
+                      create: q.opciones
+                        .filter(opt => opt && typeof opt === 'object' && opt.letra && opt.texto !== undefined)
+                        .map(opt => ({
+                          letra: typeof opt.letra === 'string' ? opt.letra : String(opt.letra || ''),
+                          texto: typeof opt.texto === 'string' ? opt.texto : String(opt.texto || ''),
+                          esCorrecta: typeof opt.esCorrecta === 'boolean' ? opt.esCorrecta : false,
+                        })),
                     },
                   }
                 : {}),
@@ -194,21 +238,34 @@ export async function POST(request: NextRequest) {
         return { exam: newExam, questions: createdQuestions }
       })
 
+      // CORRECCIÓN: Validar que generatedExam.questions sea un array válido antes de acceder a length
+      const safeQuestionsLength = (() => {
+        if (!generatedExam || typeof generatedExam !== 'object' || !generatedExam.questions) {
+          return 0
+        }
+        if (!Array.isArray(generatedExam.questions)) {
+          return 0
+        }
+        return Number.isFinite(generatedExam.questions.length) && generatedExam.questions.length >= 0
+          ? generatedExam.questions.length
+          : 0
+      })()
+      
       logger.info(
         {
           examId: exam.exam.id,
           subjectId: exam.exam.subjectId,
-          totalPreguntas: generatedExam.questions.length,
+          totalPreguntas: safeQuestionsLength,
           tipo,
           difficulty,
           userId: user.id,
         },
-        `Examen generado exitosamente con ${generatedExam.questions.length} preguntas`
+        `Examen generado exitosamente con ${safeQuestionsLength} preguntas`
       )
 
       return NextResponse.json({
         success: true,
-        message: `Examen generado exitosamente con ${generatedExam.questions.length} preguntas`,
+        message: `Examen generado exitosamente con ${safeQuestionsLength} preguntas`,
         exam: {
           id: exam.exam.id,
           titulo: exam.exam.titulo,
@@ -216,7 +273,7 @@ export async function POST(request: NextRequest) {
           subjectId: exam.exam.subjectId,
         },
         answerKey: generatedExam.answerKey,
-        questionsGenerated: generatedExam.questions.length,
+        questionsGenerated: safeQuestionsLength,
       })
     } catch (error) {
       logger.error(
@@ -224,7 +281,7 @@ export async function POST(request: NextRequest) {
           error: error instanceof Error ? error.message : String(error),
           stack: error instanceof Error ? error.stack : undefined,
           userId: user?.id,
-          subjectId: validation.success ? validation.data.subjectId : undefined,
+          subjectId: undefined,
         },
         'Error al generar examen'
       )

@@ -82,7 +82,7 @@ const topicSchema = z.object({
 })
 
 // Schema para validar el array de temas
-const topicsImportSchema = z.object({
+const _topicsImportSchema = z.object({
   topics: z.array(topicSchema).min(1, 'Debe haber al menos un tema'),
 })
 
@@ -436,7 +436,7 @@ function parseTopicsFromPDF(text: string): TopicImportData[] {
       // Patrón 1: "EJE TEMÁTICO", "ÁREA TEMÁTICA", etc.
       /(?:^|\n)\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+(?:TEMÁTICO|TEMATICO|EJE|ÁREA|AREA)[A-ZÁÉÍÓÚÑ\s]*)/i,
       // Patrón 2: Numeración seguida de título en mayúsculas (ej: "1. ÁLGEBRA Y FUNCIONES")
-      /(?:^|\n)\s*(\d+[\.\)]\s*[A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑa-záéíóúñ\s]{10,80})/,
+      /(?:^|\n)\s*(\d+[.)]\s*[A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑa-záéíóúñ\s]{10,80})/,
       // Patrón 3: Títulos en mayúsculas al inicio de línea (mínimo 15 caracteres)
       /(?:^|\n)\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑa-záéíóúñ\s]{15,80})(?=\n|$)/,
       // Patrón 4: Títulos con formato especial (ej: "--- ÁLGEBRA ---")
@@ -451,9 +451,9 @@ function parseTopicsFromPDF(text: string): TopicImportData[] {
         const matches = Array.from(sectionText.matchAll(new RegExp(pattern.source, 'gm')))
         for (const match of matches) {
           if (match[1]) {
-            let eje = match[1]
+            const eje = match[1]
               .trim()
-              .replace(/^\d+[\.\)]\s+/, '')
+              .replace(/^\d+[.)]\s+/, '')
               .replace(/^[-=]+\s+/, '')
               .replace(/\s+[-=]+$/, '')
               // Normalizar espacios múltiples pero mantener estructura
@@ -461,7 +461,7 @@ function parseTopicsFromPDF(text: string): TopicImportData[] {
               .trim()
 
             // Validar que el eje no sea solo números o caracteres especiales
-            if (eje.length > 5 && eje.length < 100 && !eje.match(/^[\d\s\-=\.]+$/)) {
+            if (eje.length > 5 && eje.length < 100 && !eje.match(/^[\d\s\-=.]+$/)) {
               // Evitar duplicados (comparar sin considerar mayúsculas/minúsculas)
               const ejeLower = eje.toLowerCase()
               if (!ejeMatches.some(e => e.eje.toLowerCase() === ejeLower)) {
@@ -508,9 +508,9 @@ function parseTopicsFromPDF(text: string): TopicImportData[] {
         // Patrón 1: Viñetas (-, •, ▪, ▫, o, etc.)
         /(?:^|\n)\s*[-•▪▫o]\s+([^\n]{5,150})/g,
         // Patrón 2: Numeración (1., 2), a), etc.)
-        /(?:^|\n)\s*\d+[\.\)]\s+([^\n]{5,150})/g,
+        /(?:^|\n)\s*\d+[.)]\s+([^\n]{5,150})/g,
         // Patrón 3: Letras seguidas de punto o paréntesis (a., b), etc.)
-        /(?:^|\n)\s*[a-z][\.\)]\s+([^\n]{5,150})/g,
+        /(?:^|\n)\s*[a-z][.)]\s+([^\n]{5,150})/g,
         // Patrón 4: Líneas que empiezan con mayúscula (títulos de temas)
         /(?:^|\n)\s*([A-ZÁÉÍÓÚÑ][a-záéíóúñ][^\n]{5,150})(?=\n|$)/g,
       ]
@@ -521,11 +521,11 @@ function parseTopicsFromPDF(text: string): TopicImportData[] {
           const matches = Array.from(ejeText.matchAll(pattern))
           for (const match of matches) {
             if (match[1]) {
-              let tema = match[1]
+              const tema = match[1]
                 .trim()
                 .replace(/^[-•▪▫o]\s+/, '')
-                .replace(/^\d+[\.\)]\s+/, '')
-                .replace(/^[a-z][\.\)]\s+/, '')
+                .replace(/^\d+[.)]\s+/, '')
+                .replace(/^[a-z][.)]\s+/, '')
                 // Normalizar espacios múltiples pero mantener estructura
                 .replace(/[ \t]+/g, ' ')
                 .trim()
@@ -539,7 +539,7 @@ function parseTopicsFromPDF(text: string): TopicImportData[] {
                 tema.length >= 5 &&
                 tema.length <= 150 &&
                 !tema.match(/^[A-Z\s]{20,}$/) && // No títulos largos solo en mayúsculas
-                !tema.match(/^[\d\s\-=\.]+$/)
+                !tema.match(/^[\d\s\-=.]+$/)
               ) {
                 // No solo números o separadores
                 // Evitar duplicados (comparar sin considerar mayúsculas/minúsculas)
@@ -583,7 +583,7 @@ function parseTopicsFromPDF(text: string): TopicImportData[] {
         for (let i = startIndex; i < lines.length; i++) {
           const tema = lines[i]
             .trim()
-            .replace(/^[-•▪▫o\d\)\.]+\s*/, '')
+            .replace(/^[-•▪▫o\d).]+\s*/, '')
             .trim()
           if (tema.length >= 5 && tema.length <= 150) {
             // Evitar duplicados

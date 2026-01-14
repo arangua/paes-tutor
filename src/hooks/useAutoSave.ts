@@ -57,7 +57,11 @@ export function useAutoSave<T>({
 
     // Crear nuevo timeout
     timeoutRef.current = setTimeout(() => {
-      save()
+      // Manejar errores silenciosamente para evitar unhandled rejections
+      save().catch(() => {
+        // El error ya fue capturado y registrado en save()
+        // Solo necesitamos evitar que se propague como unhandled rejection
+      })
     }, delay)
 
     return () => {

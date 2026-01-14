@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, startTransition } from 'react'
 import { useDebounce } from './useDebounce'
 
 export interface AutocompleteSuggestion {
@@ -136,8 +136,11 @@ export function useSmartAutocomplete(options: UseSmartAutocompleteOptions = {}) 
   // Obtener sugerencias del servidor
   useEffect(() => {
     if (!fetchSuggestions || debouncedQuery.length < minChars) {
-      setSuggestions(filterLocalSuggestions(debouncedQuery))
-      setIsLoading(false)
+      // Usar startTransition para evitar renders en cascada
+      startTransition(() => {
+        setSuggestions(filterLocalSuggestions(debouncedQuery))
+        setIsLoading(false)
+      })
       return
     }
 
@@ -150,7 +153,10 @@ export function useSmartAutocomplete(options: UseSmartAutocompleteOptions = {}) 
     abortControllerRef.current = new AbortController()
     const signal = abortControllerRef.current.signal
 
-    setIsLoading(true)
+    // Usar startTransition para diferir la actualización del estado
+    startTransition(() => {
+      setIsLoading(true)
+    })
 
     fetchSuggestions(debouncedQuery)
       .then(serverSuggestions => {
@@ -161,16 +167,25 @@ export function useSmartAutocomplete(options: UseSmartAutocompleteOptions = {}) 
         setSuggestions(ranked)
         setIsOpen(true)
       })
-      .catch(error => {
+      .catch(() => {
         if (signal.aborted) return
         // Si falla el servidor, usar solo sugerencias locales
         setSuggestions(filterLocalSuggestions(debouncedQuery))
       })
       .finally(() => {
         if (!signal.aborted) {
-          setIsLoading(false)
+          startTransition(() => {
+            setIsLoading(false)
+          })
         }
       })
+
+    return () => {
+      // Cleanup: abortar request si el componente se desmonta
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+    }
   }, [debouncedQuery, fetchSuggestions, minChars, filterLocalSuggestions, rankSuggestions])
 
   // Manejar selección

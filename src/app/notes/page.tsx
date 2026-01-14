@@ -1,16 +1,17 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Loader2, FileText, Plus, Search, Edit, Trash2, BookOpen, Tag, History } from 'lucide-react'
+import { FileText, Plus, Search, Edit, Trash2, BookOpen, Tag, History } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
 import { NoteDialog } from '@/components/notes/note-dialog'
 import { NoteVersions } from '@/components/notes/note-versions'
+import { ShareNoteButton } from '@/components/notes/share-note-button'
 import { HelpIcon } from '@/components/help/help-icon'
 
 interface StudyNote {
@@ -45,7 +46,6 @@ export default function NotesPage() {
   const [notes, setNotes] = useState<StudyNote[]>([])
   const [filteredNotes, setFilteredNotes] = useState<StudyNote[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState<'all' | 'questions' | 'topics'>('all')
   const [editingNote, setEditingNote] = useState<StudyNote | null>(null)
@@ -56,9 +56,33 @@ export default function NotesPage() {
     loadNotes()
   }, [])
 
+  const filterNotes = useCallback(() => {
+    let filtered = [...notes]
+
+    // Filtrar por tipo
+    if (activeTab === 'questions') {
+      filtered = filtered.filter(n => n.question !== null)
+    } else if (activeTab === 'topics') {
+      filtered = filtered.filter(n => n.topic !== null)
+    }
+
+    // Filtrar por búsqueda
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(
+        n =>
+          n.title.toLowerCase().includes(query) ||
+          n.content.toLowerCase().includes(query) ||
+          n.tags?.some(tag => tag.toLowerCase().includes(query))
+      )
+    }
+
+    setFilteredNotes(filtered)
+  }, [notes, searchQuery, activeTab])
+
   useEffect(() => {
     filterNotes()
-  }, [notes, searchQuery, activeTab])
+  }, [notes, searchQuery, activeTab, filterNotes])
 
   async function loadNotes() {
     try {
@@ -75,30 +99,6 @@ export default function NotesPage() {
     }
   }
 
-  function filterNotes() {
-    let filtered = [...notes]
-
-    // Filtrar por tipo
-    if (activeTab === 'questions') {
-      filtered = filtered.filter(n => n.question !== null)
-    } else if (activeTab === 'topics') {
-      filtered = filtered.filter(n => n.topic !== null)
-    }
-
-    // Filtrar por búsqueda
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase()
-      filtered = filtered.filter(
-        note =>
-          note.title.toLowerCase().includes(query) ||
-          note.content.toLowerCase().includes(query) ||
-          (note.tags && note.tags.toLowerCase().includes(query))
-      )
-    }
-
-    setFilteredNotes(filtered)
-  }
-
   const handleDelete = async (noteId: string) => {
     if (!confirm('¿Estás seguro de que quieres eliminar esta nota?')) return
 
@@ -111,7 +111,7 @@ export default function NotesPage() {
 
       toast.success('Nota eliminada')
       loadNotes()
-    } catch (err) {
+    } catch {
       toast.error('Error al eliminar nota')
     }
   }
@@ -257,6 +257,7 @@ export default function NotesPage() {
                           >
                             <History className="h-3 w-3" />
                           </Button>
+                          <ShareNoteButton noteId={note.id} noteTitle={note.title} />
                           <Button variant="ghost" size="sm" onClick={() => setEditingNote(note)}>
                             <Edit className="h-3 w-3" />
                           </Button>

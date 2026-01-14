@@ -41,7 +41,7 @@ export function GlobalUndoRedoToolbar() {
             <strong>Deshacer</strong> (Ctrl+Z)
             <br />
             <span className="text-muted-foreground text-xs">
-              Revierte cambios en toda la app. Funciona como el "deshacer" de Google Docs.
+              Revierte cambios en toda la app. Funciona como el &quot;deshacer&quot; de Google Docs.
             </span>
           </p>
         </TooltipContent>
@@ -64,7 +64,7 @@ export function GlobalUndoRedoToolbar() {
             <strong>Rehacer</strong> (Ctrl+Shift+Z)
             <br />
             <span className="text-muted-foreground text-xs">
-              Restaura lo que deshiciste. Como el botón "adelante" en tu navegador web.
+              Restaura lo que deshiciste. Como el botón &quot;adelante&quot; en tu navegador web.
             </span>
           </p>
         </TooltipContent>
@@ -104,7 +104,7 @@ export function GlobalUndoRedoToolbar() {
                 No hay acciones recientes
               </div>
             ) : (
-              recentActions.map((action, idx) => (
+              recentActions.map((action) => (
                 <DropdownMenuItem key={action.id} className="flex flex-col items-start gap-1">
                   <div className="flex items-center justify-between w-full">
                     <span className="text-sm font-medium">{action.description}</span>

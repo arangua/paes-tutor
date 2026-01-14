@@ -55,9 +55,9 @@ if (!ENCRYPTION_KEY) {
  * Usa PBKDF2 para derivar una clave de 256 bits
  */
 function getDerivedKey(): string {
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   // ENCRYPTION_KEY siempre está definido aquí (validado arriba en el módulo)
   // El non-null assertion es seguro porque la validación ocurre al cargar el módulo
+   
   const key = ENCRYPTION_KEY!
 
   // Si la clave es muy corta, derivarla usando PBKDF2
@@ -199,11 +199,10 @@ function decryptLegacy(encryptedText: string): string {
     }
 
     // Remover la clave del final (método antiguo)
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     // ENCRYPTION_KEY está validado al inicio del módulo, el non-null assertion es seguro
     if (ENCRYPTION_KEY && decoded.endsWith(ENCRYPTION_KEY)) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       // ENCRYPTION_KEY ya fue validado en la condición if anterior
+       
       const result = decoded.slice(0, -ENCRYPTION_KEY.length)
       if (!result) {
         throw new Error('El resultado de desencriptación legacy está vacío')
@@ -212,7 +211,7 @@ function decryptLegacy(encryptedText: string): string {
     }
 
     // Intentar con clave por defecto antigua
-    const oldDefaultKey = 'default-key-change-in-production'
+    const oldDefaultKey = 'default-key-change-in-production' // guard:allow-secret
     if (decoded.endsWith(oldDefaultKey)) {
       const result = decoded.slice(0, -oldDefaultKey.length)
       if (!result) {

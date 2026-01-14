@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -33,11 +33,7 @@ export default function StudyFlashcardPage() {
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  useEffect(() => {
-    loadFlashcard()
-  }, [flashcardId])
-
-  async function loadFlashcard() {
+  const loadFlashcard = useCallback(async () => {
     try {
       setLoading(true)
       const res = await fetch('/api/flashcards')
@@ -64,7 +60,11 @@ export default function StudyFlashcardPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [flashcardId])
+
+  useEffect(() => {
+    loadFlashcard()
+  }, [flashcardId, loadFlashcard])
 
   const handleReview = async (
     isCorrect: boolean,
@@ -144,8 +144,9 @@ export default function StudyFlashcardPage() {
 
       <Card
         className={`
-          min-h-[400px] cursor-pointer transition-all
-          ${isFlipped ? 'bg-primary/5' : ''}
+          min-h-[400px] cursor-pointer transition-all duration-300
+          ${isFlipped ? 'bg-primary/5 border-primary/20 shadow-lg' : 'hover:shadow-md'}
+          transform hover:scale-[1.01]
         `}
         onClick={() => setIsFlipped(!isFlipped)}
       >

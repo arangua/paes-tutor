@@ -75,7 +75,7 @@ export function ShareMaterialButton({
         <DialogHeader>
           <DialogTitle>Compartir Material</DialogTitle>
           <DialogDescription>
-            Comparte "{materialTitle}" con el otro estudiante. Podrá verlo en su lista de materiales
+            Comparte &quot;{materialTitle}&quot; con el otro estudiante. Podrá verlo en su lista de materiales
             compartidos.
           </DialogDescription>
         </DialogHeader>

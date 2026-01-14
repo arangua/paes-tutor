@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Loader2, Share2, Eye, EyeOff, BookOpen, User, MessageSquare, FileText } from 'lucide-react'
+import { Loader2, Share2, Eye, EyeOff, BookOpen, MessageSquare, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 import { BackButton } from '@/components/navigation/back-button'
 import Link from 'next/link'
@@ -115,7 +115,7 @@ export default function SharedMaterialsPage() {
       setReceivedMaterials(prev =>
         prev.map(material =>
           material.id === sharedMaterialId
-            ? { ...material, viewed: true, viewedAt: new Date().toISOString() }
+            ? { ...material, viewed: true, viewedAt: safeToISOString(new Date()) }
             : material
         )
       )
@@ -268,7 +268,7 @@ export default function SharedMaterialsPage() {
                 <Share2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <p className="text-muted-foreground">No has compartido ningún material aún.</p>
                 <p className="text-sm text-muted-foreground mt-2">
-                  Usa el botón "Compartir" en cualquier material para compartirlo.
+                  Usa el botón &quot;Compartir&quot; en cualquier material para compartirlo.
                 </p>
               </CardContent>
             </Card>

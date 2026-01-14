@@ -65,7 +65,7 @@ export function CreateChallengeButton({
       if (!res.ok) throw new Error('Error al cargar exámenes')
       const data = await res.json()
       setExams(data.exams || [])
-    } catch (error) {
+    } catch {
       toast.error('Error al cargar exámenes')
     } finally {
       setLoadingExams(false)

@@ -47,14 +47,21 @@ export const authConfig: NextAuthConfig = {
         }
 
         try {
+          // Normalizar email a minúsculas para búsqueda case-insensitive
+          const normalizedEmail = (credentials.email as string).trim().toLowerCase()
+          logger.debug(
+            { type: 'auth', event: 'authorize_attempt', email: normalizedEmail },
+            'Intentando autenticar usuario'
+          )
+
           const user = await prisma.user.findUnique({
-            where: { email: credentials.email as string },
+            where: { email: normalizedEmail },
             include: { student: true },
           })
 
           if (!user) {
             logger.warn(
-              { type: 'auth', event: 'user_not_found', email: credentials.email },
+              { type: 'auth', event: 'user_not_found', email: normalizedEmail },
               'Usuario no encontrado'
             )
             return null
@@ -75,11 +82,26 @@ export const authConfig: NextAuthConfig = {
 
           if (!isPasswordValid) {
             logger.warn(
-              { type: 'auth', event: 'invalid_password', userId: user.id },
+              { 
+                type: 'auth', 
+                event: 'invalid_password', 
+                userId: user.id,
+                email: normalizedEmail 
+              },
               'Contraseña inválida'
             )
             return null
           }
+
+          logger.debug(
+            { 
+              type: 'auth', 
+              event: 'password_valid', 
+              userId: user.id,
+              email: normalizedEmail 
+            },
+            'Contraseña válida'
+          )
 
           logAuthEvent('login_success', user.id, true)
           return {
@@ -123,6 +145,19 @@ export const authConfig: NextAuthConfig = {
         session.user.studentId = token.studentId as string | null
       }
       return session
+    },
+  },
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === 'production' 
+        ? '__Secure-next-auth.session-token' // guard:allow-secret
+        : 'next-auth.session-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+      },
     },
   },
   secret: process.env.NEXTAUTH_SECRET,

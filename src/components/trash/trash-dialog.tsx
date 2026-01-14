@@ -113,8 +113,6 @@ export function TrashDialog({ open, onOpenChange, onRestore }: TrashDialogProps)
     {} as Record<TrashItem['type'], TrashItem[]>
   )
 
-  const allTypes = ['all', ...Object.keys(groupedItems)] as string[]
-
   const displayItems =
     selectedType === 'all' ? trashItems : groupedItems[selectedType as TrashItem['type']] || []
 

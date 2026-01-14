@@ -31,9 +31,9 @@ function getLogger(): LoggerInstance {
     loggerInstance = {
       info: (obj: Record<string, unknown>, msg?: string) => {
         if (isBrowser) {
-          console.log('[INFO]', msg || '', obj)
+          console.warn('[INFO]', msg || '', obj)
         } else {
-          console.log(JSON.stringify({ level: 'info', ...obj, msg: msg || '' }))
+          console.warn(JSON.stringify({ level: 'info', ...obj, msg: msg || '' }))
         }
       },
       error: (obj: Record<string, unknown>, msg?: string) => {
@@ -45,9 +45,9 @@ function getLogger(): LoggerInstance {
       },
       debug: (obj: Record<string, unknown>, msg?: string) => {
         if (isBrowser) {
-          console.debug('[DEBUG]', msg || '', obj)
+          console.warn('[DEBUG]', msg || '', obj)
         } else {
-          console.debug(JSON.stringify({ level: 'debug', ...obj, msg: msg || '' }))
+          console.warn(JSON.stringify({ level: 'debug', ...obj, msg: msg || '' }))
         }
       },
       warn: (obj: Record<string, unknown>, msg?: string) => {
@@ -67,13 +67,13 @@ function getLogger(): LoggerInstance {
     // Fallback a logger simple si no estamos en Node.js
     loggerInstance = {
       info: (obj: Record<string, unknown>, msg?: string) => {
-        console.log('[INFO]', msg || '', obj)
+        console.warn('[INFO]', msg || '', obj)
       },
       error: (obj: Record<string, unknown>, msg?: string) => {
         console.error('[ERROR]', msg || '', obj)
       },
       debug: (obj: Record<string, unknown>, msg?: string) => {
-        console.debug('[DEBUG]', msg || '', obj)
+        console.warn('[DEBUG]', msg || '', obj)
       },
       warn: (obj: Record<string, unknown>, msg?: string) => {
         console.warn('[WARN]', msg || '', obj)
@@ -84,7 +84,6 @@ function getLogger(): LoggerInstance {
 
   // Solo importar pino en Node.js runtime
   // Nota: require() es necesario aquí porque pino no soporta dynamic import en tiempo de ejecución
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const pinoModule = require('pino') as { default?: typeof import('pino'); [key: string]: unknown }
   const pino = (pinoModule.default || pinoModule) as typeof import('pino')
   const isDevelopment = process.env.NODE_ENV === 'development'
@@ -101,9 +100,9 @@ function getLogger(): LoggerInstance {
   // Solo agregar pino-pretty en desarrollo y si está disponible
   if (isDevelopment) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
       // Cargar pino-pretty dinámicamente solo cuando se necesite (solo en desarrollo)
       // require() es necesario porque dynamic import no funciona en este contexto de inicialización
+      // @ts-expect-error - pino-pretty es una dependencia opcional
       require('pino-pretty')
       loggerInstance = pino({
         level: 'debug',

@@ -7,7 +7,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Badge } from '@/components/ui/badge'
 import { Keyboard } from 'lucide-react'
 import type { KeyboardShortcut } from '@/hooks/useKeyboardShortcuts'
 

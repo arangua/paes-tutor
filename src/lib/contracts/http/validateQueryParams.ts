@@ -1,0 +1,38 @@
+import { z } from 'zod'
+
+/**
+ * Validador de query parameters
+ * 
+ * Extrae y valida query parameters de la URL
+ * Solo valida si el schema está definido (no valida si no hay schema)
+ * 
+ * @param request - NextRequest con la URL
+ * @param schema - Schema Zod para validar los query params (opcional)
+ * @returns Datos validados y tipados, o undefined si no hay schema
+ * @throws Error si la validación falla
+ */
+export function validateQueryParams<T>(
+  request: Request,
+  schema?: z.ZodSchema<T>
+): T | undefined {
+  if (!schema) {
+    return undefined
+  }
+
+  const { searchParams } = new URL(request.url)
+  const queryParams: Record<string, string> = {}
+
+  for (const [key, value] of searchParams.entries()) {
+    queryParams[key] = value
+  }
+
+  const result = schema.safeParse(queryParams)
+
+  if (!result.success) {
+    throw new Error(
+      `Invalid query parameters: ${result.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ')}`
+    )
+  }
+
+  return result.data
+}

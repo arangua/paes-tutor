@@ -1,5 +1,5 @@
 // Sistema de caché con soporte para memoria (desarrollo) y Redis (producción)
-// Preparado para migración fácil a Redis
+// Usa Upstash Redis cuando está disponible
 
 import { TIME_CONSTANTS } from './constants'
 
@@ -62,58 +62,126 @@ class MemoryCacheAdapter implements CacheAdapter {
   }
 }
 
-// Redis adapter (preparado para implementación futura)
-// class RedisCacheAdapter implements CacheAdapter {
-//   private client: Redis
-//
-//   constructor(client: Redis) {
-//     this.client = client
-//   }
-//
-//   async get<T>(key: string): Promise<T | null> {
-//     const data = await this.client.get(key)
-//     if (!data) return null
-//     return JSON.parse(data) as T
-//   }
-//
-//   async set<T>(key: string, data: T, ttl?: number): Promise<void> {
-//     const serialized = JSON.stringify(data)
-//     if (ttl) {
-//       await this.client.setex(key, Math.floor(ttl / 1000), serialized)
-//     } else {
-//       await this.client.set(key, serialized)
-//     }
-//   }
-//
-//   async delete(key: string): Promise<void> {
-//     await this.client.del(key)
-//   }
-//
-//   async clear(): Promise<void> {
-//     await this.client.flushdb()
-//   }
-// }
+// Redis adapter usando Upstash Redis
+class RedisCacheAdapter implements CacheAdapter {
+  private client: Awaited<ReturnType<typeof import('@upstash/redis').Redis>>
+
+  constructor(client: Awaited<ReturnType<typeof import('@upstash/redis').Redis>>) {
+    this.client = client
+  }
+
+  async get<T>(key: string): Promise<T | null> {
+    try {
+      const data = await this.client.get(key)
+      if (!data) return null
+      return data as T
+    } catch (error) {
+      console.error('Error al obtener del caché Redis:', error)
+      return null
+    }
+  }
+
+  async set<T>(key: string, data: T, ttl?: number): Promise<void> {
+    try {
+      if (ttl) {
+        await this.client.setex(key, Math.floor(ttl / 1000), data)
+      } else {
+        await this.client.set(key, data)
+      }
+    } catch (error) {
+      console.error('Error al guardar en caché Redis:', error)
+    }
+  }
+
+  async delete(key: string): Promise<void> {
+    try {
+      await this.client.del(key)
+    } catch (error) {
+      console.error('Error al eliminar del caché Redis:', error)
+    }
+  }
+
+  async clear(): Promise<void> {
+    // Upstash Redis no tiene flushdb en el plan gratuito
+    // En su lugar, usamos un patrón de prefijo para invalidar
+    console.warn('Redis clear() no está disponible en Upstash. Use invalidateCachePattern en su lugar.')
+  }
+}
 
 // Seleccionar adapter basado en configuración
-function getCacheAdapter(): CacheAdapter {
-  // En producción, si REDIS_URL está configurado, usar Redis
-  // const redisUrl = process.env.REDIS_URL
-  // if (redisUrl && process.env.NODE_ENV === 'production') {
-  //   const redis = new Redis(redisUrl)
-  //   return new RedisCacheAdapter(redis)
-  // }
+async function getCacheAdapter(): Promise<CacheAdapter> {
+  // Si UPSTASH_REDIS_REST_URL y UPSTASH_REDIS_REST_TOKEN están configurados, usar Redis
+  const redisUrl = process.env.UPSTASH_REDIS_REST_URL
+  const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN
+  
+  if (redisUrl && redisToken) {
+    try {
+      const { Redis } = await import('@upstash/redis')
+      const redis = new Redis({
+        url: redisUrl,
+        token: redisToken,
+      })
+      return new RedisCacheAdapter(redis)
+    } catch (error) {
+      console.error('Error al inicializar Redis, usando caché en memoria:', error)
+      return new MemoryCacheAdapter()
+    }
+  }
 
   // Por defecto, usar memoria
   return new MemoryCacheAdapter()
 }
 
-const cache = getCacheAdapter()
+// Inicializar caché de forma lazy
+let cachePromise: Promise<CacheAdapter> | null = null
+let cacheInstance: CacheAdapter | null = null
+
+async function getCacheInstance(): Promise<CacheAdapter> {
+  if (cacheInstance) {
+    return cacheInstance
+  }
+  if (!cachePromise) {
+    cachePromise = getCacheAdapter().then(adapter => {
+      cacheInstance = adapter
+      // Si es memoria, configurar cleanup periódico
+      if (adapter instanceof MemoryCacheAdapter) {
+        setupMemoryCacheCleanup(adapter)
+      }
+      return adapter
+    })
+  }
+  return cachePromise
+}
+
+function setupMemoryCacheCleanup(cache: MemoryCacheAdapter) {
+  // Limpiar caché cada 10 minutos (solo en Node.js runtime)
+  if (
+    typeof setInterval !== 'undefined' &&
+    typeof process !== 'undefined' &&
+    process.env.NEXT_RUNTIME !== 'edge'
+  ) {
+    const cleanupInterval = setInterval(() => {
+      cache.cleanup()
+    }, CACHE_CLEANUP_INTERVAL_MS)
+
+    // Limpiar en caso de que el proceso termine
+    if (typeof process !== 'undefined' && process.on) {
+      process.on('SIGTERM', () => {
+        clearInterval(cleanupInterval)
+      })
+      process.on('SIGINT', () => {
+        clearInterval(cleanupInterval)
+      })
+    }
+  }
+}
 
 // Si es memoria, configurar cleanup periódico
 // NOTA: Este setInterval se ejecuta a nivel de módulo y no se limpia explícitamente
 // Esto es intencional: el cleanup del caché debe ejecutarse mientras la aplicación esté corriendo
 // En producción, considerar usar un sistema de tareas programadas (cron) o un worker thread
-if (cache instanceof MemoryCacheAdapter) {
+// eslint-disable-next-line no-constant-condition
+if (false) {
   // Limpiar caché cada 10 minutos (solo en Node.js runtime)
   if (
     typeof setInterval !== 'undefined' &&
@@ -166,6 +234,7 @@ export async function getCached<T>(
   fetcher: () => Promise<T>,
   ttl?: number
 ): Promise<T> {
+  const cache = await getCacheInstance()
   const cached = await cache.get<T>(key)
 
   if (cached !== null) {
@@ -177,33 +246,53 @@ export async function getCached<T>(
   return data
 }
 
-export async function invalidateCache(pattern: string): Promise<void> {
+export async function invalidateCache(_pattern: string): Promise<void> {
+  const cache = await getCacheInstance()
   // En una implementación más sofisticada, usaríamos patrones
   // Por ahora, invalidamos manualmente
   await cache.clear()
 }
 
 export async function setCache<T>(key: string, data: T, ttl?: number): Promise<void> {
+  const cache = await getCacheInstance()
   await cache.set(key, data, ttl)
 }
 
 export async function getCache<T>(key: string): Promise<T | null> {
+  const cache = await getCacheInstance()
   return await cache.get<T>(key)
 }
 
 export async function deleteCache(key: string): Promise<void> {
+  const cache = await getCacheInstance()
   await cache.delete(key)
 }
 
 // Helper para invalidar por patrón (preparado para Redis)
 export async function invalidateCachePattern(pattern: string): Promise<void> {
-  // En Redis: usar SCAN + DEL
-  // Por ahora, invalidar todo si el patrón coincide con algún prefijo conocido
-  if (pattern.includes('*')) {
-    // Invalidar todo si hay wildcard (implementación simple)
-    await cache.clear()
+  const cache = await getCacheInstance()
+  
+  // Si es Redis, intentar usar SCAN para buscar patrones
+  if (cache instanceof RedisCacheAdapter) {
+    try {
+      // Upstash Redis no soporta SCAN directamente en REST API
+      // Por ahora, invalidar todo si hay wildcard
+      if (pattern.includes('*')) {
+        // En producción con Redis, considerar usar un prefijo para versiones
+        // y eliminar todas las claves con ese prefijo
+        console.warn('Invalidación por patrón con wildcard no está completamente soportada en Upstash Redis REST API')
+      } else {
+        await cache.delete(pattern)
+      }
+    } catch (error) {
+      console.error('Error al invalidar patrón en Redis:', error)
+    }
   } else {
-    // Invalidar clave específica
-    await cache.delete(pattern)
+    // Para memoria, invalidar todo si hay wildcard
+    if (pattern.includes('*')) {
+      await cache.clear()
+    } else {
+      await cache.delete(pattern)
+    }
   }
 }

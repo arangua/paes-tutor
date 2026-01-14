@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 
 export interface UserError {
   id: string
@@ -24,22 +24,21 @@ const MAX_ERRORS = 100 // Mantener solo los últimos 100 errores
  * Basado en Nielsen Heuristic #9: Help users recognize, diagnose, and recover from errors
  */
 export function useErrorHistory() {
-  const [errors, setErrors] = useState<UserError[]>([])
-
-  // Cargar historial al montar
-  useEffect(() => {
-    if (typeof window === 'undefined') return
+  // Inicializar estado desde localStorage de forma síncrona
+  const [errors, setErrors] = useState<UserError[]>(() => {
+    if (typeof window === 'undefined') return []
 
     try {
       const saved = localStorage.getItem(ERROR_HISTORY_KEY)
       if (saved) {
         const parsed = JSON.parse(saved)
-        setErrors(Array.isArray(parsed) ? parsed : [])
+        return Array.isArray(parsed) ? parsed : []
       }
     } catch {
       // Ignorar errores de localStorage
     }
-  }, [])
+    return []
+  })
 
   // Agregar error al historial
   const addError = useCallback((error: UserError) => {

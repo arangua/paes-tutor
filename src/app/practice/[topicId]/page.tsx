@@ -1,11 +1,18 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   AlertCircle,
   CheckCircle2,
@@ -14,12 +21,22 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
+  TrendingUp,
+  Clock,
+  BarChart3,
+  Award,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { HelpIcon } from '@/components/help/help-icon'
 import { BookmarkButton } from '@/components/bookmarks/bookmark-button'
 import { CreateFlashcardButton } from '@/components/flashcards/create-flashcard-button'
 import { CreateNoteButton } from '@/components/notes/create-note-button'
+import { StepByStepExplanationButton } from '@/components/explanations/step-by-step-explanation-button'
+import { Breadcrumbs } from '@/components/layout/breadcrumbs'
+import { SubjectIcon } from '@/lib/subject-icons'
+import { safeRound } from '@/app/api/notes/versions/validation-utils'
+import { validateIdParam } from '@/lib/validation-helpers'
+import Link from 'next/link'
 
 interface Question {
   id: string
@@ -52,24 +69,45 @@ interface Answer {
   answeredAt?: number
 }
 
+type PracticeMode = 'easy' | 'medium' | 'hard' | 'mixed'
+
 export default function PracticeTopicPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const topicId = params.topicId as string
+  const mode = (searchParams.get('mode') as PracticeMode) || 'mixed'
 
   const [questions, setQuestions] = useState<Question[]>([])
   const [topicName, setTopicName] = useState<string>('')
+  const [topicInfo, setTopicInfo] = useState<{ subjectName: string; subjectCode: string } | null>(
+    null
+  )
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [answers, setAnswers] = useState<Map<string, Answer>>(new Map())
   const [showExplanation, setShowExplanation] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [startTime, setStartTime] = useState<number>(Date.now())
+  const [practiceMode, setPracticeMode] = useState<PracticeMode>(mode)
   const questionStartTimeRef = useRef<number>(Date.now())
+  const [stats, setStats] = useState<{
+    correct: number
+    incorrect: number
+    total: number
+    streak: number
+    bestStreak: number
+  }>({
+    correct: 0,
+    incorrect: 0,
+    total: 0,
+    streak: 0,
+    bestStreak: 0,
+  })
 
+  // Cargar preguntas
   useEffect(() => {
-    if (!topicId) {
+    if (!validateIdParam(topicId)) {
       setError('ID de tema inválido')
       setIsLoading(false)
       return
@@ -80,7 +118,15 @@ export default function PracticeTopicPage() {
         setIsLoading(true)
         setError(null)
 
-        const res = await fetch(`/api/practice/questions?topicId=${topicId}&limit=20`)
+        const params = new URLSearchParams({
+          topicId,
+          limit: '20',
+        })
+        if (practiceMode !== 'mixed') {
+          params.append('difficulty', practiceMode)
+        }
+
+        const res = await fetch(`/api/practice/questions?${params.toString()}`)
         if (!res.ok) {
           throw new Error('Error al cargar preguntas')
         }
@@ -92,17 +138,25 @@ export default function PracticeTopicPage() {
 
         setQuestions(data.questions)
         setTopicName(data.topic?.nombre || 'Tema')
+        if (data.questions.length > 0) {
+          setTopicInfo({
+            subjectName: data.questions[0].subject.nombre,
+            subjectCode: data.questions[0].subject.codigo,
+          })
+        }
         setStartTime(Date.now())
         questionStartTimeRef.current = Date.now()
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error desconocido')
-        toast.error('Error al cargar preguntas')
+        toast.error('Error al cargar preguntas', {
+          description: err instanceof Error ? err.message : 'Error desconocido',
+        })
       } finally {
         setIsLoading(false)
       }
     }
     loadQuestions()
-  }, [topicId])
+  }, [topicId, practiceMode])
 
   const handleAnswerSelect = (optionId: string) => {
     if (showExplanation) return // No permitir cambiar respuesta después de ver explicación
@@ -123,6 +177,18 @@ export default function PracticeTopicPage() {
         answeredAt: Date.now(),
       })
       return newAnswers
+    })
+
+    // Actualizar estadísticas
+    setStats(prev => {
+      const newStreak = isCorrect ? prev.streak + 1 : 0
+      return {
+        correct: prev.correct + (isCorrect ? 1 : 0),
+        incorrect: prev.incorrect + (isCorrect ? 0 : 1),
+        total: prev.total + 1,
+        streak: newStreak,
+        bestStreak: Math.max(prev.bestStreak, newStreak),
+      }
     })
 
     // Mostrar feedback inmediato
@@ -200,7 +266,9 @@ export default function PracticeTopicPage() {
         sessionStorage.setItem(`practice-session-${data.session.id}`, JSON.stringify(data.session))
       }
 
-      toast.success('Sesión de práctica completada')
+      toast.success('Sesión de práctica completada', {
+        description: `Rendimiento: ${data.session.porcentaje.toFixed(1)}%`,
+      })
 
       // Redirigir a resultados
       router.push(`/practice/${topicId}/results?sessionId=${data.session.id}`)
@@ -213,23 +281,66 @@ export default function PracticeTopicPage() {
     }
   }
 
+  const handleModeChange = (newMode: PracticeMode) => {
+    setPracticeMode(newMode)
+    setCurrentQuestion(0)
+    setAnswers(new Map())
+    setShowExplanation(false)
+    setStats({
+      correct: 0,
+      incorrect: 0,
+      total: 0,
+      streak: 0,
+      bestStreak: 0,
+    })
+    // Recargar preguntas con el nuevo modo
+    router.replace(`/practice/${topicId}?mode=${newMode}`, { scroll: false })
+  }
+
   const getProgress = () => {
     if (questions.length === 0) return 0
     return ((currentQuestion + 1) / questions.length) * 100
   }
 
   const getScore = () => {
-    const correct = Array.from(answers.values()).filter(a => a.isCorrect).length
-    const total = answers.size
-    return total > 0 ? Math.round((correct / total) * 100) : 0
+    if (stats.total === 0) return 0
+    return safeRound((stats.correct / stats.total) * 100, 0)
+  }
+
+  const getDifficultyLabel = (dificultad: number) => {
+    if (dificultad <= 2)
+      return { label: 'Fácil', color: 'text-green-600', variant: 'default' as const }
+    if (dificultad <= 4)
+      return { label: 'Medio', color: 'text-yellow-600', variant: 'secondary' as const }
+    return { label: 'Difícil', color: 'text-red-600', variant: 'destructive' as const }
+  }
+
+  const getModeLabel = (mode: PracticeMode) => {
+    switch (mode) {
+      case 'easy':
+        return { label: 'Fácil', icon: '🟢', description: 'Preguntas de dificultad 1-2' }
+      case 'medium':
+        return { label: 'Medio', icon: '🟡', description: 'Preguntas de dificultad 3-4' }
+      case 'hard':
+        return { label: 'Difícil', icon: '🔴', description: 'Preguntas de dificultad 5' }
+      default:
+        return { label: 'Mixto', icon: '🎯', description: 'Todas las dificultades' }
+    }
   }
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Cargando preguntas...</p>
+        <div className="text-center space-y-4">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+          <div className="space-y-2">
+            <p className="text-lg font-semibold text-gray-900 dark:text-white">
+              Cargando preguntas...
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Preparando tu sesión de práctica personalizada
+            </p>
+          </div>
         </div>
       </div>
     )
@@ -237,8 +348,15 @@ export default function PracticeTopicPage() {
 
   if (error || questions.length === 0) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Card className="w-full max-w-md">
+      <div className="container mx-auto py-6 px-4 max-w-4xl">
+        <Breadcrumbs
+          items={[
+            { label: 'Inicio', href: '/' },
+            { label: 'Práctica', href: '/practice' },
+            { label: 'Error' },
+          ]}
+        />
+        <Card className="mt-6">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-destructive" />
@@ -246,8 +364,18 @@ export default function PracticeTopicPage() {
             </CardTitle>
             <CardDescription>{error || 'No se pudieron cargar las preguntas'}</CardDescription>
           </CardHeader>
-          <CardContent>
-            <Button onClick={() => router.push('/practice')}>Volver a Selección</Button>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {error ||
+                'No hay preguntas disponibles para este tema. Intenta con otro tema o verifica que haya contenido disponible.'}
+            </p>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => router.push('/practice')}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Volver a Selección
+              </Button>
+              <Button onClick={() => window.location.reload()}>Reintentar</Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -258,10 +386,23 @@ export default function PracticeTopicPage() {
   const currentAnswer = answers.get(currentQ.id)
   const isAnswered = !!currentAnswer
   const isCorrect = currentAnswer?.isCorrect || false
+  const difficultyInfo = getDifficultyLabel(currentQ.dificultad)
+  const modeInfo = getModeLabel(practiceMode)
 
   return (
     <div className="container mx-auto py-6 px-4 max-w-4xl">
-      {/* Header */}
+      {/* Breadcrumbs */}
+      <div className="mb-6">
+        <Breadcrumbs
+          items={[
+            { label: 'Inicio', href: '/' },
+            { label: 'Práctica', href: '/practice' },
+            { label: topicName },
+          ]}
+        />
+      </div>
+
+      {/* Header con modo de práctica */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <Button
@@ -272,19 +413,100 @@ export default function PracticeTopicPage() {
             <ArrowLeft className="h-4 w-4" />
             Volver
           </Button>
-          <div className="flex items-center gap-4">
-            <Badge variant="outline">{topicName}</Badge>
-            <Badge variant="secondary">
-              Pregunta {currentQuestion + 1} de {questions.length}
-            </Badge>
-            {isAnswered && (
-              <Badge variant={isCorrect ? 'default' : 'destructive'}>
-                {isCorrect ? 'Correcta' : 'Incorrecta'}
-              </Badge>
-            )}
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/practice/${topicId}/history`}>
+                <BarChart3 className="h-4 w-4 mr-2" />
+                Historial
+              </Link>
+            </Button>
+            <Select value={practiceMode} onValueChange={handleModeChange}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="mixed">
+                  <span className="flex items-center gap-2">
+                    <span>🎯</span>
+                    <span>Mixto</span>
+                  </span>
+                </SelectItem>
+                <SelectItem value="easy">
+                  <span className="flex items-center gap-2">
+                    <span>🟢</span>
+                    <span>Fácil</span>
+                  </span>
+                </SelectItem>
+                <SelectItem value="medium">
+                  <span className="flex items-center gap-2">
+                    <span>🟡</span>
+                    <span>Medio</span>
+                  </span>
+                </SelectItem>
+                <SelectItem value="hard">
+                  <span className="flex items-center gap-2">
+                    <span>🔴</span>
+                    <span>Difícil</span>
+                  </span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
-        <Progress value={getProgress()} className="h-2" />
+
+        {/* Información del tema y modo */}
+        <Card className="mb-4">
+          <CardHeader className="pb-3">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  {topicInfo && <SubjectIcon codigo={topicInfo.subjectCode} size={20} />}
+                  <CardTitle className="text-xl">{topicName}</CardTitle>
+                  <Badge variant={difficultyInfo.variant} className="text-xs">
+                    {difficultyInfo.label}
+                  </Badge>
+                </div>
+                <CardDescription>
+                  {topicInfo?.subjectName} • {currentQ.topic.ejeTematico}
+                </CardDescription>
+              </div>
+              <Badge variant="outline" className="text-xs">
+                {modeInfo.icon} {modeInfo.label}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-4 text-sm">
+                <span className="text-muted-foreground">
+                  Pregunta {currentQuestion + 1} de {questions.length}
+                </span>
+                {isAnswered && (
+                  <Badge variant={isCorrect ? 'default' : 'destructive'}>
+                    {isCorrect ? 'Correcta' : 'Incorrecta'}
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-4 text-sm">
+                {stats.total > 0 && (
+                  <>
+                    <span className="text-muted-foreground">
+                      {stats.correct} / {stats.total} correctas
+                    </span>
+                    <Badge variant="secondary">{getScore()}%</Badge>
+                    {stats.streak > 0 && (
+                      <Badge variant="default" className="flex items-center gap-1">
+                        <Award className="h-3 w-3" />
+                        Racha: {stats.streak}
+                      </Badge>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+            <Progress value={getProgress()} className="h-2" />
+          </CardContent>
+        </Card>
       </div>
 
       {/* Question Card */}
@@ -293,7 +515,10 @@ export default function PracticeTopicPage() {
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-2">
               <CardTitle className="text-xl">Pregunta {currentQuestion + 1}</CardTitle>
-              <BookmarkButton questionId={currentQ.id} />
+              <Badge variant="outline" className="text-xs">
+                Dificultad: {difficultyInfo.label}
+              </Badge>
+              <BookmarkButton questionId={currentQ.id} size="sm" />
               <CreateFlashcardButton
                 questionId={currentQ.id}
                 defaultFront={currentQ.enunciado}
@@ -308,10 +533,13 @@ export default function PracticeTopicPage() {
                 size="sm"
               />
             </div>
-            <HelpIcon content="Selecciona una respuesta para recibir feedback inmediato. Puedes navegar entre preguntas con los botones de abajo." />
+            <HelpIcon
+              content="Selecciona una respuesta para recibir feedback inmediato. Puedes navegar entre preguntas con los botones de abajo. El modo de práctica te permite estudiar sin presión de tiempo."
+              side="right"
+            />
           </div>
           <CardDescription>
-            {currentQ.subject.nombre} - {currentQ.topic.ejeTematico}
+            {currentQ.subject.nombre} • {currentQ.topic.ejeTematico}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -391,13 +619,36 @@ export default function PracticeTopicPage() {
             >
               <div className="flex items-start gap-2">
                 {isCorrect ? (
-                  <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5" />
+                  <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
                 ) : (
-                  <XCircle className="h-5 w-5 text-orange-600 mt-0.5" />
+                  <XCircle className="h-5 w-5 text-orange-600 mt-0.5 flex-shrink-0" />
                 )}
                 <div className="flex-1">
-                  <p className="font-semibold mb-2">{isCorrect ? '¡Correcto!' : 'Incorrecto'}</p>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <p className="font-semibold">{isCorrect ? '¡Correcto! 🎉' : 'Incorrecto'}</p>
+                    <StepByStepExplanationButton
+                      question={currentQ.enunciado}
+                      correctAnswer={
+                        currentQ.options.find(opt => opt.esCorrecta)?.texto || 'Respuesta correcta'
+                      }
+                      studentAnswer={
+                        selectedOption
+                          ? currentQ.options.find(opt => opt.id === selectedOption)?.texto
+                          : undefined
+                      }
+                      topic={currentQ.topic?.nombre}
+                      subject={currentQ.subject.nombre}
+                      variant="outline"
+                      size="sm"
+                    />
+                  </div>
                   <p className="text-sm text-muted-foreground">{currentQ.explicacion}</p>
+                  {currentAnswer?.tiempoSegundos && (
+                    <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      Tiempo: {currentAnswer.tiempoSegundos}s
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -416,7 +667,18 @@ export default function PracticeTopicPage() {
           <span className="text-sm text-muted-foreground">
             Progreso: {answers.size} / {questions.length}
           </span>
-          {answers.size > 0 && <Badge variant="secondary">{getScore()}% correctas</Badge>}
+          {stats.total > 0 && (
+            <Badge variant="secondary" className="flex items-center gap-1">
+              <TrendingUp className="h-3 w-3" />
+              {getScore()}%
+            </Badge>
+          )}
+          {stats.bestStreak > 0 && (
+            <Badge variant="default" className="flex items-center gap-1">
+              <Award className="h-3 w-3" />
+              Mejor racha: {stats.bestStreak}
+            </Badge>
+          )}
         </div>
 
         {currentQuestion < questions.length - 1 ? (

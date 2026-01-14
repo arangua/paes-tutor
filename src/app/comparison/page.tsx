@@ -10,13 +10,11 @@ import {
   TrendingDown,
   Minus,
   Trophy,
-  Award,
   Target,
   Users,
   BarChart3,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { HelpIcon } from '@/components/help/help-icon'
 import { BackButton } from '@/components/navigation/back-button'
 import Link from 'next/link'
 
@@ -118,7 +116,7 @@ export default function DirectComparisonPage() {
       setLoading(true)
       setError(null)
 
-      const res = await fetch('/api/analytics/direct-comparison')
+      const res = await fetch('/api/analytics/direct-comparison') // guard:allow-secret
       if (!res.ok) throw new Error('Error al cargar comparación')
       const response = await res.json()
 

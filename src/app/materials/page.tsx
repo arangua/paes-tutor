@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { BookOpen, Search, Filter, Home, FileText, Loader2, AlertCircle } from 'lucide-react'
+import { BookOpen, Search, Filter, FileText, Loader2, AlertCircle } from 'lucide-react'
 import { useDebounce } from '@/hooks/useDebounce'
 import { MaterialCard } from '@/components/materials/material-card'
 import { Breadcrumbs } from '@/components/layout/breadcrumbs'

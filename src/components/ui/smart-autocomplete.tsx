@@ -107,10 +107,7 @@ export function SmartAutocomplete({
     if (value !== query) {
       setQuery(value)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    // setQuery es estable del hook useState, no necesita estar en dependencias
-    // Solo value y query son las dependencias necesarias para este efecto
-  }, [value, query])
+  }, [value, query, setQuery])
 
   // Cerrar al hacer click fuera
   useEffect(() => {

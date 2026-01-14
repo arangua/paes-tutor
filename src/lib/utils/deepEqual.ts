@@ -50,7 +50,7 @@ export function deepEqual(a: unknown, b: unknown): boolean {
 export function safeDeepEqual(a: unknown, b: unknown): boolean {
   try {
     return deepEqual(a, b)
-  } catch (error) {
+  } catch {
     // Si hay error (referencia circular, etc.), usar JSON.stringify como fallback
     try {
       return JSON.stringify(a) === JSON.stringify(b)

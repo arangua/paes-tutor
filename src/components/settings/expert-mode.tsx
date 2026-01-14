@@ -1,12 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, startTransition } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Sparkles, Zap, Keyboard, Eye, EyeOff } from 'lucide-react'
+import { Sparkles, Zap, Keyboard, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 
 const EXPERT_MODE_KEY = 'paes-tutor-expert-mode'
@@ -24,26 +23,31 @@ interface ExpertModeSettings {
  * Basado en estándares de VS Code, GitHub, Linear
  */
 export function ExpertMode() {
-  const [settings, setSettings] = useState<ExpertModeSettings>({
+  // Inicializar con valores por defecto para que servidor y cliente rendericen lo mismo
+  const defaultSettings: ExpertModeSettings = {
     enabled: false,
     showAllShortcuts: false,
     compactView: false,
     advancedFeatures: false,
     quickActions: false,
-  })
+  }
 
-  // Cargar configuración
+  const [settings, setSettings] = useState<ExpertModeSettings>(defaultSettings)
+
+  // Cargar configuración desde localStorage solo después del montaje
   useEffect(() => {
-    if (typeof window === 'undefined') return
-
-    try {
-      const saved = localStorage.getItem(EXPERT_MODE_KEY)
-      if (saved) {
-        setSettings(JSON.parse(saved))
+    // Usar startTransition para evitar renders en cascada
+    startTransition(() => {
+      try {
+        const saved = localStorage.getItem(EXPERT_MODE_KEY)
+        if (saved) {
+          const parsed = JSON.parse(saved) as ExpertModeSettings
+          setSettings(parsed)
+        }
+      } catch {
+        // Ignorar errores
       }
-    } catch {
-      // Ignorar errores
-    }
+    })
   }, [])
 
   // Guardar configuración
@@ -212,33 +216,31 @@ export function ExpertMode() {
  * Hook para usar configuración de modo experto
  */
 export function useExpertMode() {
-  const [settings, setSettings] = useState<ExpertModeSettings | null>(null)
+  // Inicializar con valores por defecto para evitar problemas de hidratación
+  const defaultSettings: ExpertModeSettings = {
+    enabled: false,
+    showAllShortcuts: false,
+    compactView: false,
+    advancedFeatures: false,
+    quickActions: false,
+  }
 
+  const [settings, setSettings] = useState<ExpertModeSettings | null>(defaultSettings)
+
+  // Cargar configuración desde localStorage solo después del montaje
   useEffect(() => {
-    if (typeof window === 'undefined') return
-
-    try {
-      const saved = localStorage.getItem(EXPERT_MODE_KEY)
-      if (saved) {
-        setSettings(JSON.parse(saved))
-      } else {
-        setSettings({
-          enabled: false,
-          showAllShortcuts: false,
-          compactView: false,
-          advancedFeatures: false,
-          quickActions: false,
-        })
+    // Usar startTransition para evitar renders en cascada
+    startTransition(() => {
+      try {
+        const saved = localStorage.getItem(EXPERT_MODE_KEY)
+        if (saved) {
+          const parsed = JSON.parse(saved) as ExpertModeSettings
+          setSettings(parsed)
+        }
+      } catch {
+        // Ignorar errores
       }
-    } catch {
-      setSettings({
-        enabled: false,
-        showAllShortcuts: false,
-        compactView: false,
-        advancedFeatures: false,
-        quickActions: false,
-      })
-    }
+    })
   }, [])
 
   return settings

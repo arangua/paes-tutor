@@ -41,6 +41,13 @@ export function getAvailableShortcutActions(
       category: 'Navegación',
     },
     {
+      id: 'nav-recommendations',
+      name: 'Ir a Recomendaciones',
+      description: 'Abre la página de recomendaciones personalizadas',
+      handler: () => router.push('/recommendations'),
+      category: 'Navegación',
+    },
+    {
       id: 'nav-ai-tutor',
       name: 'Ir a Tutor IA',
       description: 'Abre el tutor de inteligencia artificial',

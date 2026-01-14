@@ -1,8 +1,41 @@
+// @vitest-environment node
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { NextRequest } from 'next/server'
 import { POST } from './route'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/get-session'
+
+// Mock de next/server para parsear body correctamente
+vi.mock('next/server', async () => {
+  const actual = await vi.importActual('next/server')
+  return {
+    ...actual,
+    NextRequest: class NextRequest {
+      url: string
+      nextUrl: { searchParams: URLSearchParams; pathname: string }
+      headers: Headers
+      body: any
+      method: string
+      constructor(url: string | URL, init?: { method?: string; headers?: HeadersInit; body?: BodyInit }) {
+        const urlObj = typeof url === 'string' ? new URL(url) : url
+        this.url = urlObj.toString()
+        this.nextUrl = {
+          searchParams: urlObj.searchParams,
+          pathname: urlObj.pathname,
+        }
+        this.headers = new Headers(init?.headers)
+        this.method = init?.method || 'GET'
+        this.body = init?.body
+      }
+      async json() {
+        if (typeof this.body === 'string') {
+          return JSON.parse(this.body)
+        }
+        return this.body || {}
+      }
+    },
+  }
+})
 
 // Mock de dependencias
 vi.mock('@/lib/prisma', () => ({

@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentStudentId } from '@/lib/get-session'
 import { handleApiError } from '@/lib/api-helpers'
-import { withRateLimit, RateLimitType } from '@/lib/rate-limit-middleware'
+import { withRateLimit } from '@/lib/rate-limit-middleware'
 import { logApiRequest } from '@/lib/logger'
-import { getCached, cacheKeys, invalidateCachePattern } from '@/lib/cache'
+import { getCached, cacheKeys } from '@/lib/cache'
+import { TIME_CONSTANTS } from '@/lib/constants'
 import {
   generateRecommendations,
   type PerformanceMetric as MetricType,
@@ -55,16 +56,18 @@ export async function GET(request: NextRequest) {
             })
 
             // Convertir a formato esperado por el algoritmo
-            const performanceMetrics: MetricType[] = metrics.map(m => ({
-              topicId: m.topicId,
-              topicName: m.topic.nombre,
-              subjectName: m.topic.subject.nombre,
-              subjectCode: m.topic.subject.codigo,
-              porcentaje: m.porcentaje,
-              totalPreguntas: m.totalPreguntas,
-              correctas: m.correctas,
-              nivel: m.nivel,
-            }))
+            const performanceMetrics: MetricType[] = metrics
+              .filter(m => m.topic && m.topic.subject)
+              .map(m => ({
+                topicId: m.topicId,
+                topicName: m.topic?.nombre || '',
+                subjectName: m.topic?.subject?.nombre || '',
+                subjectCode: m.topic?.subject?.codigo || '',
+                porcentaje: m.porcentaje,
+                totalPreguntas: m.totalPreguntas,
+                correctas: m.correctas,
+                nivel: m.nivel,
+              }))
 
             // Obtener exámenes disponibles
             // Optimizar usando select en lugar de include
@@ -95,25 +98,35 @@ export async function GET(request: NextRequest) {
             })
 
             // Convertir a formato esperado
-            const availableExams = exams.map(exam => ({
-              id: exam.id,
-              titulo: exam.titulo,
-              subjectId: exam.subjectId,
-              subject: {
-                nombre: exam.subject.nombre,
-                codigo: exam.subject.codigo,
-              },
-              questions: exam.questions.map(eq => ({
-                question: {
-                  topicId: eq.question.topicId,
-                },
-              })),
-            }))
+            // CORRECCIÓN: Validar que exams sea un array válido antes de usar filter() y map()
+            const safeExams = Array.isArray(exams) ? exams : []
+            const availableExams = safeExams
+              .filter(exam => exam && typeof exam === 'object' && exam.subject)
+              .map(exam => {
+                // CORRECCIÓN: Validar que exam.questions sea un array válido antes de usar filter() y map()
+                const safeQuestions = Array.isArray(exam.questions) ? exam.questions : []
+                return {
+                  id: exam.id,
+                  titulo: exam.titulo,
+                  subjectId: exam.subjectId,
+                  subject: {
+                    nombre: exam.subject?.nombre || '',
+                    codigo: exam.subject?.codigo || '',
+                  },
+                  questions: safeQuestions
+                    .filter(eq => eq && typeof eq === 'object' && eq.question)
+                    .map(eq => ({
+                      question: {
+                        topicId: eq.question?.topicId || null,
+                      },
+                    })),
+                }
+              })
 
             // Generar recomendaciones
             return generateRecommendations(performanceMetrics, availableExams)
           },
-          5 * 60 * 1000 // Cache por 5 minutos
+          TIME_CONSTANTS.RECOMMENDATIONS_CACHE_TTL_MS
         )
 
         return NextResponse.json(recommendations)

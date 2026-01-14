@@ -148,7 +148,7 @@ export function getErrorMessage(
       description: context?.item
         ? `No se encontró ${context.item}.`
         : 'Los datos solicitados no están disponibles.',
-      solution: context?.suggestion || 'Verifica que los datos existan o intenta más tarde.',
+      solution: typeof context?.suggestion === 'string' ? context.suggestion : 'Verifica que los datos existan o intenta más tarde.',
       severity: 'medium',
       category: 'data',
     },
@@ -282,7 +282,7 @@ export function getErrorMessage(
   return {
     code: ERROR_CODES.SYSTEM_UNKNOWN,
     title: 'Error desconocido',
-    description: context?.message || 'Ocurrió un error inesperado.',
+    description: typeof context?.message === 'string' ? context.message : 'Ocurrió un error inesperado.',
     solution: 'Por favor, intenta nuevamente o contacta al soporte si el problema persiste.',
     severity: 'high',
     category: 'system',
@@ -302,17 +302,19 @@ export function extractErrorInfo(error: unknown): {
 } {
   if (error instanceof Error) {
     // Intentar extraer código de error del mensaje
-    const codeMatch = error.message.match(/\[([A-Z]+-\d+)\]/)
+    const errorMessage = error.message || 'Error desconocido'
+    const codeMatch = errorMessage.match(/\[([A-Z]+-\d+)\]/)
     if (codeMatch) {
+      const cleanedMessage = errorMessage.replace(/\[([A-Z]+-\d+)\]\s*/, '')
       return {
         code: codeMatch[1],
-        message: error.message.replace(/\[([A-Z]+-\d+)\]\s*/, ''),
+        message: cleanedMessage || 'Error desconocido',
       }
     }
 
     return {
       code: ERROR_CODES.SYSTEM_UNKNOWN,
-      message: error.message,
+      message: errorMessage,
     }
   }
 

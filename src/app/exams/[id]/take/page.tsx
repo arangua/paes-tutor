@@ -5,8 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
-import { AlertCircle, Clock, CheckCircle2, XCircle, Loader2, ArrowLeft, X } from 'lucide-react'
+import { AlertCircle, Clock, CheckCircle2, XCircle, Loader2, ArrowLeft } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -20,11 +19,12 @@ import { HelpIcon } from '@/components/help/help-icon'
 import { captureError } from '@/lib/monitoring'
 import { validateIdParam } from '@/lib/validation-helpers'
 import { useKeyboardShortcuts, examShortcuts } from '@/hooks/useKeyboardShortcuts'
-import { getErrorMessage, extractErrorInfo, ERROR_CODES } from '@/lib/error-messages'
+import { getErrorMessage, extractErrorInfo } from '@/lib/error-messages'
 import { ErrorMessageComponent } from '@/components/ui/error-message'
 import { BookmarkButton } from '@/components/bookmarks/bookmark-button'
 import { ProgressWithTime } from '@/components/ui/progress-with-time'
 import { TIME_CONSTANTS } from '@/lib/constants'
+
 
 interface Exam {
   id: string
@@ -66,6 +66,36 @@ interface Answer {
   omitida?: boolean
 }
 
+/**
+ * Página para realizar un examen interactivo
+ * 
+ * @component
+ * @description
+ * Permite a los estudiantes realizar exámenes completos con las siguientes funcionalidades:
+ * - Timer con countdown para exámenes con tiempo límite
+ * - Auto-guardado de respuestas cada 2 segundos
+ * - Navegación entre preguntas
+ * - Vista de miniaturas de preguntas
+ * - Indicadores visuales de estado (respondida/omitida)
+ * - Auto-submit cuando se agota el tiempo
+ * - Validación de ID de examen (formato CUID)
+ * 
+ * @example
+ * ```tsx
+ * // Navegación desde otra página
+ * router.push('/exams/c123456789012345678901234/take') // guard:allow-secret
+ * ```
+ * 
+ * @remarks
+ * - Usa validación de ID con formato CUID
+ * - Implementa auto-guardado para prevenir pérdida de datos
+ * - Maneja estados de carga, error y éxito
+ * - Soporta atajos de teclado para navegación
+ * - Incluye confirmación antes de cancelar examen
+ * 
+ * @see {@link useKeyboardShortcuts} Para atajos de teclado
+ * @see {@link validateIdParam} Para validación de IDs
+ */
 export default function TakeExamPage() {
   const params = useParams()
   const router = useRouter()
@@ -358,7 +388,7 @@ export default function TakeExamPage() {
         },
       })
     }
-  }, [attempt, exam, answers, examId, router, isSubmitting])
+  }, [attempt, exam, answers, examId, router, isSubmitting, handleSubmit])
 
   const handleSubmit = useCallback(async () => {
     if (!attempt || !exam || isSubmitting) return
@@ -399,10 +429,7 @@ export default function TakeExamPage() {
     }, 1000)
 
     return () => clearInterval(interval)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    // handleSubmit está memoizado con useCallback y es estable, no necesita estar en deps
-    // timeRemaining, attempt e isSubmitting son las únicas dependencias necesarias para el efecto
-  }, [timeRemaining, attempt, isSubmitting])
+  }, [timeRemaining, attempt, isSubmitting, handleSubmit])
 
   // Auto-guardar respuestas con prevención de race condition
   useEffect(() => {
@@ -536,7 +563,6 @@ export default function TakeExamPage() {
             path: typeof window !== 'undefined' ? window.location.pathname : '/exams/[id]/take',
             operation: 'cancelar examen',
           })
-          const errorMessage = errorData.error || 'Error desconocido'
           const errorDetails = errorData.details ? `: ${errorData.details}` : ''
 
           // Mostrar error mejorado

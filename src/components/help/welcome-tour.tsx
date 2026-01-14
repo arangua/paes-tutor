@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
@@ -14,6 +14,7 @@ import {
   CheckCircle2,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { safeRound } from '@/app/api/notes/versions/validation-utils'
 
 interface WelcomeTourProps {
   onComplete: () => void
@@ -118,7 +119,7 @@ export function WelcomeTour({ onComplete, onSkip }: WelcomeTourProps) {
           <div className="space-y-2">
             <div className="flex justify-between text-sm text-muted-foreground">
               <span>Progreso del tour</span>
-              <span>{Math.round(progress)}%</span>
+              <span>{safeRound(progress, 0)}%</span>
             </div>
             <div className="w-full bg-muted rounded-full h-2">
               <div

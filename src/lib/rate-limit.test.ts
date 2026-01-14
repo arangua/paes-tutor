@@ -23,9 +23,11 @@ describe('rate-limit', () => {
       const identifier = 'test-ip-2'
       const result = await apiRateLimit.general(identifier)
 
-      expect(result.limit).toBe(10)
+      // En desarrollo el límite es 100, en producción es 10
+      const expectedLimit = process.env.NODE_ENV === 'production' ? 10 : 100
+      expect(result.limit).toBe(expectedLimit)
       expect(result.reset).toBeGreaterThan(Date.now())
-      expect(result.remaining).toBeLessThanOrEqual(10)
+      expect(result.remaining).toBeLessThanOrEqual(expectedLimit)
     })
   })
 
@@ -58,8 +60,10 @@ describe('rate-limit', () => {
       const identifier = 'test-ip-5'
       const result = await apiRateLimit.read(identifier)
 
-      expect(result.limit).toBe(30)
-      expect(result.remaining).toBeLessThanOrEqual(30)
+      // En desarrollo el límite es 200, en producción es 30
+      const expectedLimit = process.env.NODE_ENV === 'production' ? 30 : 200
+      expect(result.limit).toBe(expectedLimit)
+      expect(result.remaining).toBeLessThanOrEqual(expectedLimit)
     })
   })
 

@@ -115,15 +115,6 @@ describe('challenge-timeout', () => {
       const recentDate = new Date()
       recentDate.setDate(recentDate.getDate() - 3) // Solo 3 días atrás
 
-      const recentChallenges = [
-        {
-          id: 'challenge-3',
-          challengerId: 'student-1',
-          challengedId: 'student-2',
-          createdAt: recentDate,
-        },
-      ]
-
       vi.mocked(prisma.challenge.findMany).mockResolvedValue([]) // No encuentra desafíos expirados
 
       const result = await cancelExpiredChallenges()

@@ -8,6 +8,7 @@ import {
   CHALLENGE_STATUS,
   PERCENTAGE_MULTIPLIER,
 } from '@/lib/challenge-constants'
+import { safeRound, safeToISOString, safeDivide, ensureFiniteNumber } from '@/app/api/notes/versions/validation-utils'
 
 export const runtime = 'nodejs'
 
@@ -106,19 +107,21 @@ export async function GET(request: NextRequest) {
         },
       })
 
-      // Calcular tasa de aceptación
+      // ✅ Enterprise: Calcular tasa de aceptación usando funciones seguras
       const totalProcessed =
         completedChallenges + activeChallenges + pendingChallenges + expiredChallenges
-      const acceptanceRate =
-        totalProcessed > 0
-          ? ((completedChallenges + activeChallenges) / totalProcessed) * PERCENTAGE_MULTIPLIER
+      const safeTotalProcessed = ensureFiniteNumber(totalProcessed, 0)
+      const safeAccepted = ensureFiniteNumber(completedChallenges + activeChallenges, 0)
+      const acceptanceRate = safeTotalProcessed > 0
+          ? safeDivide(safeAccepted, safeTotalProcessed, 0) * PERCENTAGE_MULTIPLIER
           : 0
 
-      // Calcular win rate del usuario
+      // ✅ Enterprise: Calcular win rate del usuario usando funciones seguras
       const userCompletedChallenges = userWins + userLosses + userTies
-      const userWinRate =
-        userCompletedChallenges > 0
-          ? (userWins / userCompletedChallenges) * PERCENTAGE_MULTIPLIER
+      const safeUserCompleted = ensureFiniteNumber(userCompletedChallenges, 0)
+      const safeUserWins = ensureFiniteNumber(userWins, 0)
+      const userWinRate = safeUserCompleted > 0
+          ? safeDivide(safeUserWins, safeUserCompleted, 0) * PERCENTAGE_MULTIPLIER
           : 0
 
       const metrics = {
@@ -129,17 +132,17 @@ export async function GET(request: NextRequest) {
           pending: pendingChallenges,
           expired: expiredChallenges,
           expiringSoon,
-          acceptanceRate: Math.round(acceptanceRate * 100) / 100,
+          acceptanceRate: safeRound(acceptanceRate, 2),
         },
         user: {
           total: userChallenges,
           wins: userWins,
           losses: userLosses,
           ties: userTies,
-          winRate: Math.round(userWinRate * 100) / 100,
+          winRate: safeRound(userWinRate, 2),
           completed: userCompletedChallenges,
         },
-        timestamp: new Date().toISOString(),
+        timestamp: safeToISOString(new Date()),
       }
 
       return NextResponse.json({ metrics })

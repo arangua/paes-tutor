@@ -1,25 +1,73 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+// @vitest-environment node
+// Mock de next/server ANTES de cualquier import
+import { vi } from 'vitest'
+
+// Mock completo de next/server para evitar problemas con next-auth
+// No intentamos importActual porque el módulo no existe en el entorno de pruebas
+vi.mock('next/server', () => {
+  return {
+    NextRequest: class NextRequest {
+      url: string
+      nextUrl: { searchParams: URLSearchParams }
+      headers: Headers
+      body: any
+      method: string
+      constructor(url: string, init?: any) {
+        this.url = url
+        this.nextUrl = { searchParams: new URLSearchParams() }
+        this.headers = new Headers()
+        this.body = init?.body
+        this.method = init?.method || 'GET'
+      }
+      async json() {
+        if (typeof this.body === 'string') {
+          return JSON.parse(this.body)
+        }
+        return this.body || {}
+      }
+    },
+    NextResponse: {
+      json: (body: any, init?: { status?: number }) => {
+        return new Response(JSON.stringify(body), {
+          status: init?.status || 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      },
+    },
+  }
+})
+
+import { describe, it, expect, beforeEach } from 'vitest'
 import { POST } from './route'
 import { NextRequest } from 'next/server'
 import { getCurrentUser } from '@/lib/get-session'
 import * as cheerio from 'cheerio'
-
-// Mock fetch global
-global.fetch = vi.fn()
+import axios from 'axios'
 
 // Mock dependencies
 vi.mock('@/lib/get-session', () => ({
   getCurrentUser: vi.fn(),
 }))
 
-// No necesitamos mockear axios ya que ahora usamos fetch nativo
+// Mock axios
+vi.mock('axios', () => ({
+  default: {
+    get: vi.fn(),
+    isAxiosError: vi.fn((error: any) => {
+      return error && (error.isAxiosError === true || error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND' || error.code === 'ECONNABORTED' || error.response)
+    }),
+  },
+  isAxiosError: vi.fn((error: any) => {
+    return error && (error.isAxiosError === true || error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND' || error.code === 'ECONNABORTED' || error.response)
+  }),
+}))
 
 vi.mock('cheerio', () => ({
   load: vi.fn(),
 }))
 
 vi.mock('@/lib/rate-limit-middleware', () => ({
-  withRateLimit: vi.fn((req, handler) => handler()),
+  withRateLimit: vi.fn((_req, handler) => handler()),
 }))
 
 describe('POST /api/admin/fetch-demre-pdfs', () => {
@@ -100,10 +148,12 @@ describe('POST /api/admin/fetch-demre-pdfs', () => {
       </html>
     `
 
-    vi.mocked(global.fetch).mockResolvedValue({
-      ok: true,
+    // Mock axios.get para retornar HTML como ArrayBuffer
+    const mockBuffer = Buffer.from(mockHtml, 'utf-8')
+    vi.mocked(axios.get).mockResolvedValue({
+      data: mockBuffer,
       status: 200,
-      text: vi.fn().mockResolvedValue(mockHtml),
+      statusText: 'OK',
     } as any)
 
     // Mock cheerio.load - crear un mock más realista que simule el comportamiento real
@@ -139,7 +189,7 @@ describe('POST /api/admin/fetch-demre-pdfs', () => {
       // Si es un elemento (para $(element).attr() y $(element).text())
       const element = selectorOrElement
       return {
-        attr: vi.fn((attr: string) => element.href || null),
+        attr: vi.fn((_attr: string) => element.href || null),
         text: vi.fn(() => element.text || ''),
       }
     })
@@ -165,7 +215,11 @@ describe('POST /api/admin/fetch-demre-pdfs', () => {
   it('debe manejar errores al obtener la página', async () => {
     vi.mocked(getCurrentUser).mockResolvedValue({ id: 'user1', email: 'test@test.com' })
 
-    vi.mocked(global.fetch).mockRejectedValue(new Error('Network error'))
+    // Mock axios.get para retornar un error de red
+    const axiosError = new Error('Network error')
+    ;(axiosError as any).isAxiosError = true
+    ;(axiosError as any).code = 'ECONNREFUSED'
+    vi.mocked(axios.get).mockRejectedValue(axiosError)
 
     const request = new NextRequest('http://localhost:3000/api/admin/fetch-demre-pdfs', {
       method: 'POST',
@@ -185,10 +239,12 @@ describe('POST /api/admin/fetch-demre-pdfs', () => {
     const mockHtml =
       '<html><body><a href="paes-2026-lectora.pdf">PAES 2026 - Competencia Lectora</a></body></html>'
 
-    vi.mocked(global.fetch).mockResolvedValue({
-      ok: true,
+    // Mock axios.get para retornar HTML como ArrayBuffer
+    const mockBuffer = Buffer.from(mockHtml, 'utf-8')
+    vi.mocked(axios.get).mockResolvedValue({
+      data: mockBuffer,
       status: 200,
-      text: vi.fn().mockResolvedValue(mockHtml),
+      statusText: 'OK',
     } as any)
 
     const mockElement = {
@@ -211,7 +267,7 @@ describe('POST /api/admin/fetch-demre-pdfs', () => {
       // Si es un elemento (para $(element).attr() y $(element).text())
       const element = selectorOrElement
       return {
-        attr: vi.fn((attr: string) => element.href || null),
+        attr: vi.fn((_attr: string) => element.href || null),
         text: vi.fn(() => element.text || ''),
       }
     })

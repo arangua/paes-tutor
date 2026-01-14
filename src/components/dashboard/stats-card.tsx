@@ -1,11 +1,12 @@
 'use client'
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
-import { TrendingUp, TrendingDown, Minus, Award } from 'lucide-react'
+import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { useScoreImprovement } from '@/hooks/use-score-improvement'
 
 interface StatsCardProps {
   title: string
@@ -43,6 +44,13 @@ export function StatsCard({
   const isNegative = diff < 0
   const isNeutral = diff === 0
 
+  // Animación de mejora de puntaje si hay porcentaje
+  const { ScoreAnimation } = useScoreImprovement({
+    currentScore: percentage || 0,
+    label: title,
+    threshold: 0.5, // Solo mostrar si la mejora es >= 0.5%
+  })
+
   return (
     <Card className={cn('', className)}>
       <CardHeader className="pb-2">
@@ -58,7 +66,13 @@ export function StatsCard({
               {maxValue !== undefined ? `${value} / ${maxValue}` : value}
             </div>
             {percentage !== undefined && (
-              <span className="text-lg text-muted-foreground">({percentage.toFixed(1)}%)</span>
+              <div className="flex items-center gap-2">
+                {ScoreAnimation ? (
+                  <ScoreAnimation />
+                ) : (
+                  <span className="text-lg text-muted-foreground">({percentage.toFixed(1)}%)</span>
+                )}
+              </div>
             )}
             {badge && (
               <Badge variant={badge.variant || 'default'} className="ml-auto">

@@ -33,7 +33,7 @@ const getFlashcardsQuerySchema = z.object({
   flashcardId: z.string().cuid().optional(),
 })
 
-const flashcardIdQuerySchema = z.object({
+const _flashcardIdQuerySchema = z.object({
   flashcardId: z.string().cuid().min(1),
 })
 
@@ -104,8 +104,21 @@ export async function GET(request: NextRequest) {
         take: limit,
       })
 
+      // Obtener estadísticas adicionales
+      const now = new Date()
+      const dueCount = flashcards.filter(f => new Date(f.nextReview) <= now).length
+      const totalCount = await prisma.flashcard.count({
+        where: {
+          studentId: dbUser.student.id,
+        },
+      })
+
       return NextResponse.json({
         flashcards,
+        stats: {
+          total: totalCount,
+          due: dueCount,
+        },
       })
     } catch (error) {
       logger.error({ error, context: 'flashcards/GET' }, 'Error al obtener flashcards')

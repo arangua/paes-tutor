@@ -21,6 +21,7 @@ export function sanitizeString(input: string | null | undefined): string {
   let sanitized = input.trim()
 
   // Eliminar caracteres de control (excepto \n, \r, \t)
+  // eslint-disable-next-line no-control-regex
   sanitized = sanitized.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
 
   // Limitar longitud máxima (prevenir DoS)

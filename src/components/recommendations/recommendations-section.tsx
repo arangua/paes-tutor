@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { RecommendationCard } from './recommendation-card'
-import { Loader2, Target, BookOpen, Calendar, AlertCircle, TrendingUp } from 'lucide-react'
+import { Loader2, Target, BookOpen, Calendar, AlertCircle, TrendingUp, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 
 interface TopicRecommendation {
@@ -164,18 +164,28 @@ export function RecommendationsSection() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Recomendaciones Personalizadas
-            </CardTitle>
+            <div className="flex items-center gap-2 mb-1">
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Recomendaciones Personalizadas
+              </CardTitle>
+            </div>
             <CardDescription>
               {recommendations.summary.totalRecommendations} recomendaciones •{' '}
               {recommendations.summary.highPriority} de alta prioridad
             </CardDescription>
           </div>
-          <div className="text-right">
-            <p className="text-xs text-muted-foreground">Tiempo estimado</p>
-            <p className="text-sm font-semibold">{recommendations.summary.estimatedStudyTime}</p>
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <p className="text-xs text-muted-foreground">Tiempo estimado</p>
+              <p className="text-sm font-semibold">{recommendations.summary.estimatedStudyTime}</p>
+            </div>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/recommendations">
+                Ver Todas
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Link>
+            </Button>
           </div>
         </div>
       </CardHeader>

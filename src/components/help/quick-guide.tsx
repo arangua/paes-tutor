@@ -2,14 +2,8 @@
 
 import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
-  BookOpen,
-  BarChart3,
-  FileText,
-  Bot,
-  Search,
   ChevronDown,
   ChevronRight,
   HelpCircle,
@@ -17,7 +11,6 @@ import {
   Target,
   TrendingUp,
 } from 'lucide-react'
-import { HelpIcon } from './help-icon'
 
 interface QuickGuideProps {
   className?: string

@@ -5,7 +5,24 @@ import { sanitizeString, containsDangerousPatterns, sanitizeObject } from './sec
 import { logSecurityEvent, getClientIp, detectSuspiciousActivity } from './security-logger'
 
 /**
- * Valida los parámetros de la query string
+ * Valida los parámetros de la query string usando un schema de Zod
+ * 
+ * Realiza sanitización automática, detección de patrones peligrosos,
+ * y validación de tipos antes de retornar los datos validados.
+ * 
+ * @template T - Tipo inferido del schema de Zod
+ * @param request - Request de Next.js con los query parameters
+ * @param schema - Schema de Zod para validar los parámetros
+ * @returns Objeto con `success: true` y `data` validado, o `success: false` con `error` NextResponse
+ * 
+ * @example
+ * ```typescript
+ * const validation = validateQuery(request, examQuerySchema)
+ * if (!validation.success) {
+ *   return validation.error
+ * }
+ * const { subjectId, limit } = validation.data
+ * ```
  */
 export function validateQuery<T>(
   request: NextRequest,
@@ -65,7 +82,25 @@ export function validateQuery<T>(
 }
 
 /**
- * Valida el body de la request
+ * Valida el body de la request usando un schema de Zod
+ * 
+ * Realiza sanitización automática, detección de actividad sospechosa,
+ * y validación de tipos antes de retornar los datos validados.
+ * 
+ * @template T - Tipo inferido del schema de Zod
+ * @param request - Request de Next.js con el body JSON
+ * @param schema - Schema de Zod para validar el body
+ * @returns Promise con objeto `success: true` y `data` validado, o `success: false` con `error` NextResponse
+ * @throws No lanza errores, siempre retorna un objeto de resultado
+ * 
+ * @example
+ * ```typescript
+ * const validation = await validateBody(request, createAttemptSchema)
+ * if (!validation.success) {
+ *   return validation.error
+ * }
+ * const { examId, answers } = validation.data
+ * ```
  */
 export async function validateBody<T>(
   request: NextRequest,
@@ -75,7 +110,7 @@ export async function validateBody<T>(
     let body
     try {
       body = await request.json()
-    } catch (parseError) {
+    } catch {
       const ip = getClientIp(request)
       logSecurityEvent({
         type: 'invalid_input',
@@ -134,14 +169,28 @@ export async function validateBody<T>(
 
 /**
  * Parsea JSON de forma segura con logging estructurado
- * Útil para manejar errores de parsing JSON en respuestas de API
- * Funciona tanto en cliente como en servidor
+ * 
+ * Útil para manejar errores de parsing JSON en respuestas de API.
+ * Funciona tanto en cliente como en servidor. Si el parsing falla,
+ * retorna un objeto vacío en lugar de lanzar un error.
+ * 
+ * @template T - Tipo esperado del JSON parseado (por defecto Record<string, unknown>)
+ * @param response - Response de fetch con el body JSON
+ * @param context - Contexto opcional para logging (path, operation)
+ * @param context.path - Ruta de la API donde ocurre el parsing
+ * @param context.operation - Descripción de la operación que se está realizando
+ * @returns Promise con el objeto parseado, o objeto vacío si falla el parsing
  * 
  * @example
+ * ```typescript
  * const errorData = await safeJsonParse<{ error?: string }>(res, {
  *   path: '/api/user',
  *   operation: 'actualizar usuario',
  * })
+ * if (errorData.error) {
+ *   toast.error(errorData.error)
+ * }
+ * ```
  */
 export async function safeJsonParse<T = Record<string, unknown>>(
   response: Response,
@@ -179,6 +228,118 @@ export async function safeJsonParse<T = Record<string, unknown>>(
     }
 
     return {} as T
+  }
+}
+
+/**
+ * Valida una respuesta de API usando un schema de Zod
+ * 
+ * Útil para validar respuestas del servidor en el cliente antes de usar los datos.
+ * Esto proporciona type safety en runtime, no solo en compile-time.
+ * 
+ * @template T - Tipo inferido del schema de Zod
+ * @param response - Response de fetch con el body JSON
+ * @param schema - Schema de Zod para validar la respuesta
+ * @param context - Contexto opcional para logging
+ * @returns Promise con objeto `success: true` y `data` validado, o `success: false` con `error`
+ * 
+ * @example
+ * ```typescript
+ * const validation = await validateResponse(res, examResponseSchema, {
+ *   path: '/api/exams',
+ *   operation: 'cargar exámenes'
+ * })
+ * if (!validation.success) {
+ *   toast.error('Error de validación', { description: validation.error })
+ *   return
+ * }
+ * const { exams, pagination } = validation.data
+ * ```
+ */
+export async function validateResponse<T>(
+  response: Response,
+  schema: ZodSchema<T>,
+  context?: { path?: string; operation?: string }
+): Promise<{ success: true; data: T } | { success: false; error: string }> {
+  try {
+    const json = await safeJsonParse<unknown>(response, context)
+    const data = schema.parse(json)
+    return { success: true, data }
+  } catch (error) {
+    if (error instanceof ZodError) {
+      const errorMessage = `Error de validación: ${error.issues.map(i => i.message).join(', ')}`
+      
+      // Log estructurado usando logger en lugar de console.warn
+      const logData = {
+        type: 'response_validation_error',
+        path: context?.path,
+        operation: context?.operation,
+        issues: error.issues.map(issue => ({
+          path: issue.path.join('.'),
+          message: issue.message,
+          code: issue.code,
+        })),
+        issueCount: error.issues.length,
+        status: response.status,
+        statusText: response.statusText,
+      }
+      
+      // Usar logger estructurado si está disponible (servidor), sino console.warn mejorado (cliente)
+      try {
+        if (typeof window === 'undefined') {
+          // En servidor, usar logger estructurado
+          logger.warn(logData, `Error de validación de respuesta${context?.path ? ` en ${context.path}` : ''}${context?.operation ? ` (${context.operation})` : ''}`)
+        } else {
+          // En cliente, usar console.warn solo en desarrollo y con formato mejorado
+          // Solo mostrar si hay issues reales (no warnings vacíos)
+          if (process.env.NODE_ENV === 'development' && error.issues.length > 0) {
+            // Construir mensaje más legible
+            const issuesSummary = error.issues
+              .map((issue, idx) => `${idx + 1}. ${issue.path.join('.')}: ${issue.message}`)
+              .join('\n')
+            
+            console.warn(
+              `⚠️ Error de validación de respuesta${context?.path ? ` en ${context.path}` : ''}${context?.operation ? ` (${context.operation})` : ''}\n` +
+              `Mensaje: ${errorMessage}\n` +
+              `Issues (${error.issues.length}):\n${issuesSummary}`
+            )
+          }
+        }
+      } catch {
+        // Si el logging falla, usar console como fallback solo en desarrollo
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('Error de validación de respuesta:', errorMessage)
+        }
+      }
+      
+      return { success: false, error: errorMessage }
+    }
+    
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido al validar respuesta'
+    
+    // Log de errores no-ZodError también
+    if (process.env.NODE_ENV === 'development') {
+      const logData = {
+        type: 'response_validation_unknown_error', // guard:allow-secret
+        path: context?.path,
+        operation: context?.operation,
+        error: errorMessage,
+        status: response.status,
+        statusText: response.statusText,
+      }
+      
+      try {
+        if (typeof window === 'undefined') {
+          logger.warn(logData, `Error desconocido al validar respuesta${context?.path ? ` en ${context.path}` : ''}`)
+        } else {
+          console.warn('Error desconocido al validar respuesta:', logData)
+        }
+      } catch {
+        // Silenciar errores de logging
+      }
+    }
+    
+    return { success: false, error: errorMessage }
   }
 }
 

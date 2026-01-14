@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { captureError } from '@/lib/monitoring'
+import { examResponseSchema } from '@/lib/validations'
+import { validateResponse } from '@/lib/api-helpers'
 
 interface Exam {
   id: string
@@ -84,43 +86,23 @@ export function useExams(options: UseExamsOptions = {}) {
           throw new Error(statusText)
         }
 
-        const data = await res.json()
+        // Validar respuesta con Zod para type safety en runtime
+        const validation = await validateResponse(res, examResponseSchema, {
+          path: typeof window !== 'undefined' ? window.location.pathname : '/exams',
+          operation: 'cargar exámenes',
+        })
 
-        // Manejar nueva estructura con paginación o estructura antigua
-        let examsData: Exam[]
-        let paginationData: PaginationInfo | null = null
-
-        if (data.exams && data.pagination) {
-          // Nueva estructura con paginación
-          examsData = data.exams
-          paginationData = data.pagination
-        } else if (Array.isArray(data)) {
-          // Estructura antigua (sin paginación) - retrocompatibilidad
-          examsData = data
-        } else {
-          throw new Error('Formato de respuesta inválido del servidor')
+        if (!validation.success) {
+          captureError(new Error(validation.error), {
+            type: 'exams_validation_error',
+            path: typeof window !== 'undefined' ? window.location.pathname : undefined,
+          })
+          throw new Error(validation.error)
         }
 
-        // Validar estructura básica de cada examen
-        const validExams = examsData.filter(
-          (exam: Exam) =>
-            exam?.id && exam?.titulo && exam?.subject?.id && typeof exam.totalPreguntas === 'number'
-        )
+        const { exams: examsData, pagination: paginationData } = validation.data
 
-        if (validExams.length !== examsData.length) {
-          // Warning usando servicio de monitoreo
-          captureError(
-            new Error('Algunos exámenes tienen estructura inválida y fueron filtrados'),
-            {
-              type: 'exams_validation_warning',
-              filteredCount: examsData.length - validExams.length,
-              totalCount: examsData.length,
-              path: typeof window !== 'undefined' ? window.location.pathname : undefined,
-            }
-          )
-        }
-
-        setExams(validExams)
+        setExams(examsData as Exam[])
         setPagination(paginationData)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error desconocido')

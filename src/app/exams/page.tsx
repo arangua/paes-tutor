@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useCallback, startTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -25,6 +25,7 @@ import { ExamCard } from '@/components/ExamCard'
 import { Pagination } from '@/components/ui/pagination'
 import { HelpIcon } from '@/components/help/help-icon'
 import { BackButton } from '@/components/navigation/back-button'
+import { captureError } from '@/lib/monitoring'
 
 export default function ExamsPage() {
   const router = useRouter()
@@ -36,7 +37,7 @@ export default function ExamsPage() {
   const itemsPerPage = 20
 
   // Usar custom hooks para lógica compleja
-  const { exams, pagination, isLoading, error, filterExams, subjects, tipos } = useExams({
+  const { pagination, isLoading, error, filterExams, subjects, tipos } = useExams({
     subjectId: selectedSubject,
     tipo: selectedTipo,
     limit: itemsPerPage,
@@ -51,7 +52,10 @@ export default function ExamsPage() {
 
   // Resetear página cuando cambian los filtros
   useEffect(() => {
-    setCurrentPage(1)
+    // Usar startTransition para evitar renders en cascada
+    startTransition(() => {
+      setCurrentPage(1)
+    })
   }, [selectedSubject, selectedTipo, searchQuery])
 
   const handleStartExam = useCallback(
@@ -68,7 +72,7 @@ export default function ExamsPage() {
     [router]
   )
 
-  const handleExportExcel = useCallback(async () => {
+  const handleExportExcel = async () => {
     if (filteredExams.length === 0) {
       toast.error('No hay exámenes para exportar', {
         description:
@@ -112,15 +116,13 @@ export default function ExamsPage() {
       })
 
       // Log del error para debugging
-      if (typeof window !== 'undefined' && (window as any).captureError) {
-        ;(window as any).captureError(error instanceof Error ? error : new Error(String(error)), {
-          type: 'export_error',
-          action: 'export_exams_list',
-          context: { examCount: filteredExams.length },
-        })
-      }
+      captureError(error instanceof Error ? error : new Error(String(error)), {
+        type: 'export_error',
+        action: 'export_exams_list',
+        context: { examCount: filteredExams.length },
+      })
     }
-  }, [filteredExams])
+  }
 
   if (isLoading) {
     return (

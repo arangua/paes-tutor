@@ -39,8 +39,15 @@ export async function GET(request: NextRequest) {
       // Validar query parameters
       const queryValidation = getBookmarksQuerySchema.safeParse(queryParams)
       if (!queryValidation.success) {
+        // ✅ Enterprise: Asegurar que details siempre sea un array serializable
+        const details = Array.isArray(queryValidation.error.errors)
+          ? queryValidation.error.errors.map(err => ({
+              path: err.path.join('.'),
+              message: err.message,
+            }))
+          : []
         return NextResponse.json(
-          { error: 'Parámetros de consulta inválidos', details: queryValidation.error.errors },
+          { error: 'Parámetros de consulta inválidos', details },
           { status: 400 }
         )
       }
@@ -120,8 +127,15 @@ export async function POST(request: NextRequest) {
       const body = await request.json()
       const validation = createBookmarkSchema.safeParse(body)
       if (!validation.success) {
+        // ✅ Enterprise: Asegurar que details siempre sea un array serializable
+        const details = Array.isArray(validation.error.errors)
+          ? validation.error.errors.map(err => ({
+              path: err.path.join('.'),
+              message: err.message,
+            }))
+          : []
         return NextResponse.json(
-          { error: 'Datos inválidos', details: validation.error.errors },
+          { error: 'Datos inválidos', details },
           { status: 400 }
         )
       }
@@ -207,8 +221,15 @@ export async function DELETE(request: NextRequest) {
       // Validar query parameters
       const queryValidation = deleteBookmarkQuerySchema.safeParse(queryParams)
       if (!queryValidation.success) {
+        // ✅ Enterprise: Asegurar que details siempre sea un array serializable
+        const details = Array.isArray(queryValidation.error.errors)
+          ? queryValidation.error.errors.map(err => ({
+              path: err.path.join('.'),
+              message: err.message,
+            }))
+          : []
         return NextResponse.json(
-          { error: 'ID de pregunta inválido', details: queryValidation.error.errors },
+          { error: 'ID de pregunta inválido', details },
           { status: 400 }
         )
       }

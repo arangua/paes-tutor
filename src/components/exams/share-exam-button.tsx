@@ -71,7 +71,7 @@ export function ShareExamButton({ examId, examTitle, onShared }: ShareExamButton
         <DialogHeader>
           <DialogTitle>Compartir Examen</DialogTitle>
           <DialogDescription>
-            Comparte "{examTitle}" con el otro estudiante. Podrá verlo en su lista de exámenes
+            Comparte &quot;{examTitle}&quot; con el otro estudiante. Podrá verlo en su lista de exámenes
             compartidos.
           </DialogDescription>
         </DialogHeader>

@@ -373,6 +373,193 @@ ${
 }
 
 /**
+ * Estructura de explicación paso a paso
+ */
+export interface StepByStepExplanation {
+  steps: Array<{
+    number: number
+    title: string
+    description: string
+    formula?: string // Fórmula matemática en LaTeX (opcional)
+    explanation: string
+  }>
+  summary: string
+  tips?: string[] // Tips adicionales
+  relatedConcepts?: string[] // Conceptos relacionados
+}
+
+/**
+ * Genera explicaciones paso a paso usando IA
+ * Especialmente útil para matemáticas y problemas complejos
+ */
+export async function generateStepByStepExplanation(
+  question: string,
+  correctAnswer: string,
+  studentAnswer?: string,
+  topic?: string,
+  subject?: string,
+  config?: AIConfig,
+  userId?: string
+): Promise<StepByStepExplanation> {
+  const systemPrompt = `Eres un tutor experto en preparación para la PAES, especializado en explicaciones paso a paso.
+Tu objetivo es ayudar a los estudiantes a entender cómo resolver problemas de forma clara y pedagógica.
+
+IMPORTANTE:
+- Divide la explicación en pasos numerados claros
+- Para matemáticas, incluye fórmulas en formato LaTeX (entre $ para inline, $$ para display)
+- Sé específico y muestra el proceso de razonamiento
+- Incluye un resumen final
+- Si es relevante, menciona conceptos relacionados o tips útiles
+
+Formato de respuesta (JSON):
+{
+  "steps": [
+    {
+      "number": 1,
+      "title": "Título del paso",
+      "description": "Descripción breve",
+      "formula": "fórmula en LaTeX (opcional)",
+      "explanation": "Explicación detallada del paso"
+    }
+  ],
+  "summary": "Resumen final",
+  "tips": ["tip 1", "tip 2"],
+  "relatedConcepts": ["concepto 1", "concepto 2"]
+}`
+
+  const isMath =
+    subject?.toLowerCase().includes('matemática') ||
+    subject?.toLowerCase().includes('matematicas') ||
+    topic?.toLowerCase().includes('álgebra') ||
+    topic?.toLowerCase().includes('geometría') ||
+    topic?.toLowerCase().includes('cálculo') ||
+    question.match(/[0-9]+\s*[+\-×÷=<>≤≥]/) // Detecta operaciones matemáticas
+
+  const userPrompt = `Pregunta: ${question}
+
+Respuesta correcta: ${correctAnswer}
+${studentAnswer ? `Respuesta del estudiante: ${studentAnswer}` : ''}
+${topic ? `Tema: ${topic}` : ''}
+${subject ? `Asignatura: ${subject}` : ''}
+
+${
+  isMath
+    ? `Esta es una pregunta de matemáticas. Proporciona una explicación paso a paso detallada con fórmulas en LaTeX cuando sea necesario.`
+    : `Proporciona una explicación paso a paso clara y estructurada.`
+}
+
+${
+  studentAnswer
+    ? `Explica paso a paso por qué la respuesta correcta es ${correctAnswer} y dónde está el error en la respuesta del estudiante (${studentAnswer}).`
+    : `Explica paso a paso cómo llegar a la respuesta correcta ${correctAnswer}.`
+}
+
+Responde SOLO con un JSON válido, sin texto adicional antes o después.`
+
+  try {
+    const response = await sendAIMessage(
+      [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      config,
+      userId
+    )
+
+    // Intentar parsear la respuesta como JSON
+    let parsed: StepByStepExplanation
+    try {
+      // Limpiar la respuesta (puede tener markdown code blocks)
+      let cleaned = response.content.trim()
+      if (cleaned.startsWith('```json')) {
+        cleaned = cleaned.replace(/```json\n?/g, '').replace(/```\n?$/g, '')
+      } else if (cleaned.startsWith('```')) {
+        cleaned = cleaned.replace(/```\n?/g, '')
+      }
+
+      parsed = JSON.parse(cleaned)
+    } catch (parseError) {
+      // Si falla el parseo, crear una estructura básica desde el texto
+      logger.warn(
+        { error: parseError, content: response.content },
+        'Error parsing step-by-step explanation, creating fallback'
+      )
+
+      const lines = response.content.split('\n').filter(l => l.trim())
+      const steps = lines
+        .map((line) => {
+          // Intentar detectar pasos numerados
+          const stepMatch = line.match(/^(\d+)[.)]\s*(.+)/)
+          if (stepMatch) {
+            return {
+              number: parseInt(stepMatch[1]),
+              title: `Paso ${stepMatch[1]}`,
+              description: stepMatch[2].substring(0, 100),
+              explanation: stepMatch[2],
+            }
+          }
+          return null
+        })
+        .filter((s): s is NonNullable<typeof s> => s !== null)
+        .slice(0, 5) // Máximo 5 pasos
+
+      parsed = {
+        steps:
+          steps.length > 0
+            ? steps
+            : [
+                {
+                  number: 1,
+                  title: 'Explicación',
+                  description: 'Análisis del problema',
+                  explanation: response.content,
+                },
+              ],
+        summary: 'Revisa cada paso cuidadosamente para entender el proceso completo.',
+      }
+    }
+
+    // Validar y normalizar la estructura
+    if (!parsed.steps || !Array.isArray(parsed.steps) || parsed.steps.length === 0) {
+      throw new Error('Invalid step structure')
+    }
+
+    // Asegurar que los pasos tengan números secuenciales
+    parsed.steps = parsed.steps.map((step, index) => ({
+      ...step,
+      number: step.number || index + 1,
+      title: step.title || `Paso ${index + 1}`,
+      description: step.description || step.explanation.substring(0, 100),
+      explanation: step.explanation || step.description || '',
+    }))
+
+    return parsed
+  } catch (error) {
+    logger.error(
+      {
+        type: 'step_by_step_explanation_error',
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      },
+      'Error al generar explicación paso a paso'
+    )
+
+    // Retornar una explicación básica como fallback
+    return {
+      steps: [
+        {
+          number: 1,
+          title: 'Análisis',
+          description: 'Análisis del problema',
+          explanation: `La respuesta correcta es ${correctAnswer}. ${studentAnswer ? `Tu respuesta fue ${studentAnswer}, que es incorrecta. ` : ''}${question}`,
+        },
+      ],
+      summary: 'Revisa la pregunta y la explicación proporcionada para entender mejor el concepto.',
+    }
+  }
+}
+
+/**
  * Genera recomendaciones de estudio usando IA
  */
 export async function generateStudyRecommendations(

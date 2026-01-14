@@ -7,7 +7,7 @@ import type { Prisma } from '@prisma/client'
 
 export const runtime = 'nodejs'
 
-const topicsQuerySchema = z.object({
+const _topicsQuerySchema = z.object({
   subjectId: z.string().optional(),
 })
 

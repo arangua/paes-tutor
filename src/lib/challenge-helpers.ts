@@ -1,12 +1,16 @@
 import type { Attempt } from '@prisma/client'
+import { ensureFiniteNumber } from '@/app/api/notes/versions/validation-utils'
 
 /**
  * Determina el ganador de un desafío comparando los porcentajes de dos intentos
+ * 
+ * ✅ Enterprise: Valida que los porcentajes sean números finitos antes de comparar
+ * 
  * @param challengerAttempt - Intento del desafiador
  * @param challengedAttempt - Intento del desafiado
  * @param challengerId - ID del desafiador
  * @param challengedId - ID del desafiado
- * @returns ID del ganador o null si hay empate
+ * @returns ID del ganador o null si hay empate o datos inválidos
  */
 export function determineChallengeWinner(
   challengerAttempt: Attempt | null,
@@ -18,10 +22,14 @@ export function determineChallengeWinner(
     return null
   }
 
-  if (challengedAttempt.porcentaje > challengerAttempt.porcentaje) {
+  // ✅ Enterprise: Validar que los porcentajes sean números finitos antes de comparar
+  const challengerPorcentaje = ensureFiniteNumber(challengerAttempt.porcentaje, 0)
+  const challengedPorcentaje = ensureFiniteNumber(challengedAttempt.porcentaje, 0)
+
+  if (challengedPorcentaje > challengerPorcentaje) {
     return challengedId
   }
-  if (challengedAttempt.porcentaje < challengerAttempt.porcentaje) {
+  if (challengedPorcentaje < challengerPorcentaje) {
     return challengerId
   }
   // Si son iguales, queda null (empate)

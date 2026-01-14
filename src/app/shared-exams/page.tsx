@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { safeToISOString } from '@/app/api/notes/versions/validation-utils'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Loader2, Share2, Eye, EyeOff, BookOpen, Clock, User, MessageSquare } from 'lucide-react'
+import { Loader2, Share2, Eye, EyeOff, BookOpen, Clock, MessageSquare } from 'lucide-react'
 import { toast } from 'sonner'
 import { BackButton } from '@/components/navigation/back-button'
 import Link from 'next/link'
@@ -110,7 +111,7 @@ export default function SharedExamsPage() {
       setReceivedExams(prev =>
         prev.map(exam =>
           exam.id === sharedExamId
-            ? { ...exam, viewed: true, viewedAt: new Date().toISOString() }
+            ? { ...exam, viewed: true, viewedAt: safeToISOString(new Date()) }
             : exam
         )
       )
@@ -257,7 +258,7 @@ export default function SharedExamsPage() {
                 <Share2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <p className="text-muted-foreground">No has compartido ningún examen aún.</p>
                 <p className="text-sm text-muted-foreground mt-2">
-                  Usa el botón "Compartir" en cualquier examen para compartirlo.
+                  Usa el botón &quot;Compartir&quot; en cualquier examen para compartirlo.
                 </p>
               </CardContent>
             </Card>

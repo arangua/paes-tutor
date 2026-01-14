@@ -310,12 +310,11 @@ export function createTestRequest(options: CreateRequestOptions = {}): NextReque
 
   if (options.body && (method === 'POST' || method === 'PATCH' || method === 'PUT')) {
     // 4. Si recibe body (objeto o string)
-    if (typeof options.body === 'string') {
-      init.body = options.body
-    } else {
-      // Si es objeto, stringify
-      init.body = JSON.stringify(options.body)
-    }
+    const bodyString = typeof options.body === 'string' ? options.body : JSON.stringify(options.body)
+    
+    // Para Request real de Node (undici), el body puede ser string directamente
+    // pero también podemos usar ReadableStream para mayor compatibilidad
+    init.body = bodyString
 
     // Configurar headers con Content-Type si no viene
     const headers = new Headers(options.headers || {})
@@ -326,7 +325,18 @@ export function createTestRequest(options: CreateRequestOptions = {}): NextReque
   }
 
   // 2. Crear un Request estándar (NO NextRequest)
+  // El body ya está configurado en init.body como string, que es compatible con Request estándar
   const request = new Request(absoluteUrl, init) as any
+
+  // PASO 4: Cachear el body en el Request con un símbolo estable (no _bodyText)
+  if (options.body && (method === 'POST' || method === 'PATCH' || method === 'PUT')) {
+    const bodyString = typeof options.body === 'string' ? options.body : JSON.stringify(options.body)
+    const BODY_SYMBOL = Symbol.for("test.rawBody")
+    ;(request as any)[BODY_SYMBOL] = bodyString
+    
+    // También mantener _bodyText para compatibilidad con código existente
+    ;(request as any)._bodyText = bodyString
+  }
 
   // 3. Agregar campo nextUrl para que request.nextUrl.searchParams funcione
   request.nextUrl = new URL(absoluteUrl)
@@ -553,18 +563,9 @@ export async function assertErrorResponse(
  */
 export async function assertSuccessResponse(response: Response, expectedStatus: number = 200) {
   if (response.status !== expectedStatus) {
-    // Captura body del error para que NO sea ciego el 500
-    let bodyText = ""
-    try {
-      bodyText = await response.text()
-    } catch (e) {
-      bodyText = "<no se pudo leer response.text()>"
-    }
-
-    throw new Error(
-      `assertSuccessResponse: esperado ${expectedStatus}, recibido ${response.status}\n` +
-      `Response body:\n${bodyText}`
-    )
+    // PASO 3: Diagnóstico real del error (sin logs)
+    const text = await response.text().catch(() => "<no body>")
+    throw new Error(`HTTP ${response.status}. Body: ${text}`)
   }
 
   // Solo si es success, parsea JSON

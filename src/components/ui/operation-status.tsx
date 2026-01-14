@@ -1,6 +1,6 @@
 'use client'
 
-import { Loader2, CheckCircle2, XCircle, Clock, RefreshCw, Database, Cloud, CloudOff } from 'lucide-react'
+import { Loader2, CheckCircle2, XCircle, Clock, RefreshCw, Cloud, CloudOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 

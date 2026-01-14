@@ -256,6 +256,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           )
         }
 
+        if (!attempt.exam) {
+          return NextResponse.json(
+            { error: 'El intento no tiene un examen asociado' },
+            { status: 400 }
+          )
+        }
+
         if (challenge.examId && attempt.examId !== challenge.examId) {
           return NextResponse.json(
             { error: 'El intento no corresponde al examen del desafío' },

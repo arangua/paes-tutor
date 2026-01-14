@@ -6,8 +6,6 @@ import { Badge } from '@/components/ui/badge'
 import {
   BookOpen,
   Target,
-  TrendingUp,
-  AlertCircle,
   CheckCircle2,
   ArrowRight,
   Lightbulb,

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/get-session'
 import { withRateLimit } from '@/lib/rate-limit-middleware'
 import { prisma } from '@/lib/prisma'
-import { encrypt, decrypt, maskApiKey } from '@/lib/encryption'
+import { encrypt, maskApiKey } from '@/lib/encryption'
 import { z } from 'zod'
 import { validateBody } from '@/lib/api-helpers'
 import { logger } from '@/lib/logger'
@@ -109,6 +109,17 @@ export async function POST(request: NextRequest) {
         data: updateData,
       })
 
+      logger.info(
+        {
+          userId: user.id,
+          hasOpenAI: !!updateData.openaiApiKey,
+          hasAnthropic: !!updateData.anthropicApiKey,
+          hasGemini: !!updateData.geminiApiKey,
+          preferredService: updateData.preferredAIService,
+        },
+        'API keys actualizadas correctamente'
+      )
+
       return NextResponse.json({
         message: 'API keys actualizadas correctamente',
         // Retornar keys enmascaradas
@@ -122,17 +133,6 @@ export async function POST(request: NextRequest) {
           updateData.geminiApiKey !== undefined ? maskApiKey(updateData.geminiApiKey) : undefined,
         preferredAIService: updateData.preferredAIService,
       })
-
-      logger.info(
-        {
-          userId: user.id,
-          hasOpenAI: !!updateData.openaiApiKey,
-          hasAnthropic: !!updateData.anthropicApiKey,
-          hasGemini: !!updateData.geminiApiKey,
-          preferredService: updateData.preferredAIService,
-        },
-        'API keys actualizadas correctamente'
-      )
     } catch (error) {
       logger.error(
         {

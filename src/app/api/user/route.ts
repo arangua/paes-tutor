@@ -3,10 +3,11 @@ import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/get-session'
 import { handleApiError } from '@/lib/api-helpers'
 import { withRateLimit } from '@/lib/rate-limit-middleware'
-import { logApiRequest } from '@/lib/logger'
+import { logApiRequest, logger } from '@/lib/logger'
 import { validateBody } from '@/lib/api-helpers'
 import { z } from 'zod'
 import { invalidateCachePattern } from '@/lib/cache'
+import { circuitBreakers } from '@/app/api/notes/versions/circuit-breaker'
 
 // Especificar Node.js runtime
 export const runtime = 'nodejs'
@@ -31,25 +32,32 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
       }
 
-      // Obtener usuario completo con estudiante
-      // OPTIMIZACIÓN: Usar select en lugar de include para cargar solo datos necesarios
-      const fullUser = await prisma.user.findUnique({
-        where: { id: user.id },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          emailVerified: true,
-          image: true,
-          createdAt: true,
-          student: {
+      // ✅ Enterprise: Obtener usuario completo con circuit breaker
+      const fullUser = await circuitBreakers.database.execute(
+        async () => {
+          return await prisma.user.findUnique({
+            where: { id: user.id },
             select: {
               id: true,
-              nombre: true,
+              name: true,
+              email: true,
+              emailVerified: true,
+              image: true,
+              createdAt: true,
+              student: {
+                select: {
+                  id: true,
+                  nombre: true,
+                },
+              },
             },
-          },
+          })
         },
-      })
+        async () => {
+          logger.warn({ userId: user.id }, 'Circuit breaker activado para findUser, retornando null')
+          return null
+        }
+      )
 
       if (!fullUser) {
         return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
@@ -82,11 +90,19 @@ export async function PUT(request: NextRequest) {
 
       const { name, email } = validation.data
 
-      // Verificar si el email ya está en uso por otro usuario
+      // ✅ Enterprise: Verificar email con circuit breaker
       if (email && email !== user.email) {
-        const existingUser = await prisma.user.findUnique({
-          where: { email },
-        })
+        const existingUser = await circuitBreakers.database.execute(
+          async () => {
+            return await prisma.user.findUnique({
+              where: { email },
+            })
+          },
+          async () => {
+            logger.warn({ email }, 'Circuit breaker activado para findUserByEmail, retornando null')
+            return null
+          }
+        )
 
         if (existingUser && existingUser.id !== user.id) {
           return NextResponse.json(
@@ -96,41 +112,49 @@ export async function PUT(request: NextRequest) {
         }
       }
 
-      // Usar transacción para garantizar consistencia entre usuario y estudiante
-      const updatedUser = await prisma.$transaction(async tx => {
-        // Actualizar usuario
-        const userResult = await tx.user.update({
-          where: { id: user.id },
-          data: {
-            ...(name !== undefined && { name }),
-            ...(email !== undefined && { email, emailVerified: null }), // Reset email verification si cambia
-          },
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            emailVerified: true,
-            image: true,
-            createdAt: true,
-          },
-        })
-
-        // Si hay un estudiante asociado y se actualizó el nombre, actualizar también el estudiante
-        if (name !== undefined) {
-          const student = await tx.student.findUnique({
-            where: { userId: user.id },
-          })
-
-          if (student) {
-            await tx.student.update({
-              where: { id: student.id },
-              data: { nombre: name },
+      // ✅ Enterprise: Usar transacción con circuit breaker para garantizar consistencia
+      const updatedUser = await circuitBreakers.database.execute(
+        async () => {
+          return await prisma.$transaction(async tx => {
+            // Actualizar usuario
+            const userResult = await tx.user.update({
+              where: { id: user.id },
+              data: {
+                ...(name !== undefined && { name }),
+                ...(email !== undefined && { email, emailVerified: null }), // Reset email verification si cambia
+              },
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                emailVerified: true,
+                image: true,
+                createdAt: true,
+              },
             })
-          }
-        }
 
-        return userResult
-      })
+            // Si hay un estudiante asociado y se actualizó el nombre, actualizar también el estudiante
+            if (name !== undefined) {
+              const student = await tx.student.findUnique({
+                where: { userId: user.id },
+              })
+
+              if (student) {
+                await tx.student.update({
+                  where: { id: student.id },
+                  data: { nombre: name },
+                })
+              }
+            }
+
+            return userResult
+          })
+        },
+        async () => {
+          logger.error({ userId: user.id }, 'Circuit breaker activado para updateUser transaction, lanzando error')
+          throw new Error('Error al actualizar usuario: servicio temporalmente no disponible')
+        }
+      )
 
       // Invalidar cachés después de la transacción (fuera de la transacción para mejor performance)
       if (name !== undefined) {

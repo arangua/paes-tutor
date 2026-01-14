@@ -19,11 +19,12 @@ interface ProgressDialogProps {
   onCancel?: () => void
 }
 
+// ✅ Enterprise: Usar función segura centralizada para formateo de tiempo
+import { formatDuration } from '@/lib/utils'
+
+// Alias para mantener compatibilidad
 function formatTime(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`
-  const mins = Math.floor(seconds / 60)
-  const secs = seconds % 60
-  return `${mins}m ${secs}s`
+  return formatDuration(seconds)
 }
 
 export function ProgressDialog({
@@ -71,7 +72,7 @@ export function ProgressDialog({
           {steps.length > 0 && (
             <div className="space-y-2 max-h-48 overflow-y-auto border rounded-md p-3 bg-muted/30">
               <div className="text-xs font-semibold text-muted-foreground mb-2">Progreso detallado:</div>
-              {steps.map((step, idx) => (
+              {steps.map((step) => (
                 <div
                   key={step.id}
                   className={cn(

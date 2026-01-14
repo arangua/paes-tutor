@@ -75,7 +75,6 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
-  const resultsRef = useRef<HTMLDivElement>(null)
 
   const debouncedQuery = useDebounce(query, 300)
   const { history, addToHistory, getSuggestions } = useSearchHistory()
@@ -102,9 +101,22 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
           throw new Error('Error al buscar')
         }
 
-        const data = await response.json()
-        setResults(data.results || [])
-        setSuggestions(data.suggestions || [])
+        // Validar respuesta con Zod para type safety en runtime
+        const { validateResponse } = await import('@/lib/api-helpers')
+        const { searchResponseSchema } = await import('@/lib/validations')
+        
+        const validation = await validateResponse(response, searchResponseSchema, {
+          path: '/api/search',
+          operation: 'búsqueda global',
+        })
+
+        if (!validation.success) {
+          throw new Error(validation.error)
+        }
+
+        const { results, suggestions } = validation.data
+        setResults(results)
+        setSuggestions(suggestions || [])
       } catch (error) {
         const errorInfo = extractErrorInfo(error)
         const errorMessage = getErrorMessage(ERROR_CODES.NETWORK_SERVER_ERROR, {
@@ -134,6 +146,29 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
       return () => clearTimeout(timeout)
     }
   }, [open])
+
+  const handleSelect = useCallback((index: number) => {
+    if (index < results.length) {
+      // Seleccionar resultado
+      const result = results[index]
+      addToHistory(query, result.type)
+      onOpenChange(false)
+      router.push(result.url)
+    } else if (index < results.length + suggestions.length) {
+      // Seleccionar sugerencia del servidor
+      const suggestion = suggestions[index - results.length]
+      setQuery(suggestion)
+      addToHistory(suggestion)
+    } else {
+      // Seleccionar sugerencia del historial
+      const historyIndex = index - results.length - suggestions.length
+      const historyItem = historySuggestions[historyIndex]
+      if (historyItem) {
+        setQuery(historyItem.query)
+        addToHistory(historyItem.query, historyItem.type)
+      }
+    }
+  }, [results, query, addToHistory, onOpenChange, router, suggestions, historySuggestions])
 
   // Manejar teclado
   useEffect(() => {
@@ -169,30 +204,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [open, results, suggestions, selectedIndex, onOpenChange])
-
-  const handleSelect = (index: number) => {
-    if (index < results.length) {
-      // Seleccionar resultado
-      const result = results[index]
-      addToHistory(query, result.type)
-      onOpenChange(false)
-      router.push(result.url)
-    } else if (index < results.length + suggestions.length) {
-      // Seleccionar sugerencia del servidor
-      const suggestion = suggestions[index - results.length]
-      setQuery(suggestion)
-      addToHistory(suggestion)
-    } else {
-      // Seleccionar sugerencia del historial
-      const historyIndex = index - results.length - suggestions.length
-      const historyItem = historySuggestions[historyIndex]
-      if (historyItem) {
-        setQuery(historyItem.query)
-        addToHistory(historyItem.query, historyItem.type)
-      }
-    }
-  }
+  }, [open, results, suggestions, selectedIndex, onOpenChange, handleSelect, historySuggestions.length])
 
   const handleResultClick = (result: SearchResult) => {
     addToHistory(query, result.type)
@@ -214,6 +226,9 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 
   return (
     <div
+      id="search"
+      role="search"
+      aria-label="Búsqueda global"
       className="fixed inset-0 z-[80] flex items-start justify-center pt-[20vh] px-4"
       onClick={e => {
         if (e.target === e.currentTarget) {
@@ -285,7 +300,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
           {!isLoading && query && results.length === 0 && suggestions.length === 0 && (
             <div className="p-8 text-center text-muted-foreground">
               <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No se encontraron resultados para "{query}"</p>
+              <p>No se encontraron resultados para &quot;{query}&quot;</p>
             </div>
           )}
 

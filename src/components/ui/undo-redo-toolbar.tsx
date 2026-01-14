@@ -61,7 +61,7 @@ export function UndoRedoToolbar({
             <strong>Rehacer</strong> (Ctrl+Shift+Z)
             <br />
             <span className="text-muted-foreground text-xs">
-              Recupera lo que acabas de deshacer. Como el botón "adelante" en tu navegador.
+              Recupera lo que acabas de deshacer. Como el botón &quot;adelante&quot; en tu navegador.
             </span>
           </p>
         </TooltipContent>

@@ -20,6 +20,8 @@ import { HelpIcon } from '@/components/help/help-icon'
 import { BookmarkButton } from '@/components/bookmarks/bookmark-button'
 import { CreateFlashcardButton } from '@/components/flashcards/create-flashcard-button'
 import { CreateNoteButton } from '@/components/notes/create-note-button'
+import { StepByStepExplanationButton } from '@/components/explanations/step-by-step-explanation-button'
+import { safeRound } from '@/app/api/notes/versions/validation-utils'
 
 interface Question {
   id: string
@@ -137,7 +139,7 @@ export default function QuickReviewPage() {
 
   const getScorePercentage = () => {
     if (score.total === 0) return 0
-    return Math.round((score.correct / score.total) * 100)
+    return safeRound((score.correct / score.total) * 100, 0)
   }
 
   if (isLoading) {
@@ -206,7 +208,6 @@ export default function QuickReviewPage() {
   }
 
   const currentQ = questions[currentQuestion]
-  const correctOption = currentQ.options.find(opt => opt.esCorrecta)
 
   return (
     <div className="container mx-auto py-6 px-4 max-w-4xl">
@@ -353,7 +354,24 @@ export default function QuickReviewPage() {
                   <XCircle className="h-5 w-5 text-orange-600 mt-0.5" />
                 )}
                 <div className="flex-1">
-                  <p className="font-semibold mb-2">{isCorrect ? '¡Correcto!' : 'Incorrecto'}</p>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <p className="font-semibold">{isCorrect ? '¡Correcto!' : 'Incorrecto'}</p>
+                    <StepByStepExplanationButton
+                      question={currentQ.enunciado}
+                      correctAnswer={
+                        currentQ.options.find(opt => opt.esCorrecta)?.texto || 'Respuesta correcta'
+                      }
+                      studentAnswer={
+                        selectedOption
+                          ? currentQ.options.find(opt => opt.id === selectedOption)?.texto
+                          : undefined
+                      }
+                      topic={currentQ.topic?.nombre}
+                      subject={currentQ.subject.nombre}
+                      variant="outline"
+                      size="sm"
+                    />
+                  </div>
                   <p className="text-sm text-muted-foreground">{currentQ.explicacion}</p>
                 </div>
               </div>

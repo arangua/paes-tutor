@@ -1,0 +1,451 @@
+import { logger } from '@/lib/logger'
+import type { StudyNoteVersion } from '@/lib/types/versions'
+import { extractErrorDetails } from './helpers'
+import { circuitBreakers } from './circuit-breaker'
+import { ensureNonEmptyString, safeToISODate } from './validation-utils'
+
+/**
+ * Datos base para webhooks de versiones
+ */
+interface VersionWebhookData {
+  noteId: string
+  noteTitle: string
+  versionId: string
+  versionTitle: string
+  versionName: string | null
+  isImportant: boolean
+  createdAt: string
+  [key: string]: unknown
+}
+
+/**
+ * Valida entradas básicas para webhooks de versiones
+ */
+function validateWebhookInputs(
+  note: { id?: string } | null | undefined,
+  version: StudyNoteVersion | { id?: string } | null | undefined
+): boolean {
+  const noteId = note?.id
+  const versionId = extractVersionId(version, '')
+  return !!(noteId && versionId)
+}
+
+/**
+ * Obtiene título con fallback a 'Sin título'
+ * 
+ * DECISIÓN DE DISEÑO: Usa ensureNonEmptyString del sistema de validación centralizado
+ */
+function getTitleWithFallback(title: string | null | undefined): string {
+  return ensureNonEmptyString(title, 'Sin título')
+}
+
+/**
+ * Extrae el ID de una versión de forma segura
+ * Elimina repetición de código para extraer versionId
+ */
+function extractVersionId(
+  version: StudyNoteVersion | { id?: string } | null | undefined,
+  fallback: string = ''
+): string {
+  if (version && typeof version === 'object' && 'id' in version && version.id) {
+    return typeof version.id === 'string' ? version.id : fallback
+  }
+  return fallback
+}
+
+/**
+ * Construye datos base para webhooks de versiones
+ * CORRECCIÓN: Valida que version.createdAt sea una fecha válida antes de usar toISOString()
+ */
+function buildVersionWebhookData(
+  note: { id: string; title: string },
+  version: StudyNoteVersion | { id: string; title: string; name?: string | null; isImportant?: boolean; createdAt: Date }
+): VersionWebhookData {
+  // Asegurar que version tenga las propiedades necesarias
+  const versionId = 'id' in version ? version.id : ''
+  const versionTitle = 'title' in version ? version.title : ''
+  const versionName = 'name' in version ? (version.name ?? null) : null
+  const versionIsImportant = 'isImportant' in version ? (version.isImportant ?? false) : false
+  const versionCreatedAt = 'createdAt' in version ? version.createdAt : new Date()
+  
+  return {
+    noteId: note.id,
+    noteTitle: getTitleWithFallback(note.title),
+    versionId,
+    versionTitle: getTitleWithFallback(versionTitle),
+    versionName,
+    isImportant: versionIsImportant,
+    createdAt: safeToISODate(versionCreatedAt),
+  }
+}
+
+/**
+ * Loguea advertencia si la operación tardó más del umbral esperado
+ * CORRECCIÓN: Valida que startTime y thresholdMs sean números válidos antes de calcular
+ */
+function logSlowOperation(
+  startTime: number,
+  thresholdMs: number,
+  context: { noteId: string; versionId?: string; versionCount?: number },
+  operationName: string
+): void {
+  // Validar que startTime sea un número finito
+  if (!Number.isFinite(startTime)) {
+    logger.warn(
+      { startTime, thresholdMs, context, operationName },
+      'logSlowOperation recibió startTime inválido, omitiendo logging'
+    )
+    return
+  }
+  
+  // Validar que thresholdMs sea un número finito y positivo
+  if (!Number.isFinite(thresholdMs) || thresholdMs <= 0) {
+    logger.warn(
+      { startTime, thresholdMs, context, operationName },
+      'logSlowOperation recibió thresholdMs inválido, omitiendo logging'
+    )
+    return
+  }
+  
+  const currentTime = Date.now()
+  // Validar que currentTime sea un número finito
+  if (!Number.isFinite(currentTime)) {
+    logger.warn(
+      { startTime, currentTime, thresholdMs, context, operationName },
+      'logSlowOperation: Date.now() retornó valor inválido, omitiendo logging'
+    )
+    return
+  }
+  
+  const duration = currentTime - startTime
+  // Validar que duration sea un número finito y no negativo
+  if (Number.isFinite(duration) && duration >= 0 && duration > thresholdMs) {
+    logger.warn(
+      { ...context, duration },
+      `${operationName} tardó más de lo esperado`
+    )
+  }
+}
+
+/**
+ * Agrega un webhook a la lista si la condición es verdadera
+ */
+function addConditionalWebhook(
+  webhookPromises: Promise<void>[],
+  condition: unknown,
+  webhookFactory: () => Promise<void>
+): void {
+  // CORRECCIÓN: Validar que webhookPromises sea un array válido antes de usar push()
+  if (!Array.isArray(webhookPromises)) {
+    logger.warn(
+      { webhookPromises, condition },
+      'addConditionalWebhook recibió webhookPromises inválido (no es array), omitiendo webhook'
+    )
+    return
+  }
+  
+  if (condition !== undefined && condition) {
+    try {
+      const webhookPromise = webhookFactory()
+      // Validar que webhookFactory() retorne una Promise válida
+      if (typeof webhookPromise === 'object' && webhookPromise !== null && 'then' in webhookPromise && typeof webhookPromise.then === 'function') {
+        webhookPromises.push(webhookPromise)
+      } else {
+        logger.warn(
+          { webhookPromise },
+          'addConditionalWebhook: webhookFactory() no retornó una Promise válida, omitiendo webhook'
+        )
+      }
+    } catch (error) {
+      logger.warn(
+        { error, condition },
+        'addConditionalWebhook: Error al crear webhook factory, omitiendo webhook'
+      )
+    }
+  }
+}
+
+/**
+ * Cuenta el número de resultados rechazados en Promise.allSettled
+ * CORRECCIÓN: Valida que results sea un array válido antes de usar filter
+ */
+function countRejectedResults<T>(results: PromiseSettledResult<T>[]): number {
+  if (!Array.isArray(results)) {
+    logger.warn(
+      { results },
+      'countRejectedResults recibió results inválido, retornando 0'
+    )
+    return 0
+  }
+  // CORRECCIÓN: Validar que results sea un array válido antes de usar filter()
+  try {
+    const filtered = results.filter(r => {
+      // Validar que r sea un objeto válido con status
+      return r && typeof r === 'object' && 'status' in r && r.status === 'rejected'
+    })
+    
+    // Validar que filtered sea un array válido antes de acceder a length
+    if (!Array.isArray(filtered)) {
+      logger.warn(
+        { results, filtered },
+        'countRejectedResults: filter() retornó resultado inválido, retornando 0'
+      )
+      return 0
+    }
+    
+    // Validar que length sea un número válido
+    const safeLength = Number.isFinite(filtered.length) ? filtered.length : 0
+    return safeLength
+  } catch (error) {
+    logger.warn(
+      { error, results },
+      'countRejectedResults: Error al ejecutar filter(), retornando 0'
+    )
+    return 0
+  }
+}
+
+/**
+ * Dispara webhook de restauración de versión
+ * Con manejo mejorado de errores y logging detallado
+ */
+export async function triggerVersionRestoredWebhook(
+  note: { id: string; title: string },
+  version: StudyNoteVersion
+): Promise<void> {
+  const startTime = Date.now()
+  try {
+    // Validar entradas antes de proceder
+    if (!validateWebhookInputs(note, version)) {
+      const versionId = extractVersionId(version)
+      logger.warn(
+        { noteId: note?.id, versionId },
+        'Webhook de restauración omitido: datos inválidos'
+      )
+      return
+    }
+    
+    const { triggerWebhooks } = await import('@/lib/webhooks')
+    
+    const webhookData = buildVersionWebhookData(note, version)
+    
+    // Usar circuit breaker para webhooks
+    await circuitBreakers.webhook.execute(
+      () => triggerWebhooks('version.restored', webhookData, note.id),
+      () => Promise.resolve() // Fallback: no hacer nada si falla
+    )
+    
+    const versionId = extractVersionId(version)
+    logSlowOperation(startTime, 1000, { noteId: note.id, versionId }, 'Webhook de restauración')
+  } catch (webhookError) {
+    const duration = Date.now() - startTime
+    const errorDetails = extractErrorDetails(webhookError)
+    const versionId = extractVersionId(version)
+    
+    // No fallar si los webhooks fallan, pero registrar el error con detalles
+    logger.error(
+      { 
+        ...errorDetails,
+        noteId: note.id,
+        versionId,
+        duration,
+        context: 'triggerVersionRestoredWebhook'
+      },
+      'Error al disparar webhooks de restauración'
+    )
+  }
+}
+
+/**
+ * Dispara webhooks relacionados con la actualización de versión
+ * Con manejo mejorado de errores y ejecución en paralelo
+ */
+export async function triggerVersionUpdateWebhooks(
+  note: { id: string; title: string },
+  updatedVersion: StudyNoteVersion,
+  updateParams: {
+    name?: string | null
+    color?: string | null
+    isImportant?: boolean
+  }
+): Promise<void> {
+  const startTime = Date.now()
+  try {
+    // Validar entradas antes de proceder
+    if (!validateWebhookInputs(note, updatedVersion)) {
+      const versionId = extractVersionId(updatedVersion)
+      logger.warn(
+        { noteId: note?.id, versionId },
+        'Webhooks de actualización omitidos: datos inválidos'
+      )
+      return
+    }
+
+    const { triggerWebhooks } = await import('@/lib/webhooks')
+
+    const webhookData = buildVersionWebhookData(note, updatedVersion)
+
+    // Ejecutar todos los webhooks en paralelo para mejor performance
+    const webhookPromises: Promise<void>[] = [
+      triggerWebhooks('version.updated', webhookData, note.id),
+    ]
+
+    // Agregar eventos específicos si aplican
+    addConditionalWebhook(webhookPromises, updateParams.name, () =>
+      triggerWebhooks('version.named', {
+        ...webhookData,
+        versionName: updateParams.name!,
+      }, note.id)
+    )
+
+    addConditionalWebhook(webhookPromises, updateParams.isImportant, () =>
+      triggerWebhooks('version.marked_important', {
+        ...webhookData,
+        isImportant: true,
+      }, note.id)
+    )
+
+    // Ejecutar todos en paralelo
+    // CORRECCIÓN: Validar que webhookPromises sea un array válido antes de usar Promise.allSettled()
+    if (!Array.isArray(webhookPromises)) {
+      const versionId = extractVersionId(updatedVersion)
+      logger.warn(
+        { webhookPromises, noteId: note.id, versionId },
+        'triggerVersionUpdateWebhooks: webhookPromises no es un array válido, omitiendo webhooks'
+      )
+      return
+    }
+    
+    try {
+      const results = await Promise.allSettled(webhookPromises)
+      // Validar que Promise.allSettled() retorne un array válido
+      if (!Array.isArray(results)) {
+        logger.warn(
+          { webhookPromises, results },
+          'triggerVersionUpdateWebhooks: Promise.allSettled() retornó resultado inválido'
+        )
+      }
+    } catch (error) {
+      logger.warn(
+        { error, webhookPromises },
+        'triggerVersionUpdateWebhooks: Error en Promise.allSettled(), continuando'
+      )
+    }
+    
+    const versionId = extractVersionId(updatedVersion)
+    logSlowOperation(startTime, 1000, { noteId: note.id, versionId }, 'Webhooks de actualización')
+  } catch (webhookError) {
+    const duration = Date.now() - startTime
+    const errorDetails = extractErrorDetails(webhookError)
+    const versionId = extractVersionId(updatedVersion)
+    
+    // No fallar si los webhooks fallan, pero registrar el error con detalles
+    logger.error(
+      {
+        ...errorDetails,
+        noteId: note.id,
+        versionId,
+        duration,
+        context: 'triggerVersionUpdateWebhooks'
+      },
+      'Error al disparar webhooks de actualización'
+    )
+  }
+}
+
+/**
+ * Dispara webhooks para versiones eliminadas (batch processing)
+ * Con manejo mejorado de errores y logging detallado
+ */
+export async function triggerDeleteWebhooks(
+  note: { id: string; title: string },
+  versions: Array<{
+    id: string
+    title: string
+    name?: string | null
+    isImportant?: boolean
+    createdAt: Date
+  }>
+): Promise<void> {
+  const startTime = Date.now()
+  try {
+    // Validar entradas antes de proceder
+    if (!note?.id || !Array.isArray(versions) || versions.length === 0) {
+      logger.warn(
+        { noteId: note?.id, versionsCount: versions?.length },
+        'Webhooks de eliminación omitidos: datos inválidos'
+      )
+      return
+    }
+
+    const { triggerWebhooks } = await import('@/lib/webhooks')
+
+    // OPTIMIZACIÓN: Disparar todos los webhooks en paralelo usando batch processing
+    // Esto es mucho más eficiente que hacerlo secuencialmente
+    // CORRECCIÓN: Validar que versions sea un array válido antes de usar filter() y map()
+    if (!Array.isArray(versions)) {
+      logger.warn(
+        { noteId: note?.id, versions },
+        'triggerDeleteWebhooks recibió versions inválido (no es array), omitiendo webhooks'
+      )
+      return
+    }
+    
+    const webhookPromises = versions
+      .filter(v => v && typeof v === 'object' && v.id && typeof v.id === 'string') // Filtrar versiones inválidas
+      .map((versionToDelete) => {
+        try {
+          const webhookData = buildVersionWebhookData(note, versionToDelete)
+          return triggerWebhooks('version.deleted', webhookData, note.id)
+        } catch (error) {
+          logger.warn(
+            { error, versionId: versionToDelete?.id },
+            'Error al construir webhook data, omitiendo webhook'
+          )
+          return Promise.resolve() // Retornar promesa resuelta para no romper Promise.allSettled
+        }
+      })
+
+    // CORRECCIÓN: Validar que webhookPromises sea un array válido antes de usar Promise.allSettled
+    if (!Array.isArray(webhookPromises) || webhookPromises.length === 0) {
+      logger.warn(
+        { noteId: note.id, versionsCount: versions.length },
+        'No hay webhooks válidos para disparar'
+      )
+      return
+    }
+
+    // Ejecutar todos los webhooks en paralelo sin bloquear
+    const results = await Promise.allSettled(webhookPromises)
+    
+    // CORRECCIÓN: Validar que results sea un array válido antes de usar countRejectedResults
+    const safeResults = Array.isArray(results) ? results : []
+    
+    // Contar fallos para logging
+    const failures = countRejectedResults(safeResults)
+    if (failures > 0) {
+      logger.warn(
+        { noteId: note.id, totalVersions: versions.length, failures },
+        'Algunos webhooks de eliminación fallaron'
+      )
+    }
+    
+    logSlowOperation(startTime, 2000, { noteId: note.id, versionCount: versions.length }, 'Webhooks de eliminación')
+  } catch (webhookError) {
+    const duration = Date.now() - startTime
+    const errorDetails = extractErrorDetails(webhookError)
+    
+    // No fallar si los webhooks fallan, pero registrar el error con detalles
+    logger.error(
+      {
+        ...errorDetails,
+        noteId: note.id,
+        versionCount: versions.length,
+        duration,
+        context: 'triggerDeleteWebhooks'
+      },
+      'Error al disparar webhooks de eliminación'
+    )
+  }
+}
+

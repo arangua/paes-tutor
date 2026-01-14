@@ -9,6 +9,10 @@ export const TIME_CONSTANTS = {
   DEFAULT_CACHE_TTL_MS: 5 * 60 * 1000, // 5 minutos
   EXAMS_CACHE_TTL_MS: 10 * 60 * 1000, // 10 minutos
   ATTEMPTS_CACHE_TTL_MS: 1 * 60 * 1000, // 1 minuto
+  STUDENT_CACHE_TTL_MS: 2 * 60 * 1000, // 2 minutos
+  MATERIALS_CACHE_TTL_MS: 10 * 60 * 1000, // 10 minutos
+  RECOMMENDATIONS_CACHE_TTL_MS: 5 * 60 * 1000, // 5 minutos
+  ANALYTICS_CACHE_TTL_MS: 5 * 60 * 1000, // 5 minutos
   CACHE_CLEANUP_INTERVAL_MS: 10 * 60 * 1000, // 10 minutos
 
   // Rate limiting
@@ -18,6 +22,7 @@ export const TIME_CONSTANTS = {
   WRITE_RATE_LIMIT_WINDOW_MS: 60 * 1000, // 1 minuto
   SENSITIVE_RATE_LIMIT_WINDOW_MS: 5 * 60 * 1000, // 5 minutos
   CHALLENGE_RATE_LIMIT_WINDOW_MS: 60 * 60 * 1000, // 1 hora
+  EXPENSIVE_RATE_LIMIT_WINDOW_MS: 10 * 60 * 1000, // 10 minutos para operaciones costosas
 
   // Intentos
   NEW_ATTEMPT_THRESHOLD_MS: 1000, // 1 segundo
@@ -42,6 +47,14 @@ export const LIMIT_CONSTANTS = {
   MAX_SEARCH_RESULTS: 200, // Máximo de resultados a buscar antes de ordenar por relevancia
   MAX_ANALYTICS_ATTEMPTS: 10000, // Máximo de intentos para análisis de comparación
   MAX_SEARCH_DESCRIPTION_LENGTH: 200, // Longitud máxima de descripción en resultados de búsqueda
+  MAX_NOTE_VERSIONS: 10, // Máximo de versiones a mantener por nota
+  MAX_NOTE_CONTENT_SIZE: 10 * 1024 * 1024, // 10 MB máximo por versión de nota
+  MAX_NOTE_TITLE_LENGTH: 200, // Máximo de caracteres para título
+  // Constantes específicas para versiones
+  VERSION_DEFAULT_LIMIT: 20, // Límite por defecto de versiones
+  VERSION_MAX_BULK_DELETE: 50, // Máximo de versiones que se pueden eliminar en lote
+  VERSION_SQLITE_SEARCH_BUFFER: 50, // Buffer adicional para búsqueda en SQLite (filtrado en memoria)
+  VERSION_MEMORY_FILTER_BUFFER: 100, // Buffer adicional para filtrado en memoria
 } as const
 
 // Constantes de rate limiting
@@ -55,6 +68,7 @@ export const RATE_LIMIT_CONSTANTS = {
   WRITE_COUNT: 20,
   SENSITIVE_COUNT: 3,
   CHALLENGE_COUNT: 5,
+  EXPENSIVE_COUNT: 5, // Operaciones costosas como comprimir versiones
 } as const
 
 // Constantes HTTP

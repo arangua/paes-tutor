@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useRef } from 'react'
+import { safeRound, safeDivide, ensureFiniteNumber } from '@/app/api/notes/versions/validation-utils'
 
 export interface ProgressStep {
   id: string
@@ -35,7 +36,10 @@ export function useProgressTracker(options: ProgressTrackerOptions = {}) {
 
   const updateProgress = useCallback(
     (currentValue: number, totalValue: number, stepMessage?: string) => {
-      const newProgress = totalValue > 0 ? Math.round((currentValue / totalValue) * 100) : 0
+      // ✅ Enterprise: Usar safeDivide para evitar división por cero
+      const safeCurrent = ensureFiniteNumber(currentValue, 0)
+      const safeTotal = ensureFiniteNumber(totalValue, 0)
+      const newProgress = safeTotal > 0 ? safeRound(safeDivide(safeCurrent, safeTotal, 0) * 100, 0) : 0
       setCurrent(currentValue)
       setTotal(totalValue)
       setProgress(newProgress)
@@ -53,13 +57,17 @@ export function useProgressTracker(options: ProgressTrackerOptions = {}) {
       }
 
       if (lastUpdateTimeRef.current && currentValue > 0) {
-        const elapsed = (now - startTimeRef.current) / 1000 // segundos
-        const rate = currentValue / elapsed // items por segundo
-        const remaining = totalValue - currentValue
-        const estimated = remaining / rate // segundos restantes
+        // ✅ Enterprise: Usar funciones seguras para cálculos de tiempo
+        const elapsed = safeDivide(now - startTimeRef.current, 1000, 0) // segundos
+        const safeElapsed = ensureFiniteNumber(elapsed, 1) // Evitar división por cero
+        const rate = safeDivide(currentValue, safeElapsed, 0) // items por segundo
+        const remaining = ensureFiniteNumber(totalValue - currentValue, 0)
+        const safeRate = ensureFiniteNumber(rate, 1) // Evitar división por cero
+        const estimated = safeDivide(remaining, safeRate, 0) // segundos restantes
         
-        if (estimated > 0 && estimated < 3600) { // Solo mostrar si es menos de 1 hora
-          setEstimatedTimeRemaining(Math.round(estimated))
+        const safeEstimated = ensureFiniteNumber(estimated, 0)
+        if (safeEstimated > 0 && safeEstimated < 3600) { // Solo mostrar si es menos de 1 hora
+          setEstimatedTimeRemaining(safeRound(safeEstimated, 0))
         }
       }
 

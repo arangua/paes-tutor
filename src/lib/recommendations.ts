@@ -5,6 +5,8 @@
  * basadas en debilidades, fortalezas y patrones de rendimiento.
  */
 
+import { ensureFiniteNumber, ensureInteger } from '@/app/api/notes/versions/validation-utils'
+
 export interface TopicRecommendation {
   topicId: string
   topicName: string
@@ -85,7 +87,8 @@ export function analyzeTopicRecommendations(metrics: PerformanceMetric[]): Topic
   const mediumTopics = metrics.filter(
     m => m.porcentaje >= 50 && m.porcentaje < 70 && m.totalPreguntas >= 3
   )
-  const strongTopics = metrics.filter(m => m.porcentaje >= 70)
+  // strongTopics se usa implícitamente para identificar temas que no necesitan recomendaciones
+  metrics.filter(m => m.porcentaje >= 70)
 
   // Temas débiles (alta prioridad)
   weakTopics.forEach(topic => {
@@ -250,9 +253,12 @@ export function generateStudyPlan(
     })
   }
 
-  const estimatedWeeks = Math.max(weeks.length, 2)
+  // ✅ Enterprise: Calcular semanas estimadas usando funciones seguras
+  const safeWeeksLength = ensureFiniteNumber(weeks.length, 0)
+  const estimatedWeeks = Math.max(ensureInteger(safeWeeksLength, 0), 2)
   const estimatedCompletion = new Date()
-  estimatedCompletion.setDate(estimatedCompletion.getDate() + estimatedWeeks * 7)
+  const safeDaysToAdd = ensureInteger(estimatedWeeks * 7, 14) // Fallback a 2 semanas
+  estimatedCompletion.setDate(estimatedCompletion.getDate() + safeDaysToAdd)
 
   return {
     weeklyGoals: weeks,

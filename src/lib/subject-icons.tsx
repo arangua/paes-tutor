@@ -6,16 +6,12 @@
 import {
   Calculator,
   BookOpen,
-  FlaskConical,
   Globe,
   Calendar,
   Users,
-  Atom,
   Dna,
-  Mountain,
   MapPin,
   FileText,
-  Lightbulb,
   FunctionSquare,
   Divide,
   BookMarked,
@@ -226,14 +222,22 @@ export const EXAM_TYPE_ICONS: Record<string, SubjectIconConfig> = {
  * Obtiene el icono para un tipo de pregunta
  */
 export function getQuestionTypeIcon(tipo: string): SubjectIconConfig {
-  return QUESTION_TYPE_ICONS[tipo] || QUESTION_TYPE_ICONS.default
+  return QUESTION_TYPE_ICONS[tipo] || QUESTION_TYPE_ICONS.default || {
+    icon: FileQuestion,
+    color: 'text-gray-600 dark:text-gray-400',
+    description: 'Pregunta',
+  }
 }
 
 /**
  * Obtiene el icono para un tipo de examen
  */
 export function getExamTypeIcon(tipo: string): SubjectIconConfig {
-  return EXAM_TYPE_ICONS[tipo] || EXAM_TYPE_ICONS.default
+  return EXAM_TYPE_ICONS[tipo] || EXAM_TYPE_ICONS.default || {
+    icon: FileText,
+    color: 'text-gray-600 dark:text-gray-400',
+    description: 'Examen',
+  }
 }
 
 /**
@@ -249,7 +253,7 @@ export function getSubjectIcon(
 
   // Buscar por prefijo
   const prefix = codigo.split('-')[0]
-  if (SUBJECT_ICONS[prefix]) {
+  if (prefix && SUBJECT_ICONS[prefix]) {
     return SUBJECT_ICONS[prefix]
   }
 

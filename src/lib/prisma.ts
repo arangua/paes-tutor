@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client'
-import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
+import { PrismaPg } from '@prisma/adapter-pg'
+import { Pool } from 'pg'
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
@@ -17,23 +18,51 @@ function createPrismaClient() {
     )
   }
 
-  // Usar DATABASE_URL del .env o la ruta relativa por defecto
-  // La URL de SQLite debe tener formato: file:./paes.db o file:paes.db
-  const dbUrl = process.env.DATABASE_URL || 'file:./paes.db'
+  // ⛔ GUARD CRÍTICO: Detectar SQLite y abortar inmediatamente
+  const dbUrl = process.env.DATABASE_URL
+  if (!dbUrl) {
+    throw new Error(
+      'DATABASE_URL no está configurada. Debe configurar una URL de PostgreSQL (Neon) en .env.local'
+    )
+  }
 
-  // Crear el adapter con la URL de la base de datos
-  const adapter = new PrismaBetterSqlite3({
-    url: dbUrl,
-  })
+  if (dbUrl.startsWith('file:')) {
+    throw new Error(
+      `❌ SQLite detectado en DATABASE_URL. Este proyecto solo usa PostgreSQL (Neon).\n` +
+      `   DATABASE_URL actual: ${dbUrl.substring(0, 50)}...\n` +
+      `   Configure DATABASE_URL con una URL de PostgreSQL en .env.local\n` +
+      `   Ejemplo: postgresql://user:password@host/database?sslmode=require`
+    )
+  }
 
-  // Crear PrismaClient con el adapter y configuración de timeouts
-  // Nota: SQLite no tiene timeouts nativos, pero podemos configurar el cliente
-  return new PrismaClient({
+  if (!dbUrl.startsWith('postgresql://') && !dbUrl.startsWith('postgres://')) {
+    throw new Error(
+      `❌ DATABASE_URL no es una URL de PostgreSQL válida.\n` +
+      `   DATABASE_URL actual: ${dbUrl.substring(0, 50)}...\n` +
+      `   Debe comenzar con 'postgresql://' o 'postgres://'`
+    )
+  }
+
+  // Log redactado para seguridad (no exponer credenciales)
+  if (process.env.NODE_ENV === 'development') {
+    const redactedUrl = dbUrl.replace(/:[^:@]+@/, ':****@') // Ocultar password
+    // eslint-disable-next-line no-console
+    console.log('[Prisma] Base de datos configurada (PostgreSQL):', {
+      url: redactedUrl.substring(0, 80) + '...',
+      provider: 'postgresql',
+    })
+  }
+
+  // Crear PrismaClient con adapter para PostgreSQL (requerido en Prisma 7.2.0)
+  const pool = new Pool({ connectionString: dbUrl })
+  const adapter = new PrismaPg(pool)
+  
+  const client = new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error', 'warn'],
-    // Configuración adicional para prevenir queries colgadas
-    // En producción, considerar usar un timeout wrapper si es necesario
   })
+
+  return client
 }
 
 // Lazy initialization - solo se crea cuando se accede

@@ -10,6 +10,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts'
+import { safeRound, safeAverage } from '@/app/api/notes/versions/validation-utils'
 
 interface ProgressChartProps {
   attempts: Array<{
@@ -44,7 +45,7 @@ export function ProgressChart({ attempts }: ProgressChartProps) {
       month: 'short',
       day: 'numeric',
     }),
-    porcentaje: Math.round(attempt.porcentaje),
+    porcentaje: safeRound(attempt.porcentaje, 0),
     asignatura: attempt.exam.subject.codigo,
   }))
 
@@ -52,8 +53,8 @@ export function ProgressChart({ attempts }: ProgressChartProps) {
   const movingAverage = chartData.map((_, index) => {
     if (index < 2) return null
     const lastThree = chartData.slice(index - 2, index + 1)
-    const avg = lastThree.reduce((sum, d) => sum + d.porcentaje, 0) / lastThree.length
-    return Math.round(avg)
+    const avg = safeAverage(lastThree.map(d => d.porcentaje), 0)
+    return safeRound(avg, 0)
   })
 
   const dataWithAverage = chartData.map((d, i) => ({

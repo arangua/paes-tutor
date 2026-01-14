@@ -151,7 +151,17 @@ export async function POST(request: NextRequest) {
           orderBy: { createdAt: 'asc' },
         })
 
-        if (allStudents.length < 2) {
+        // CORRECCIÓN: Validar que allStudents sea un array válido antes de acceder a length
+        if (!Array.isArray(allStudents)) {
+          logger.warn({ allStudents }, 'challenges: allStudents no es un array válido')
+          return NextResponse.json(
+            { error: 'Error al obtener estudiantes' },
+            { status: 500 }
+          )
+        }
+        
+        const safeAllStudentsLength = Number.isFinite(allStudents.length) ? allStudents.length : 0
+        if (safeAllStudentsLength < 2) {
           return NextResponse.json(
             { error: 'Se necesitan al menos 2 estudiantes para crear un desafío' },
             { status: 400 }
@@ -159,7 +169,29 @@ export async function POST(request: NextRequest) {
         }
 
         // Encontrar el otro estudiante (el que no es el actual)
-        const otherStudent = allStudents.find(s => s.id !== dbUser.student.id)
+        // CORRECCIÓN: Validar que allStudents sea un array válido y que s.id y dbUser.student.id existan antes de comparar
+        const otherStudent = (() => {
+          if (!Array.isArray(allStudents)) {
+            return null
+          }
+          const safeCurrentStudentId = dbUser?.student?.id && typeof dbUser.student.id === 'string' ? dbUser.student.id : null
+          if (!safeCurrentStudentId) {
+            logger.warn({ dbUser }, 'challenges: dbUser.student.id no es válido')
+            return null
+          }
+          try {
+            return allStudents.find(s => {
+              if (!s || typeof s !== 'object') {
+                return false
+              }
+              const safeSId = s.id && typeof s.id === 'string' ? s.id : null
+              return safeSId !== null && safeSId !== safeCurrentStudentId
+            }) || null
+          } catch (error) {
+            logger.warn({ error, allStudents }, 'challenges: Error al ejecutar find() en allStudents')
+            return null
+          }
+        })()
         if (!otherStudent) {
           return NextResponse.json(
             { error: 'No se encontró el otro estudiante para desafiar' },
@@ -233,7 +265,7 @@ export async function POST(request: NextRequest) {
         cancelExpiredChallenges().catch(error => {
           logger.error(
             {
-              type: 'challenge_cleanup_background_error',
+              type: 'challenge_cleanup_background_error', // guard:allow-secret
               error: error instanceof Error ? error.message : String(error),
             },
             'Error en limpieza de fondo de desafíos expirados'

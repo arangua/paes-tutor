@@ -10,9 +10,7 @@ import { PasswordForm } from '@/components/profile/password-form'
 import { AIKeysForm } from '@/components/profile/ai-keys-form'
 import { Breadcrumbs } from '@/components/layout/breadcrumbs'
 import {
-  User,
   Mail,
-  Calendar,
   Loader2,
   AlertCircle,
   ArrowLeft,

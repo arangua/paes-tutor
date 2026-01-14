@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { InteractiveTutorial, TutorialStep } from './interactive-tutorial'
 import { Button } from '@/components/ui/button'
 import { Sparkles } from 'lucide-react'
@@ -54,24 +54,21 @@ const DASHBOARD_TUTORIAL_STEPS: TutorialStep[] = [
 
 export function DashboardTutorial() {
   const [isOpen, setIsOpen] = useState(false)
-  const [hasSeenTutorial, setHasSeenTutorial] = useState(false)
-
-  // Verificar si ya se completó el tutorial
-  useEffect(() => {
-    if (typeof window === 'undefined') return
+  // Inicializar estado desde localStorage de forma síncrona
+  const [hasSeenTutorial, setHasSeenTutorial] = useState(() => {
+    if (typeof window === 'undefined') return false
 
     try {
       const saved = localStorage.getItem('dashboard-tutorial-completed')
       if (saved) {
         const data = JSON.parse(saved)
-        if (data.completed || data.skipped) {
-          setHasSeenTutorial(true)
-        }
+        return !!(data.completed || data.skipped)
       }
     } catch {
       // Ignorar errores
     }
-  }, [])
+    return false
+  })
 
   // No mostrar nada si ya se vio el tutorial
   if (hasSeenTutorial && !isOpen) {

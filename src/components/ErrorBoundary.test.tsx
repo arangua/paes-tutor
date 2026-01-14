@@ -1,7 +1,7 @@
 /**
  * @vitest-environment happy-dom
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import React from 'react'
 
@@ -22,6 +22,11 @@ vi.mock('@/components/ui/card', () => ({
   CardTitle: ({ children, ...props }: any) => <h3 {...props}>{children}</h3>,
 }))
 
+// Mock de captureError antes de importar ErrorBoundary
+vi.mock('@/lib/monitoring', () => ({
+  captureError: vi.fn(),
+}))
+
 import { ErrorBoundary } from './ErrorBoundary'
 
 // Componente que lanza error para testing
@@ -33,9 +38,25 @@ const ThrowError = ({ shouldThrow = false }: { shouldThrow?: boolean }) => {
 }
 
 describe('ErrorBoundary', () => {
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>
+  let stderrWriteSpy: ReturnType<typeof vi.spyOn> | null = null
+
   beforeEach(() => {
     // Suprimir console.error en tests (React muestra errores en consola)
-    vi.spyOn(console, 'error').mockImplementation(() => {})
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    
+    // Suprimir stderr para evitar que React escriba errores directamente a stderr
+    // Esto es necesario porque React 18+ puede escribir a stderr directamente
+    if (typeof process !== 'undefined' && process.stderr) {
+      stderrWriteSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+    }
+  })
+
+  afterEach(() => {
+    // Restaurar todos los mocks después de cada test
+    consoleErrorSpy?.mockRestore()
+    stderrWriteSpy?.mockRestore()
+    vi.clearAllMocks()
   })
 
   it('debe renderizar children cuando no hay error', () => {

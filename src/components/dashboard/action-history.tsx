@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -45,8 +46,10 @@ export function ActionHistory() {
     }
   }
 
+  const [currentTime] = useState(() => Date.now())
+  
   const formatTimeAgo = (date: Date) => {
-    const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
+    const seconds = Math.floor((currentTime - date.getTime()) / 1000)
     if (seconds < 60) return 'hace unos segundos'
     if (seconds < 3600) {
       const minutes = Math.floor(seconds / 60)
@@ -150,7 +153,7 @@ export function ActionHistory() {
                   <strong>Rehacer</strong> (Ctrl+Shift+Z)
                   <br />
                   <span className="text-muted-foreground text-xs">
-                    Restaura lo que deshiciste. Como el botón "adelante" en tu navegador.
+                    Restaura lo que deshiciste. Como el botón &quot;adelante&quot; en tu navegador.
                   </span>
                 </p>
               </TooltipContent>

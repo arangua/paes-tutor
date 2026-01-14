@@ -12,13 +12,13 @@ import {
   Sparkles,
   Target,
 } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import {
   TIME_CONSTANTS,
   UI_CONSTANTS,
   CSS_TRANSFORM_CONSTANTS,
 } from '@/lib/constants'
+import { safeRound, safeToISOString } from '@/app/api/notes/versions/validation-utils'
 
 export interface TutorialStep {
   id: string
@@ -82,19 +82,30 @@ export function InteractiveTutorial({
         const data = JSON.parse(saved)
         // Si ya está completado o saltado, no iniciar automáticamente
         if (data.completed || data.skipped) {
-          setInternalOpen(false)
+          queueMicrotask(() => {
+            setInternalOpen(prev => prev === false ? prev : false)
+          })
           return
         }
         if (data.completedSteps) {
-          setCompletedSteps(new Set(data.completedSteps))
+          queueMicrotask(() => {
+            setCompletedSteps(prev => {
+              const next = new Set(data.completedSteps)
+              return prev.size === next.size && [...prev].every(v => next.has(v)) && [...next].every(v => prev.has(v)) ? prev : next
+            })
+          })
         }
         if (data.currentStep !== undefined) {
-          setCurrentStep(data.currentStep)
+          queueMicrotask(() => {
+            setCurrentStep(prev => prev === data.currentStep ? prev : data.currentStep)
+          })
         }
       }
       // Si autoStart está activo y no hay datos guardados, iniciar
       if (autoStart && !saved) {
-        setInternalOpen(true)
+        queueMicrotask(() => {
+          setInternalOpen(prev => prev === true ? prev : true)
+        })
       }
     } catch {
       // Ignorar errores
@@ -359,19 +370,26 @@ export function InteractiveTutorial({
   // Encontrar y destacar elemento objetivo
   useEffect(() => {
     if (!currentStepData?.target) {
-      setHighlightedElement(null)
-      setTooltipPosition({
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        position: 'fixed',
+      queueMicrotask(() => {
+        setHighlightedElement(prev => prev === null ? prev : null)
+        setTooltipPosition(prev => {
+          const next = {
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            position: 'fixed' as const,
+          }
+          return prev.top === next.top && prev.left === next.left && prev.transform === next.transform && prev.position === next.position ? prev : next
+        })
       })
       return
     }
 
     const element = document.querySelector(currentStepData.target) as HTMLElement
     if (element) {
-      setHighlightedElement(element)
+      queueMicrotask(() => {
+        setHighlightedElement(prev => prev === element ? prev : element)
+      })
       // Ejecutar acción si existe
       if (currentStepData.action) {
         // Limpiar timeout anterior si existe
@@ -395,7 +413,9 @@ export function InteractiveTutorial({
         setTooltipPosition(calculateTooltipPosition())
       }, TIME_CONSTANTS.FOCUS_TRANSITION_MS)
     } else {
-      setHighlightedElement(null)
+      queueMicrotask(() => {
+        setHighlightedElement(prev => prev === null ? prev : null)
+      })
     }
 
     // Cleanup: limpiar timeouts al cambiar de paso
@@ -409,7 +429,7 @@ export function InteractiveTutorial({
         positionTimeoutRef.current = null
       }
     }
-  }, [currentStep, currentStepData])
+  }, [currentStep, currentStepData, calculateTooltipPosition])
 
   // Actualizar posición cuando cambian las dimensiones del tooltip
   useEffect(() => {
@@ -466,7 +486,7 @@ export function InteractiveTutorial({
             storageKey,
             JSON.stringify({
               completed: true,
-              completedAt: new Date().toISOString(),
+              completedAt: safeToISOString(new Date()),
             })
           )
         } catch {
@@ -485,14 +505,14 @@ export function InteractiveTutorial({
     }
   }
 
-  const handleSkip = () => {
+  const handleSkip = useCallback(() => {
     if (storageKey && typeof window !== 'undefined') {
       try {
         localStorage.setItem(
           storageKey,
           JSON.stringify({
             skipped: true,
-            skippedAt: new Date().toISOString(),
+            skippedAt: safeToISOString(new Date()),
           })
         )
       } catch {
@@ -500,7 +520,7 @@ export function InteractiveTutorial({
       }
     }
     onSkip()
-  }
+  }, [storageKey, onSkip])
 
   // Atajo de teclado para cerrar (Esc)
   useEffect(() => {
@@ -515,10 +535,7 @@ export function InteractiveTutorial({
 
     window.addEventListener('keydown', handleEscape)
     return () => window.removeEventListener('keydown', handleEscape)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    // handleEscape está definido dentro del efecto y solo depende de isOpen, que ya está en deps
-    // No necesitamos agregar handleEscape a las dependencias para evitar re-registros innecesarios
-  }, [isOpen])
+  }, [isOpen, handleSkip])
 
   // No renderizar si no está abierto
   if (!isOpen) {
@@ -575,8 +592,8 @@ export function InteractiveTutorial({
                 <CardDescription className="text-sm">{currentStepData.description}</CardDescription>
                 {!currentStepData.target && (
                   <div className="mt-2 p-2 rounded-md bg-muted/50 text-xs text-muted-foreground">
-                    💡 <strong>Tip:</strong> El efecto "telescopio" resalta elementos importantes. 
-                    Puedes cerrar este tutorial en cualquier momento con la X o "Omitir".
+                    💡 <strong>Tip:</strong> El efecto &quot;telescopio&quot; resalta elementos importantes. 
+                    Puedes cerrar este tutorial en cualquier momento con la X o &quot;Omitir&quot;.
                   </div>
                 )}
               </div>
@@ -596,7 +613,7 @@ export function InteractiveTutorial({
             <div className="space-y-2">
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>Paso {currentStep + 1} de {steps.length}</span>
-                <span>{Math.round(progress)}%</span>
+                <span>{safeRound(progress, 0)}%</span>
               </div>
               <Progress value={progress} className="h-1.5" />
             </div>
@@ -666,7 +683,7 @@ export function InteractiveTutorial({
             {!currentStepData.target && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2 border-t">
                 <Sparkles className="h-3 w-3" />
-                <span>Presiona "Siguiente" para continuar o "Cerrar" para salir</span>
+                <span>Presiona &quot;Siguiente&quot; para continuar o &quot;Cerrar&quot; para salir</span>
               </div>
             )}
           </CardContent>

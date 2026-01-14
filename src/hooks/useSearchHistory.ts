@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 
 const SEARCH_HISTORY_KEY = 'paes-tutor-search-history'
 const MAX_HISTORY_ITEMS = 10
@@ -16,21 +16,19 @@ export interface SearchHistoryItem {
  * Basado en estándares de Google, GitHub, VS Code
  */
 export function useSearchHistory() {
-  const [history, setHistory] = useState<SearchHistoryItem[]>([])
-
-  // Cargar historial al montar
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-
+  // Lazy initialization para evitar setState en efecto
+  const [history, setHistory] = useState<SearchHistoryItem[]>(() => {
+    if (typeof window === 'undefined') return []
     try {
       const saved = localStorage.getItem(SEARCH_HISTORY_KEY)
       if (saved) {
-        setHistory(JSON.parse(saved))
+        return JSON.parse(saved) as SearchHistoryItem[]
       }
     } catch {
       // Ignorar errores de localStorage
     }
-  }, [])
+    return []
+  })
 
   // Guardar en historial
   const addToHistory = useCallback((query: string, type?: SearchHistoryItem['type']) => {

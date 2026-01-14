@@ -77,7 +77,7 @@ function useGlobalUndoRedoInternal() {
     } finally {
       setIsUndoing(false)
     }
-  }, [canUndo, currentIndex, history.length, isUndoing, isRedoing])
+  }, [canUndo, currentIndex, history, isUndoing, isRedoing])
 
   // Rehacer última acción deshecha
   const redo = useCallback(async () => {
@@ -104,7 +104,7 @@ function useGlobalUndoRedoInternal() {
     } finally {
       setIsRedoing(false)
     }
-  }, [canRedo, currentIndex, history.length, isUndoing, isRedoing])
+  }, [canRedo, currentIndex, history, isUndoing, isRedoing])
 
   // Limpiar historial
   const clear = useCallback(() => {

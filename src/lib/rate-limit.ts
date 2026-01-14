@@ -26,6 +26,8 @@ const SENSITIVE_RATE_LIMIT_WINDOW_MS =
 const CHALLENGE_RATE_LIMIT_COUNT = RATE_LIMIT_CONSTANTS.CHALLENGE_COUNT
 const CHALLENGE_RATE_LIMIT_WINDOW_MS =
   TIME_CONSTANTS.CHALLENGE_RATE_LIMIT_WINDOW_MS
+const EXPENSIVE_RATE_LIMIT_COUNT = RATE_LIMIT_CONSTANTS.EXPENSIVE_COUNT
+const EXPENSIVE_RATE_LIMIT_WINDOW_MS = TIME_CONSTANTS.EXPENSIVE_RATE_LIMIT_WINDOW_MS
 
 // Rate limiter en memoria para desarrollo
 class MemoryRateLimit {
@@ -129,7 +131,7 @@ function createUpstashLimiter(
     })
     return new upstash.Ratelimit({
       redis,
-      limiter: upstash.Ratelimit.slidingWindow(count, window),
+      limiter: upstash.Ratelimit.slidingWindow(count, window as any),
       analytics: true,
     })
   } catch {
@@ -223,6 +225,16 @@ export const apiRateLimit = {
       CHALLENGE_RATE_LIMIT_COUNT,
       CHALLENGE_RATE_LIMIT_WINDOW_MS,
       '1 h'
+    )
+  },
+
+  // Rate limit para operaciones costosas (comprimir, exportar en lote, etc.)
+  expensive: async (identifier: string) => {
+    return rateLimitWithFallback(
+      identifier,
+      EXPENSIVE_RATE_LIMIT_COUNT,
+      EXPENSIVE_RATE_LIMIT_WINDOW_MS,
+      '10 m'
     )
   },
 }

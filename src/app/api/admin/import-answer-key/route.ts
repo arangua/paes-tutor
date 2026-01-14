@@ -3,12 +3,13 @@ import { getCurrentUser } from '@/lib/get-session'
 import { withRateLimit } from '@/lib/rate-limit-middleware'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 import fs from 'fs/promises'
 import path from 'path'
 export const runtime = 'nodejs'
 
 // Importación de pdf-parse v2
-const { PDFParse } = require('pdf-parse')
+import { PDFParse } from 'pdf-parse'
 
 // Schema de validación
 const answerKeyImportSchema = z.object({
@@ -88,11 +89,18 @@ async function extractTextFromPDF(pdfPath: string): Promise<string> {
 function detectCorrectAnswers(text: string): Map<number, string> {
   const answerMap = new Map<number, string>()
 
-  // Normalizar el texto
-  const normalizedText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').toUpperCase()
+  // Validar que text sea un string válido
+  const safeText = typeof text === 'string' ? text : ''
+  if (!safeText) {
+    return answerMap
+  }
 
-  // Buscar sección de respuestas (típicamente al final del documento)
+  // Buscar sección de respuestas ANTES de normalizar (para capturar correctamente)
   const answerSectionPatterns = [
+    // Formato DEMRE: "CLAVES" seguido de tabla (sin dos puntos) - buscar en texto original
+    // Capturar desde "CLAVES" hasta "En el clavijero" (texto exacto que aparece después de la tabla)
+    /CLAVES[\s\S]*?(?=En el clavijero)/i,
+    // Formato estándar con dos puntos
     /RESPUESTAS?[:\s]+([\s\S]+?)(?=\n\n|\n[A-Z]{3,}|$)/i,
     /CLAVE\s+DE\s+RESPUESTAS?[:\s]+([\s\S]+?)(?=\n\n|\n[A-Z]{3,}|$)/i,
     /RESPUESTAS?\s+CORRECTAS?[:\s]+([\s\S]+?)(?=\n\n|\n[A-Z]{3,}|$)/i,
@@ -100,46 +108,164 @@ function detectCorrectAnswers(text: string): Map<number, string> {
   ]
 
   let answerSection = ''
-  for (const pattern of answerSectionPatterns) {
-    const match = normalizedText.match(pattern)
-    if (match && match[1]) {
-      answerSection = match[1]
-      break
+  // Buscar en texto original (sin normalizar)
+  if (typeof safeText === 'string' && safeText.length > 0) {
+    for (const pattern of answerSectionPatterns) {
+      try {
+        const match = safeText.match(pattern)
+        if (match) {
+          // Si el patrón tiene grupo de captura (match[1]), usarlo
+          // Si no (como "CLAVES" sin grupo), usar el match completo
+          if (Array.isArray(match) && match.length > 1 && match[1] && typeof match[1] === 'string') {
+            answerSection = match[1]
+          } else if (typeof match[0] === 'string') {
+            // Para patrones sin grupo de captura, usar el match completo
+            answerSection = match[0]
+          }
+          if (answerSection) {
+            break
+          }
+        }
+      } catch {
+        // Continuar con el siguiente patrón
+      }
     }
   }
 
-  // Si no se encuentra una sección específica, buscar en el último 30% del texto
-  if (!answerSection) {
-    const textLength = normalizedText.length
-    const lastSection = normalizedText.substring(Math.floor(textLength * 0.7))
-    answerSection = lastSection
+  // Normalizar el texto (después de encontrar la sección)
+  let normalizedText = ''
+  try {
+    normalizedText = answerSection 
+      ? answerSection.replace(/\r\n/g, '\n').replace(/\r/g, '\n').toUpperCase()
+      : safeText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').toUpperCase()
+    if (typeof normalizedText !== 'string') {
+      normalizedText = (answerSection || safeText).toUpperCase() // Fallback
+    }
+  } catch {
+    normalizedText = (answerSection || safeText).toUpperCase() // Fallback
   }
 
-  // Múltiples patrones para detectar respuestas
+  // Si no se encuentra una sección específica, buscar en el último 30% del texto
+  // (las respuestas suelen estar al final del documento)
+  if (!answerSection && typeof normalizedText === 'string' && normalizedText.length > 0) {
+    const textLength = typeof normalizedText === 'string' && Number.isFinite(normalizedText.length) ? normalizedText.length : 0
+    if (textLength > 0) {
+      const floorResult = Math.floor(textLength * 0.7)
+      if (Number.isFinite(floorResult) && floorResult >= 0 && floorResult <= textLength) {
+        try {
+          const lastSection = normalizedText.substring(floorResult)
+          if (typeof lastSection === 'string') {
+            answerSection = lastSection
+          }
+        } catch {
+          answerSection = normalizedText // Fallback
+        }
+      } else {
+        answerSection = normalizedText // Fallback
+      }
+    } else {
+      answerSection = normalizedText // Fallback
+    }
+  }
+
+  // Si aún no hay sección, usar todo el texto (último recurso)
+  if (!answerSection || answerSection.length === 0) {
+    answerSection = normalizedText
+  }
+
+  // Múltiples patrones para detectar respuestas (ordenados por especificidad)
+  // IMPORTANTE: Patrones más específicos primero para evitar falsos positivos
   const answerPatterns = [
-    // Formato: "1-A", "1-A,", "1-A ", "1 - A"
-    /(\d+)[\s\-\.\)]+([A-E])/g,
-    // Formato: "1. A", "1) A"
-    /(\d+)[\.\)]\s*([A-E])/g,
-    // Formato: "1 A" (con espacio)
-    /(\d+)\s+([A-E])(?=\s|,|$)/g,
-    // Formato en lista: "1) A", "2) B"
+    // Formato de tabla DEMRE: "Nº	Clave" con tabs/espacios múltiples (ej: "1 	B" o "1\tB")
+    // Este formato es muy común en clavijeros oficiales de DEMRE
+    /^(\d+)[\*\s\t]+\b([A-E])\b/gm, // Línea completa: número, espacios/tabs, letra (puede tener asterisco)
+    /(\d+)[\*\s\t]{2,}([A-E])\b/g, // Múltiples espacios/tabs entre número y letra
+    // Formato invertido: "A1", "B2" (letra-número) - debe ir primero para evitar conflictos
+    /^([A-E])(\d+)$/gm, // Solo si está en su propia línea
+    /([A-E])(\d+)(?=\s|$|,|\.)/g, // Con delimitadores claros
+    // Formato: "1. A", "1) A", "1.A" (muy específico)
+    /(\d+)[.)]\s*([A-E])(?=\s|$|,|\.)/g,
+    // Formato: "1: A", "2: B" (dos puntos)
+    /(\d+):\s*([A-E])(?=\s|$|,|\.)/g,
+    // Formato: "P1: A", "Pregunta 1: A"
+    /(?:P|PREGUNTA|PREG)\s*(\d+)[:\s]+([A-E])/gi,
+    // Formato en lista: "1) A", "2) B" (inicio de línea)
     /^(\d+)\)\s*([A-E])/gm,
+    // Formato: "1) A", "2) B" (sin inicio de línea, más flexible)
+    /(\d+)\)\s*([A-E])(?=\s|$|,|\.)/g,
+    // Formato: "1-A", "1-A,", "1-A ", "1 - A", "1-A."
+    /(\d+)[\s\-]+([A-E])(?=\s|$|,|\.)/g,
+    // Formato: "1 A" (con espacio), "1  A" (múltiples espacios) - menos específico, al final
+    /(\d+)\s+([A-E])(?=\s|$|,|\.)/g,
   ]
 
-  for (const pattern of answerPatterns) {
-    const matches = Array.from(answerSection.matchAll(pattern))
-    for (const match of matches) {
-      const questionNum = parseInt(match[1], 10)
-      const answerLetter = match[2].toUpperCase()
-
-      // Validar que la letra esté en el rango A-E
-      // Aumentar límite a 150 para exámenes más largos
-      if (questionNum > 0 && questionNum <= 150 && /^[A-E]$/.test(answerLetter)) {
-        // Si ya existe una respuesta para esta pregunta, mantener la primera encontrada
-        if (!answerMap.has(questionNum)) {
-          answerMap.set(questionNum, answerLetter)
+  // Usar answerSection original (no normalizado) para los patrones
+  // Los patrones funcionan mejor con el texto original que tiene tabs/espacios reales
+  const sectionToSearch = answerSection || safeText
+  
+  if (typeof sectionToSearch === 'string' && sectionToSearch.length > 0) {
+    for (const pattern of answerPatterns) {
+      try {
+        const matches = Array.from(sectionToSearch.matchAll(pattern))
+        if (!Array.isArray(matches)) {
+          continue
         }
+        for (const match of matches) {
+          if (!match || !Array.isArray(match) || match.length < 3 || !match[1] || !match[2]) {
+            continue // Saltar matches inválidos
+          }
+          
+          let questionNum: number
+          let answerLetter: string
+
+          // Manejar patrón especial: "A1", "B2" (letra-número) vs "1-A", "2-B" (número-letra)
+          const match1 = typeof match[1] === 'string' ? match[1] : String(match[1])
+          const match2 = typeof match[2] === 'string' ? match[2] : String(match[2])
+          
+          // Detectar si es formato invertido (letra-número)
+          const isLetterNumberFormat = /^[A-E]$/i.test(match1) && /^\d+$/.test(match2)
+          
+          if (isLetterNumberFormat) {
+            // Formato: "A1", "B2" → letra es match1, número es match2
+            answerLetter = match1.toUpperCase()
+            const safeMatch2 = typeof match2 === 'string' && match2.length > 0 ? match2 : ''
+            if (!safeMatch2) {
+              continue
+            }
+            questionNum = parseInt(safeMatch2, 10)
+          } else {
+            // Formato normal: "1-A", "2-B" → número es match1, letra es match2
+            const safeMatch1 = typeof match1 === 'string' && match1.length > 0 ? match1 : ''
+            if (!safeMatch1) {
+              continue // Saltar si match1 es inválido o vacío
+            }
+            questionNum = parseInt(safeMatch1, 10)
+            try {
+              answerLetter = match2.toUpperCase()
+              if (typeof answerLetter !== 'string') {
+                answerLetter = match2 // Fallback
+              }
+            } catch {
+              answerLetter = match2 // Fallback
+            }
+          }
+
+          // Validar número de pregunta
+          if (isNaN(questionNum) || questionNum <= 0 || !Number.isFinite(questionNum)) {
+            continue // Saltar números inválidos
+          }
+
+          // Validar que la letra esté en el rango A-E
+          // Aumentar límite a 150 para exámenes más largos
+          if (questionNum <= 150 && typeof answerLetter === 'string' && /^[A-E]$/.test(answerLetter)) {
+            // Si ya existe una respuesta para esta pregunta, mantener la primera encontrada
+            if (!answerMap.has(questionNum)) {
+              answerMap.set(questionNum, answerLetter)
+            }
+          }
+        }
+      } catch {
+        // Continuar con el siguiente patrón
       }
     }
   }
@@ -244,6 +370,11 @@ async function importAnswerKey(data: z.infer<typeof answerKeyImportSchema>) {
       exam = exams[0]
     }
 
+    // Validar que exam existe
+    if (!exam) {
+      throw new Error('No se encontró el examen')
+    }
+
     // Validar que el examen tenga preguntas
     if (!exam.questions || exam.questions.length === 0) {
       throw new Error('El examen no tiene preguntas asociadas')
@@ -290,109 +421,147 @@ async function importAnswerKey(data: z.infer<typeof answerKeyImportSchema>) {
     // Detectar respuestas correctas
     const correctAnswers = detectCorrectAnswers(text)
 
+    // Log mínimo: solo si hay problemas críticos (evitar saturar logs que causan desconexiones)
     if (correctAnswers.size === 0) {
+      logger.warn(
+        {
+          totalDetected: correctAnswers.size,
+          examQuestionsCount: exam.questions.length,
+        },
+        'No se detectaron respuestas en el clavijero'
+      )
+    }
+
+    // Log del texto extraído para debugging (solo si no se detectaron respuestas)
+    if (correctAnswers.size === 0) {
+      const textPreview = typeof text === 'string' && text.length > 0 
+        ? text.substring(Math.max(0, text.length - 1000)) // Últimos 1000 caracteres
+        : ''
+      
+      logger.warn(
+        {
+          textLength: typeof text === 'string' ? text.length : 0,
+          textPreview: textPreview.substring(0, 500), // Primeros 500 chars del preview
+        },
+        'No se detectaron respuestas en el PDF del clavijero'
+      )
+
       throw new Error(
         'No se pudieron detectar respuestas correctas en el PDF del clavijero. ' +
-          'Verifica que el formato sea correcto (ej: "1-A", "2-B", etc.)'
+          'Verifica que el formato sea correcto (ej: "1-A", "2-B", "1. A", etc.). ' +
+          'El PDF debe contener una sección con las respuestas correctas al final del documento.'
       )
     }
 
     // Validar que se detectaron suficientes respuestas
+    if (!exam || !exam.questions) {
+      throw new Error('El examen no tiene preguntas asociadas')
+    }
     const totalQuestions = exam.questions.length
     const detectedAnswers = correctAnswers.size
     const coverage = (detectedAnswers / totalQuestions) * 100
 
-    const { logger } = await import('@/lib/logger')
-    logger.info(
-      {
-        detectedAnswers,
-        totalQuestions,
-        coverage: coverage.toFixed(1),
-      },
-      'Respuestas detectadas en clavijero'
-    )
-
-    // Advertir si la cobertura es muy baja (menos del 50%)
+    // Log mínimo para evitar desconexiones (solo si hay problemas)
     if (coverage < 50) {
       logger.warn(
         {
           detectedAnswers,
           totalQuestions,
+          coverage: coverage.toFixed(1),
         },
-        'Clavijero podría estar incompleto'
+        'Cobertura baja en clavijero'
       )
-      // No lanzar error, pero advertir - puede que el clavijero tenga menos preguntas
+    }
+
+    // Advertir si la cobertura es muy baja (menos del 50%)
+    // Log mínimo para evitar desconexiones
+    if (coverage < 50) {
+      logger.warn(
+        {
+          detectedAnswers,
+          totalQuestions,
+          coverage: coverage.toFixed(1),
+        },
+        'Cobertura baja: posible discrepancia entre examen y clavijero'
+      )
     }
 
     // Actualizar las opciones correctas en las preguntas
     let updatedCount = 0
     let notFoundCount = 0
 
-    await prisma.$transaction(async tx => {
-      for (let i = 0; i < exam.questions.length; i++) {
-        const examQuestion = exam.questions[i]
-        const questionNumber = i + 1 // Número de pregunta (1-indexed)
-        const correctAnswerLetter = correctAnswers.get(questionNumber)
+    if (!exam || !exam.questions) {
+      throw new Error('El examen no tiene preguntas asociadas')
+    }
 
-        if (!correctAnswerLetter) {
-          notFoundCount++
-          continue
-        }
+    // Timeout aumentado a 60s para exámenes grandes (puede tener 50+ preguntas con múltiples opciones cada una)
+    await prisma.$transaction(
+      async tx => {
+        for (let i = 0; i < exam.questions.length; i++) {
+          const examQuestion = exam.questions[i]
+          // Usar el campo 'orden' que refleja el número original de la pregunta en el examen
+          // Si no está disponible, usar i + 1 como fallback
+          const questionNumber = examQuestion.orden || (i + 1)
+          const correctAnswerLetter = correctAnswers.get(questionNumber)
 
-        const question = examQuestion.question
+          if (!correctAnswerLetter) {
+            // Sin logging detallado para evitar desconexiones
+            notFoundCount++
+            continue
+          }
 
-        // Buscar la opción correcta por letra
-        const correctOption = question.options.find(
-          opt => opt.letra.toUpperCase() === correctAnswerLetter
-        )
+          const question = examQuestion.question
 
-        if (!correctOption) {
-          logger.warn(
-            {
-              correctAnswerLetter,
-              questionNumber,
-            },
-            'No se encontró opción con letra en pregunta'
+          // Buscar la opción correcta por letra
+          const correctOption = question.options.find(
+            opt => opt.letra.toUpperCase() === correctAnswerLetter
           )
-          notFoundCount++
-          continue
-        }
 
-        // Validar que la pregunta tenga opciones
-        if (!question.options || question.options.length === 0) {
-          logger.warn({ questionNumber }, 'Pregunta no tiene opciones')
-          notFoundCount++
-          continue
-        }
+          if (!correctOption) {
+            // Sin logging detallado para evitar desconexiones
+            notFoundCount++
+            continue
+          }
 
-        // Actualizar todas las opciones: marcar la correcta y desmarcar las demás
-        // Solo actualizar si hay cambios para optimizar
-        const needsUpdate = question.options.some(
-          opt =>
-            (opt.id === correctOption.id && !opt.esCorrecta) ||
-            (opt.id !== correctOption.id && opt.esCorrecta)
-        )
+          // Validar que la pregunta tenga opciones
+          if (!question.options || question.options.length === 0) {
+            // Sin logging detallado para evitar desconexiones
+            notFoundCount++
+            continue
+          }
 
-        if (needsUpdate) {
-          // Actualizar todas las opciones en paralelo
-          await Promise.all(
-            question.options.map(async option => {
-              await tx.questionOption.update({
-                where: { id: option.id },
-                data: {
-                  esCorrecta: option.id === correctOption.id,
-                },
+          // Actualizar todas las opciones: marcar la correcta y desmarcar las demás
+          // Solo actualizar si hay cambios para optimizar
+          const needsUpdate = question.options.some(
+            opt =>
+              (opt.id === correctOption.id && !opt.esCorrecta) ||
+              (opt.id !== correctOption.id && opt.esCorrecta)
+          )
+
+          if (needsUpdate) {
+            // Actualizar todas las opciones en paralelo
+            await Promise.all(
+              question.options.map(async option => {
+                await tx.questionOption.update({
+                  where: { id: option.id },
+                  data: {
+                    esCorrecta: option.id === correctOption.id,
+                  },
+                })
               })
-            })
-          )
-          updatedCount++
-        } else {
-          // Si no necesita actualización pero la respuesta es correcta, contar como actualizada
-          // (ya estaba marcada correctamente)
-          updatedCount++
+            )
+            updatedCount++
+          } else {
+            // Si no necesita actualización pero la respuesta es correcta, contar como actualizada
+            // (ya estaba marcada correctamente)
+            updatedCount++
+          }
         }
+      },
+      {
+        timeout: 60000, // 60 segundos (suficiente para exámenes grandes)
       }
-    })
+    )
 
     // Limpiar PDF después de procesar
     if (pdfPath) {
@@ -472,26 +641,80 @@ export async function POST(request: NextRequest) {
         // Importar clavijero
         const result = await importAnswerKey(validation.data)
 
+        // Mensaje más detallado cuando hay muchas preguntas sin respuesta
+        let detailsMessage = 
+          `Examen: ${result.examTitle}\n` +
+          `Total de preguntas en el examen: ${result.totalQuestions}\n` +
+          `Respuestas detectadas en PDF: ${result.answersDetected}\n` +
+          `Respuestas actualizadas: ${result.answersUpdated}\n`
+        
+        if (result.answersNotFound > 0) {
+          detailsMessage += `\n⚠️ No se encontraron respuestas para ${result.answersNotFound} pregunta(s)\n\n`
+          
+          // Si hay mucha discrepancia, explicar posibles causas
+          if (result.answersNotFound > result.totalQuestions * 0.5) {
+            detailsMessage += `Posibles causas:\n`
+            detailsMessage += `- El examen importado tiene menos preguntas que el clavijero\n`
+            detailsMessage += `- El clavijero contiene ítems piloto (marcados con *) que no están en el examen\n`
+            detailsMessage += `- El examen solo tiene las preguntas publicadas (no todas las operativas)\n`
+            detailsMessage += `- Hay discrepancia en la numeración entre examen y clavijero\n\n`
+            detailsMessage += `Sugerencia: Verifica que el examen importado corresponda al mismo instrumento que el clavijero.`
+          }
+        }
+
         return NextResponse.json({
           success: true,
           message: `Clavijero importado exitosamente: ${result.answersUpdated} respuestas actualizadas`,
-          details:
-            `Examen: ${result.examTitle}\n` +
-            `Total de preguntas: ${result.totalQuestions}\n` +
-            `Respuestas detectadas en PDF: ${result.answersDetected}\n` +
-            `Respuestas actualizadas: ${result.answersUpdated}\n` +
-            (result.answersNotFound > 0
-              ? `⚠️ No se encontraron respuestas para ${result.answersNotFound} pregunta(s)`
-              : ''),
+          details: detailsMessage,
           examId: result.examId,
         })
       } catch (error) {
+        // Log mínimo del error (sin stack trace completo para evitar desconexiones)
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        logger.error(
+          {
+            error: errorMessage,
+          },
+          'Error al importar clavijero'
+        )
+
+        // Determinar status code apropiado según el tipo de error
+        let statusCode = 500
+        let errorMessage = 'Error al importar clavijero'
+
+        if (error instanceof Error) {
+          // Errores de validación o recursos no encontrados → 400/404
+          if (
+            error.message.includes('no existe') ||
+            error.message.includes('no encontrado') ||
+            error.message.includes('no se encontró') ||
+            error.message.includes('No se encontró')
+          ) {
+            statusCode = 404
+            errorMessage = error.message
+          } else if (
+            error.message.includes('inválido') ||
+            error.message.includes('Debe proporcionar') ||
+            error.message.includes('debe ser') ||
+            error.message.includes('No se pudieron detectar respuestas') ||
+            error.message.includes('formato sea correcto')
+          ) {
+            statusCode = 400 // Bad Request - error de formato/validación
+            errorMessage = error.message
+          } else if (error.message.includes('timeout') || error.message.includes('expired')) {
+            statusCode = 504 // Gateway Timeout
+            errorMessage = 'La operación tardó demasiado. Intenta con un examen más pequeño o contacta al administrador.'
+          } else {
+            errorMessage = error.message
+          }
+        }
+
         return NextResponse.json(
           {
-            error: 'Error al importar clavijero',
+            error: errorMessage,
             details: error instanceof Error ? error.message : 'Error desconocido',
           },
-          { status: 500 }
+          { status: statusCode }
         )
       }
     },

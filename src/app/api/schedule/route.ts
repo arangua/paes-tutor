@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getCurrentUser, getAuthenticatedUserWithStudent } from '@/lib/get-session'
+import { getAuthenticatedUserWithStudent } from '@/lib/get-session'
 import { withRateLimit } from '@/lib/rate-limit-middleware'
 import { z } from 'zod'
 import { logger } from '@/lib/logger'

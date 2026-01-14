@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useCallback, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
 export interface KeyboardShortcut {
@@ -66,7 +66,9 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcut[]) {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, []) // Dependencias vacías porque usamos ref para shortcuts actuales
+    // shortcuts.length no está en deps porque usamos ref para shortcuts actuales
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 }
 
 /**

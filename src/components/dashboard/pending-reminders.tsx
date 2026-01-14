@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -15,9 +16,8 @@ import {
   PlayCircle,
 } from 'lucide-react'
 import Link from 'next/link'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { HelpIcon } from '@/components/help/help-icon'
-import { cn } from '@/lib/utils'
+import { cn, calculateDaysSince } from '@/lib/utils'
 
 interface PendingAttempt {
   id: string
@@ -65,13 +65,14 @@ export function PendingReminders({
   pendingChallenges = 0,
   pendingReviews = 0,
 }: PendingRemindersProps) {
+  // Calcular fecha actual de forma pura usando useState
+  const [currentTime] = useState(() => Date.now())
+
   const reminders: PendingReminder[] = []
 
-  // Agregar exámenes en progreso
+  // ✅ Enterprise: Agregar exámenes en progreso usando funciones seguras
   pendingAttempts.forEach(attempt => {
-    const daysSinceStart = Math.floor(
-      (Date.now() - new Date(attempt.startedAt).getTime()) / (1000 * 60 * 60 * 24)
-    )
+    const daysSinceStart = calculateDaysSince(attempt.startedAt, currentTime)
     reminders.push({
       id: `attempt-${attempt.id}`,
       type: 'exam',

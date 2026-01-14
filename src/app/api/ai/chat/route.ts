@@ -5,6 +5,7 @@ import {
   sendAIMessage,
   generateExplanation,
   generateStudyRecommendations,
+  generateStepByStepExplanation,
   type AIMessage,
   type AIService,
 } from '@/lib/ai-service'
@@ -49,17 +50,28 @@ const recommendationsSchema = z.object({
   service: z.enum(['openai', 'anthropic', 'gemini']).optional(),
 })
 
+const stepByStepExplanationSchema = z.object({
+  question: z.string(),
+  correctAnswer: z.string(),
+  studentAnswer: z.string().optional(),
+  topic: z.string().optional(),
+  subject: z.string().optional(),
+  service: z.enum(['openai', 'anthropic', 'gemini']).optional(),
+})
+
 export async function POST(request: NextRequest) {
   return withRateLimit(request, async () => {
+    let studentId: string | null = null
+    let bodyData: any = null
     try {
-      const studentId = await getCurrentStudentId()
+      studentId = await getCurrentStudentId()
 
       if (!studentId) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
       }
 
-      const body = await request.json()
-      const { type, ...data } = body
+      bodyData = await request.json()
+      const { type, ...data } = bodyData
 
       if (type === 'chat') {
         const validation = await validateBody(
@@ -114,6 +126,35 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ explanation })
       }
 
+      if (type === 'step-by-step-explanation') {
+        const validation = await validateBody(
+          new NextRequest(request.url, {
+            method: 'POST',
+            body: JSON.stringify(data),
+            headers: request.headers,
+          }),
+          stepByStepExplanationSchema
+        )
+
+        if (!validation.success) {
+          return validation.error
+        }
+
+        const { question, correctAnswer, studentAnswer, topic, subject, service } = validation.data
+
+        const stepByStepExplanation = await generateStepByStepExplanation(
+          question,
+          correctAnswer,
+          studentAnswer,
+          topic,
+          subject,
+          service ? { service: service as AIService, apiKey: '' } : undefined,
+          studentId
+        )
+
+        return NextResponse.json({ explanation: stepByStepExplanation })
+      }
+
       if (type === 'recommendations') {
         const validation = await validateBody(
           new NextRequest(request.url, {
@@ -141,33 +182,24 @@ export async function POST(request: NextRequest) {
       }
 
       return NextResponse.json(
-        { error: 'Tipo de solicitud no válido. Use: chat, explanation, o recommendations' },
+        {
+          error:
+            'Tipo de solicitud no válido. Use: chat, explanation, step-by-step-explanation, o recommendations',
+        },
         { status: 400 }
       )
     } catch (error) {
       let requestType = 'unknown'
-      try {
-        const body = await request.json().catch((error) => {
-          // Log error de parsing JSON
-          logger.warn(
-            {
-              error: error instanceof Error ? error.message : String(error),
-              path: request.nextUrl.pathname,
-            },
-            'Error al parsear JSON de body en API de IA'
-          )
-          return {}
-        })
-        requestType = body.type || 'unknown'
-      } catch {
-        // Ignorar error al leer body
+      // Usar bodyData si está disponible, evitando leer el body dos veces
+      if (bodyData) {
+        requestType = bodyData.type || 'unknown'
       }
 
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
           stack: error instanceof Error ? error.stack : undefined,
-          studentId,
+          studentId: studentId || undefined,
           type: requestType,
         },
         'Error en API de IA'

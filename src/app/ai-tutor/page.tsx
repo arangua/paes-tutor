@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/select'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Breadcrumbs } from '@/components/layout/breadcrumbs'
-import { Loader2, Bot, Send, AlertCircle, CheckCircle2, Settings } from 'lucide-react'
+import { Loader2, Bot, Send, AlertCircle, Settings } from 'lucide-react'
 import { HelpIcon } from '@/components/help/help-icon'
 import Link from 'next/link'
 
@@ -48,7 +48,7 @@ export default function AITutorPage() {
             setSelectedService(data.defaultService)
           }
         }
-      } catch (err) {
+      } catch {
         // Error silencioso - el usuario verá el mensaje en la UI
       }
     }
@@ -226,7 +226,7 @@ export default function AITutorPage() {
               <div className="text-center text-muted-foreground py-8">
                 <Bot className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>Comienza una conversación haciendo una pregunta</p>
-                <p className="text-sm mt-2">Ejemplo: "Explícame las ecuaciones cuadráticas"</p>
+                <p className="text-sm mt-2">Ejemplo: &quot;Explícame las ecuaciones cuadráticas&quot;</p>
               </div>
             ) : (
               messages.map((msg, idx) => (

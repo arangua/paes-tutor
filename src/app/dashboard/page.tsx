@@ -2,6 +2,7 @@
 
 import { useEffect, useState, lazy, Suspense, useMemo, useCallback } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
@@ -28,6 +29,7 @@ import { WelcomeTour } from '@/components/help/welcome-tour'
 import { QuickGuide } from '@/components/help/quick-guide'
 import { HelpIcon } from '@/components/help/help-icon'
 import { ExportButton } from '@/components/export/export-button'
+import { safeMathMax, safeRound } from '@/app/api/notes/versions/validation-utils'
 import { CollapsibleSection } from '@/components/ui/collapsible-section'
 import { getErrorMessage, extractErrorInfo, ERROR_CODES } from '@/lib/error-messages'
 import { ErrorMessageComponent } from '@/components/ui/error-message'
@@ -83,6 +85,7 @@ interface Metric {
 }
 
 export default function DashboardPage() {
+  const router = useRouter()
   const [student, setStudent] = useState<Student | null>(null)
   const [metrics, setMetrics] = useState<Metric[]>([])
   const [loading, setLoading] = useState(true)
@@ -132,7 +135,7 @@ export default function DashboardPage() {
     () =>
       metrics.map(m => ({
         name: m.codigo,
-        porcentaje: Math.round(m.porcentaje),
+        porcentaje: safeRound(m.porcentaje, 0),
       })),
     [metrics]
   )
@@ -178,11 +181,6 @@ export default function DashboardPage() {
         description: 'Tu dashboard se ha exportado correctamente a Excel.',
       })
     } catch (error) {
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : 'No se pudo exportar el dashboard. Por favor, intenta nuevamente.'
-
       const errorInfo = extractErrorInfo(error)
       const structuredError = getErrorMessage(ERROR_CODES.DATA_EXPORT_FAILED, {
         reason: errorInfo.message,
@@ -237,11 +235,11 @@ export default function DashboardPage() {
 
       // Mostrar tour si es primera vez
       const isFirstVisit = globalThis.window.localStorage.getItem(
-        'paes-tutor-dashboard-first-visit'
+        'paes-tutor-dashboard-first-visit' // guard:allow-secret
       )
       if (!seen && !isFirstVisit) {
         setShowTour(true)
-        globalThis.window.localStorage.setItem('paes-tutor-dashboard-first-visit', 'true')
+        globalThis.window.localStorage.setItem('paes-tutor-dashboard-first-visit', 'true') // guard:allow-secret
       }
     }
   }, [])
@@ -251,11 +249,11 @@ export default function DashboardPage() {
       try {
         const [studentRes, metricsRes, flashcardsRes, challengesRes, reviewsRes] =
           await Promise.all([
-            fetch('/api/student'),
-            fetch('/api/metrics'),
-            fetch('/api/flashcards?dueOnly=true').catch(() => ({ ok: false })),
-            fetch('/api/challenges?status=pending').catch(() => ({ ok: false })),
-            fetch('/api/review/quick?limit=1').catch(() => ({ ok: false })),
+            fetch('/api/student', { credentials: 'include' }),
+            fetch('/api/metrics', { credentials: 'include' }),
+            fetch('/api/flashcards?dueOnly=true', { credentials: 'include' }).catch(() => ({ ok: false })),
+            fetch('/api/challenges?status=pending', { credentials: 'include' }).catch(() => ({ ok: false })),
+            fetch('/api/review/quick?limit=1', { credentials: 'include' }).catch(() => ({ ok: false })),
           ])
 
         // Manejar errores de autenticación
@@ -276,19 +274,42 @@ export default function DashboardPage() {
           )
         }
 
-        if (!metricsRes.ok) {
+        const studentData = await studentRes.json()
+
+        // Manejar métricas: si falla pero el estudiante existe, usar array vacío
+        let metricsData: any[] = []
+        if (metricsRes.ok) {
+          metricsData = await metricsRes.json()
+        } else if (metricsRes.status === 404) {
+          // Si es 404, verificar si es por estudiante no encontrado o simplemente sin métricas
           const { safeJsonParse } = await import('@/lib/api-helpers')
           const errorData = await safeJsonParse<{ error?: string }>(metricsRes, {
             path: typeof window !== 'undefined' ? window.location.pathname : '/dashboard',
             operation: 'obtener métricas',
           })
-          throw new Error(
-            errorData.error || `Error ${metricsRes.status}: Error al obtener métricas`
-          )
+          // Si el error es "Estudiante no encontrado", lanzar error
+          // Si es otro error 404, asumir que simplemente no hay métricas aún
+          if (errorData.error?.includes('Estudiante no encontrado')) {
+            throw new Error(errorData.error)
+          }
+          // Si no, simplemente usar array vacío (estudiante nuevo sin métricas)
+          metricsData = []
+        } else {
+          // Para otros errores, intentar parsear y lanzar
+          const { safeJsonParse } = await import('@/lib/api-helpers')
+          const errorData = await safeJsonParse<{ error?: string }>(metricsRes, {
+            path: typeof window !== 'undefined' ? window.location.pathname : '/dashboard',
+            operation: 'obtener métricas',
+          })
+          // Solo lanzar error si es crítico (401, 500, etc.)
+          if (metricsRes.status === 401 || metricsRes.status >= 500) {
+            throw new Error(
+              errorData.error || `Error ${metricsRes.status}: Error al obtener métricas`
+            )
+          }
+          // Para otros errores, usar array vacío
+          metricsData = []
         }
-
-        const studentData = await studentRes.json()
-        const metricsData = await metricsRes.json()
 
         // Validar que no haya errores en la respuesta
         if (studentData.error) {
@@ -343,6 +364,8 @@ export default function DashboardPage() {
     }
 
     fetchData()
+    // router de Next.js es estable y no cambia entre renders
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   if (loading) {
@@ -359,9 +382,7 @@ export default function DashboardPage() {
             <p className="text-lg font-semibold text-gray-900 dark:text-white">
               Cargando dashboard...
             </p>
-            <p className="text-sm text-muted-foreground">
-              Obteniendo tus estadísticas y progreso
-            </p>
+            <p className="text-sm text-muted-foreground">Obteniendo tus estadísticas y progreso</p>
           </div>
         </div>
       </div>
@@ -374,7 +395,7 @@ export default function DashboardPage() {
     try {
       processedError = JSON.parse(error)
     } catch {
-      const errorInfo = extractErrorInfo(error)
+      extractErrorInfo(error)
       processedError = getErrorMessage(ERROR_CODES.SYSTEM_LOAD_FAILED, {
         message: error,
       })
@@ -464,7 +485,7 @@ export default function DashboardPage() {
             <StatsCard
               title="Promedio General"
               description="Rendimiento promedio"
-              value={Math.round(avgScore)}
+              value={safeRound(avgScore, 0)}
               percentage={avgScore}
               comparison={{
                 value: 60, // Promedio general estimado
@@ -483,18 +504,18 @@ export default function DashboardPage() {
               description="En tus intentos"
               value={
                 student.attempts.length > 0
-                  ? Math.round(Math.max(...student.attempts.map(a => a.porcentaje)))
+                  ? safeRound(safeMathMax(student.attempts.map(a => a.porcentaje), 0), 0)
                   : 0
               }
               percentage={
                 student.attempts.length > 0
-                  ? Math.max(...student.attempts.map(a => a.porcentaje))
+                  ? safeMathMax(student.attempts.map(a => a.porcentaje), 0)
                   : 0
               }
               icon={<Award className="h-4 w-4" />}
               badge={
                 student.attempts.length > 0 &&
-                Math.max(...student.attempts.map(a => a.porcentaje)) >= 90
+                safeMathMax(student.attempts.map(a => a.porcentaje), 0) >= 90
                   ? { text: 'Excelente', variant: 'default' }
                   : undefined
               }
@@ -614,7 +635,7 @@ export default function DashboardPage() {
                           <SubjectIcon codigo={metric.codigo} size={20} />
                           <CardTitle className="text-lg">{metric.nombre}</CardTitle>
                         </div>
-                        <Badge variant={badgeVariant}>{Math.round(metric.porcentaje)}%</Badge>
+                        <Badge variant={badgeVariant}>{safeRound(metric.porcentaje, 0)}%</Badge>
                       </div>
                       <CardDescription>
                         {metric.correctas} de {metric.totalPreguntas} correctas
@@ -631,7 +652,7 @@ export default function DashboardPage() {
                               variant="outline"
                               className="text-xs"
                             >
-                              {tema.nombre}: {Math.round(tema.porcentaje)}%
+                              {tema.nombre}: {safeRound(tema.porcentaje, 0)}%
                             </Badge>
                           ))}
                         </div>
@@ -682,7 +703,7 @@ export default function DashboardPage() {
                         </p>
                       </div>
                       <div className="text-right">
-                        <div className="text-2xl font-bold">{Math.round(attempt.porcentaje)}%</div>
+                        <div className="text-2xl font-bold">{safeRound(attempt.porcentaje, 0)}%</div>
                         {attempt.puntajePaes && (
                           <div className="text-sm text-gray-600 dark:text-gray-400">
                             PAES: {attempt.puntajePaes}
