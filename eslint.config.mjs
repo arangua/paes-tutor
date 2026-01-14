@@ -309,5 +309,17 @@ export default [
         fetch: "readonly",
       },
     },
+    rules: {
+      // ✅ Enterprise: Desactivar reglas de SonarJS que son ruido en tests E2E
+      // Estas reglas detectan "hardcoded passwords" y "pseudo-random" en datos de test,
+      // lo cual es esperado y correcto en el contexto de tests E2E
+      "sonarjs/no-hardcoded-passwords": "off",
+      "sonarjs/pseudo-random": "off",
+      // Desactivar complejidad cognitiva en tests (tests pueden ser complejos por naturaleza)
+      "sonarjs/cognitive-complexity": "off",
+      // Desactivar reglas de React hooks en E2E (no usamos React hooks aquí)
+      "react-hooks/rules-of-hooks": "off",
+      "react-hooks/exhaustive-deps": "off",
+    },
   },
 ];

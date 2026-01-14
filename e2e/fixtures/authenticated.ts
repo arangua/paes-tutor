@@ -15,7 +15,6 @@ export const test = base.extend<AuthenticatedFixtures>({
   /**
    * Página autenticada - lista para usar en tests
    */
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   authenticatedPage: async ({ page }, use) => {
     const loginPage = new LoginPage(page)
     
@@ -30,10 +29,13 @@ export const test = base.extend<AuthenticatedFixtures>({
           await page.waitForTimeout(2000) // Esperar un poco antes de reintentar
           retries--
         }
-      } catch (e) {
+      } catch (err) {
+        console.error("Error al cargar página de login", err)
         retries--
         if (retries > 0) {
           await page.waitForTimeout(2000)
+        } else {
+          throw err
         }
       }
     }
@@ -64,8 +66,8 @@ export const test = base.extend<AuthenticatedFixtures>({
     try {
       // Estrategia 1: Esperar cambio de URL
       await page.waitForURL(/\/dashboard/, { timeout: 30000, waitUntil: 'domcontentloaded' })
-    } catch (e) {
-      // Estrategia 2: Esperar que la URL cambie manualmente
+    } catch {
+      // Estrategia 2: Esperar que la URL cambie manualmente (fallback si estrategia 1 falla)
       let urlChanged = false
       for (let i = 0; i < 30; i++) {
         await page.waitForTimeout(1000)
@@ -106,7 +108,6 @@ export const test = base.extend<AuthenticatedFixtures>({
   /**
    * LoginPage ya inicializada
    */
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   loginPage: async ({ page }, use) => {
     const loginPage = new LoginPage(page)
     await use(loginPage)
@@ -115,7 +116,6 @@ export const test = base.extend<AuthenticatedFixtures>({
   /**
    * DashboardPage ya inicializada y autenticada
    */
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   dashboardPage: async ({ authenticatedPage }, use) => {
     const dashboardPage = new DashboardPage(authenticatedPage)
     await dashboardPage.goto()
