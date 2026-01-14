@@ -14,10 +14,15 @@ Estas decisiones son **inapelables** y cierran discusiones antes de que empiecen
 
 ### ❌ Nunca relajar guards
 No se relajarán, eliminarán ni modificarán los guards existentes:
+- `guard:prisma`
+- `guard:no-global-patches`
+- `guard:auth-mock-first`
+- `guard:route-tests-node-env`
+- `guard:no-hardcoded-secrets`
+- `guard:ci-clean-output`
 - `guard:contracts`
 - `guard:prod-ready`
 - `guard:ux`
-- `guard:no-global-patches`
 
 Sin RFC explícito y aprobado.
 
@@ -25,15 +30,18 @@ Sin RFC explícito y aprobado.
 
 ### ❌ Nunca cambiar el orden del CI
 El orden actual del CI es inalterable:
-1. Lint
-2. Type check
-3. guard:no-global-patches
-4. guard:contracts
-5. guard:prod-ready
-6. guard:ux
-7. contracts:test
-8. Unit tests
-9. Coverage
+1. `guard:prisma`
+2. `guard:no-global-patches`
+3. `guard:auth-mock-first`
+4. `guard:route-tests-node-env`
+5. `guard:no-hardcoded-secrets`
+6. `guard:ci-clean-output`
+7. `guard:contracts`
+8. `guard:prod-ready`
+9. `guard:ux`
+10. `contracts:test`
+11. `lint:critical`
+12. `test:run`
 
 Cualquier reordenamiento requiere RFC.
 
