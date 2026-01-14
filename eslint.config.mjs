@@ -307,6 +307,10 @@ export default [
         window: "readonly",
       },
     },
+    rules: {
+      // ✅ Enterprise: Permitir any en tests (flexibilidad para mocks y datos de test)
+      "@typescript-eslint/no-explicit-any": "off",
+    },
   },
   // Configuración específica para tests E2E con Playwright
   {
