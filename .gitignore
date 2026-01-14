@@ -55,3 +55,30 @@ next-env.d.ts
 
 # Reportes de limpieza de código
 cleanup-report.json
+
+# Base de datos local (SQLite)
+*.db
+paes.db
+dev.db
+
+# Test results
+test-results/
+
+# Artefactos temporales y reportes
+*.txt
+!README.txt
+lint-*.txt
+*-output.txt
+*-check.txt
+*-analysis.txt
+*-before.txt
+*-after.txt
+*-final.txt
+*-errors-list.txt
+*-warnings-list.txt
+build-output.txt
+eslint-src-output.txt
+migration-report*.json
+node-version.txt
+npm-version.txt
+last-commit-before.txt
