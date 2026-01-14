@@ -384,4 +384,16 @@ export default [
       // "sonarjs/no-ignored-exceptions": "error", // Se mantiene del bloque principal
     },
   },
+  // ✅ Enterprise: Override específico para prisma/seed.ts (script CLI standalone)
+  // Seed scripts son tooling de desarrollo que se ejecutan manualmente o en CI
+  // No se importan en runtime, por lo que console.log, Math.random y complejidad son aceptables
+  {
+    files: ["prisma/seed.ts"],
+    rules: {
+      "no-console": "off",
+      "sonarjs/pseudo-random": "off",
+      "sonarjs/cognitive-complexity": "off",
+      "security/detect-object-injection": "off",
+    },
+  },
 ];

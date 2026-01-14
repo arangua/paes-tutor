@@ -85,8 +85,10 @@ describe('Schema.prisma Validation', () => {
     it('debe usar DATABASE_URL del entorno (implícito o explícito)', () => {
       // Prisma puede usar DATABASE_URL implícitamente o explícitamente con env("DATABASE_URL")
       // Ambos son válidos, así que verificamos que al menos no esté hardcodeado
-      const hasExplicitUrl = schemaContent.match(/url\s*=\s*env\(["']DATABASE_URL["']\)/)
-      const hasHardcodedUrl = schemaContent.match(/url\s*=\s*["'](?!env\().*["']/)
+      const explicitUrlRegex = /url\s*=\s*env\(["']DATABASE_URL["']\)/
+      const hardcodedUrlRegex = /url\s*=\s*["'](?!env\().*["']/
+      const hasExplicitUrl = explicitUrlRegex.exec(schemaContent) !== null
+      const hasHardcodedUrl = hardcodedUrlRegex.exec(schemaContent) !== null
       
       // Debe tener URL explícita O no tener URL hardcodeada (usa DATABASE_URL por defecto)
       expect(hasExplicitUrl || !hasHardcodedUrl).toBe(true)
