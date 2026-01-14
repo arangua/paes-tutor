@@ -18,7 +18,6 @@ import {
   Award,
   ArrowLeft,
   CheckCircle2,
-  XCircle,
   Printer,
   AlertTriangle,
   Clock,
@@ -267,7 +266,7 @@ export default function AnalyticsPage() {
 
   return (
     <>
-      <style jsx global>{`
+      <style>{`
         @media print {
           body {
             background: white;
@@ -422,19 +421,19 @@ export default function AnalyticsPage() {
                   </p>
                   <Badge
                     variant={
-                      analytics.comparison.comparison === 'above'
-                        ? 'default'
-                        : analytics.comparison.comparison === 'below'
-                          ? 'destructive'
-                          : 'secondary'
+                      (() => {
+                        if (analytics.comparison.comparison === 'above') return 'default'
+                        if (analytics.comparison.comparison === 'below') return 'destructive'
+                        return 'secondary'
+                      })()
                     }
                     className="mt-2"
                   >
-                    {analytics.comparison.comparison === 'above'
-                      ? 'Por encima del promedio'
-                      : analytics.comparison.comparison === 'below'
-                        ? 'Por debajo del promedio'
-                        : 'En el promedio'}
+                    {(() => {
+                      if (analytics.comparison.comparison === 'above') return 'Por encima del promedio'
+                      if (analytics.comparison.comparison === 'below') return 'Por debajo del promedio'
+                      return 'En el promedio'
+                    })()}
                   </Badge>
                 </div>
               </div>
@@ -472,11 +471,11 @@ export default function AnalyticsPage() {
                     className={`mt-3 ${getConfidenceColor(analytics.paesPrediction.confidence)}`}
                   >
                     Confianza:{' '}
-                    {analytics.paesPrediction.confidence === 'high'
-                      ? 'Alta'
-                      : analytics.paesPrediction.confidence === 'medium'
-                        ? 'Media'
-                        : 'Baja'}
+                    {(() => {
+                      if (analytics.paesPrediction.confidence === 'high') return 'Alta'
+                      if (analytics.paesPrediction.confidence === 'medium') return 'Media'
+                      return 'Baja'
+                    })()}
                   </Badge>
                 </div>
 
@@ -610,19 +609,19 @@ export default function AnalyticsPage() {
                     </div>
                     <Badge
                       variant={
-                        subject.trend === 'improving'
-                          ? 'default'
-                          : subject.trend === 'declining'
-                            ? 'destructive'
-                            : 'secondary'
+                        (() => {
+                          if (subject.trend === 'improving') return 'default'
+                          if (subject.trend === 'declining') return 'destructive'
+                          return 'secondary'
+                        })()
                       }
                       className="text-xs"
                     >
-                      {subject.trend === 'improving'
-                        ? 'Mejorando'
-                        : subject.trend === 'declining'
-                          ? 'En declive'
-                          : 'Estable'}
+                      {(() => {
+                        if (subject.trend === 'improving') return 'Mejorando'
+                        if (subject.trend === 'declining') return 'En declive'
+                        return 'Estable'
+                      })()}
                     </Badge>
                   </div>
                 ))}
