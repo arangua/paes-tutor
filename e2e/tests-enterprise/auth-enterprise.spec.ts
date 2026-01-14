@@ -1,12 +1,14 @@
-import { test, expect } from './fixtures'
-import { TEST_CREDENTIALS } from './factories/test-data'
+import { test, expect } from '../fixtures'
+import { TEST_CREDENTIALS } from '../factories/test-data'
+import { measurePagePerformance, assertPerformanceThresholds } from '../utils/performance'
+import { runAccessibilityChecks } from '../utils/accessibility'
 
 /**
- * Tests E2E de Autenticación
- * Versión actualizada usando Page Object Model y fixtures enterprise
+ * Tests E2E Enterprise de Autenticación
+ * Usa Page Object Model, fixtures, performance testing y accessibility
  */
-test.describe('Autenticación', () => {
-  test('debe mostrar la página de inicio de sesión', async ({ loginPage }) => {
+test.describe('Autenticación - Enterprise', () => {
+  test('debe mostrar la página de inicio de sesión con todas las verificaciones', async ({ loginPage }) => {
     await loginPage.goto()
     
     // Verificar que la página está cargada
@@ -15,6 +17,21 @@ test.describe('Autenticación', () => {
     
     // Verificar elementos del formulario
     await loginPage.expectFormVisible()
+    
+    // Performance: Verificar tiempo de carga
+    const metrics = await measurePagePerformance(loginPage['page'])
+    const performanceCheck = assertPerformanceThresholds(metrics, {
+      maxLoadTime: 5000, // 5 segundos máximo
+      maxDomContentLoaded: 3000, // 3 segundos máximo
+    })
+    expect(performanceCheck.passed).toBe(true)
+    
+    // Accessibility: Verificar accesibilidad
+    const a11yCheck = await runAccessibilityChecks(loginPage['page'])
+    expect(a11yCheck.passed).toBe(true)
+    
+    // Visual: Verificar que no hay cambios visuales (solo si hay baseline)
+    // await expectNoVisualChanges(loginPage['page'], 'login-page')
   })
 
   test('debe mostrar error con credenciales inválidas', async ({ loginPage }) => {
@@ -30,7 +47,7 @@ test.describe('Autenticación', () => {
     await loginPage.expectCredentialsError()
   })
 
-  test('debe redirigir al dashboard después de iniciar sesión', async ({ authenticatedPage }) => {
+  test('debe redirigir al dashboard después de iniciar sesión exitosa', async ({ authenticatedPage }) => {
     // El fixture authenticatedPage ya tiene la sesión iniciada
     expect(authenticatedPage.url()).toContain('/dashboard')
     
@@ -40,7 +57,7 @@ test.describe('Autenticación', () => {
   })
 
   test('debe proteger el dashboard sin autenticación', async ({ page, context }) => {
-    // Cerrar sesión eliminando cookies
+    // Limpiar cookies y storage
     await context.clearCookies()
     const pages = context.pages()
     for (const p of pages) {
@@ -68,3 +85,4 @@ test.describe('Autenticación', () => {
     await expect(dashboardContent).toBeVisible({ timeout: 20000 })
   })
 })
+
