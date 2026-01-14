@@ -57,17 +57,7 @@ function detectCorrectAnswers(text: string): Map<number, string> {
   }
 
   // Normalizar el texto (después de encontrar la sección)
-  let normalizedText = ''
-  try {
-    normalizedText = answerSection 
-      ? answerSection.replace(/\r\n/g, '\n').replace(/\r/g, '\n').toUpperCase()
-      : safeText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').toUpperCase()
-    if (typeof normalizedText !== 'string') {
-      normalizedText = (answerSection || safeText).toUpperCase() // Fallback
-    }
-  } catch {
-    normalizedText = (answerSection || safeText).toUpperCase() // Fallback
-  }
+  // Nota: normalizedText se eliminó porque no se usaba; el código usa answerSection directamente
 
   // Si no se encuentra una sección específica, buscar en el último 30% del texto
   // (las respuestas suelen estar al final del documento)
@@ -80,27 +70,21 @@ function detectCorrectAnswers(text: string): Map<number, string> {
           const lastSection = safeText.substring(floorResult)
           if (typeof lastSection === 'string') {
             answerSection = lastSection
-            // Normalizar la sección encontrada
-            normalizedText = lastSection.replace(/\r\n/g, '\n').replace(/\r/g, '\n').toUpperCase()
           }
         } catch {
           answerSection = safeText // Fallback
-          normalizedText = safeText.toUpperCase()
         }
       } else {
         answerSection = safeText // Fallback
-        normalizedText = safeText.toUpperCase()
       }
     } else {
       answerSection = safeText // Fallback
-      normalizedText = safeText.toUpperCase()
     }
   }
 
   // Si aún no hay sección, usar todo el texto (último recurso)
   if (!answerSection || answerSection.length === 0) {
     answerSection = safeText
-    normalizedText = safeText.toUpperCase()
   }
 
   // Múltiples patrones para detectar respuestas (ordenados por especificidad)

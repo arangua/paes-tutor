@@ -37,17 +37,6 @@ function assertFileExists(filePath, description) {
   }
 }
 
-/**
- * Verifica que un directorio existe
- */
-function assertDirExists(dirPath, description) {
-  const fullPath = path.join(ROOT, dirPath);
-  if (!fs.existsSync(fullPath)) {
-    console.error(`❌ Missing required directory: ${dirPath}`);
-    console.error(`   Description: ${description}`);
-    process.exit(1);
-  }
-}
 
 console.log("🔍 Running Prod-Ready Guard...\n");
 

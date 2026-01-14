@@ -5,8 +5,6 @@
  * que la función detectCorrectAnswers funciona correctamente.
  */
 
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 
 // Copiar la función detectCorrectAnswers del endpoint
 function detectCorrectAnswers(text: string): Map<number, string> {

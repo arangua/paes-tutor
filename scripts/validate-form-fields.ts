@@ -166,5 +166,6 @@ if (results.length === 0) {
   console.log('   2. O agrega atributos id o name explícitamente')
   console.log('   3. Los componentes garantizan automáticamente id/name\n')
 
-  process.exit(1)
+  process.exitCode = hasErrors ? 1 : 0
+  process.exit(hasErrors ? 1 : 0)
 }

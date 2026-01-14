@@ -25,7 +25,7 @@
 
 import { execSync } from 'child_process'
 import { glob } from 'glob'
-import { existsSync, readFileSync, writeFileSync } from 'fs'
+import { existsSync, writeFileSync } from 'fs'
 import { join } from 'path'
 
 // ============================================================================
