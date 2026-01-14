@@ -9,11 +9,6 @@ import {
   Key,
   BookOpen,
   Trash2,
-  FileText,
-  Settings,
-  Database,
-  Users,
-  BarChart3,
   Sparkles,
 } from 'lucide-react'
 

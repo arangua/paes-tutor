@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 // Usar input type="checkbox" nativo si no existe el componente Checkbox
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Loader2, Trash2, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react'
+import { Trash2, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react'
 import { Breadcrumbs } from '@/components/layout/breadcrumbs'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { SkeletonLoader } from '@/components/ui/skeleton-loader'
@@ -155,6 +155,7 @@ export default function CleanupTestDataPage() {
               <input
                 type="checkbox"
                 id="deleteExams"
+                name="deleteExams"
                 checked={deleteExams}
                 onChange={e => setDeleteExams(e.target.checked)}
                 className="h-4 w-4 rounded border-gray-300 cursor-pointer"
@@ -169,6 +170,7 @@ export default function CleanupTestDataPage() {
               <input
                 type="checkbox"
                 id="deleteTopics"
+                name="deleteTopics"
                 checked={deleteTopics}
                 onChange={e => setDeleteTopics(e.target.checked)}
                 className="h-4 w-4 rounded border-gray-300 cursor-pointer"
@@ -183,6 +185,7 @@ export default function CleanupTestDataPage() {
               <input
                 type="checkbox"
                 id="deleteQuestions"
+                name="deleteQuestions"
                 checked={deleteQuestions}
                 onChange={e => setDeleteQuestions(e.target.checked)}
                 className="h-4 w-4 rounded border-gray-300 cursor-pointer"
@@ -197,6 +200,7 @@ export default function CleanupTestDataPage() {
               <input
                 type="checkbox"
                 id="deleteAttempts"
+                name="deleteAttempts"
                 checked={deleteAttempts}
                 onChange={e => setDeleteAttempts(e.target.checked)}
                 className="h-4 w-4 rounded border-gray-300 cursor-pointer"
@@ -211,6 +215,7 @@ export default function CleanupTestDataPage() {
               <input
                 type="checkbox"
                 id="deleteTestUsers"
+                name="deleteTestUsers"
                 checked={deleteTestUsers}
                 onChange={e => setDeleteTestUsers(e.target.checked)}
                 className="h-4 w-4 rounded border-gray-300 cursor-pointer"
@@ -228,6 +233,7 @@ export default function CleanupTestDataPage() {
               <input
                 type="checkbox"
                 id="onlyTestData"
+                name="onlyTestData"
                 checked={onlyTestData}
                 onChange={e => setOnlyTestData(e.target.checked)}
                 className="h-4 w-4 rounded border-gray-300 cursor-pointer"
@@ -254,7 +260,7 @@ export default function CleanupTestDataPage() {
                 disabled={loading}
               />
               <p className="text-sm text-muted-foreground">
-                Solo eliminar datos del año especificado (busca en el campo "fuente" de los
+                Solo eliminar datos del año especificado (busca en el campo &quot;fuente&quot; de los
                 exámenes).
               </p>
             </div>
@@ -353,12 +359,12 @@ export default function CleanupTestDataPage() {
             <AlertDescription className="mt-2">
               <ul className="list-disc list-inside space-y-1 text-sm">
                 <li>
-                  Los datos se identifican como "de prueba" si contienen palabras como: test,
+                  Los datos se identifican como &quot;de prueba&quot; si contienen palabras como: test,
                   prueba, demo, ejemplo, simulacro, etc.
                 </li>
-                <li>Los exámenes de tipo "simulacro" se consideran datos de prueba.</li>
+                <li>Los exámenes de tipo &quot;simulacro&quot; se consideran datos de prueba.</li>
                 <li>
-                  Los usuarios con emails que contengan "test", "demo", "prueba" o "example" se
+                  Los usuarios con emails que contengan &quot;test&quot;, &quot;demo&quot;, &quot;prueba&quot; o &quot;example&quot; se
                   consideran usuarios de prueba.
                 </li>
                 <li>La eliminación se realiza en transacción: si falla algo, se revierte todo.</li>
