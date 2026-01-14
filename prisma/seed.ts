@@ -1,6 +1,12 @@
-import 'dotenv/config'
+import { config } from 'dotenv'
+import { resolve } from 'node:path'
 import { PrismaClient } from '@prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
+import { Pool } from 'pg'
 import bcrypt from 'bcryptjs'
+
+// Cargar .env.local explícitamente
+config({ path: resolve(process.cwd(), '.env.local') })
 
 // ⛔ GUARD CRÍTICO: Validar DATABASE_URL antes de crear PrismaClient
 const databaseUrl = process.env.DATABASE_URL
@@ -26,8 +32,10 @@ if (!databaseUrl.startsWith('postgresql://') && !databaseUrl.startsWith('postgre
   )
 }
 
-// Crear PrismaClient estándar para PostgreSQL
-const prisma = new PrismaClient()
+// Crear PrismaClient con adapter para PostgreSQL (requerido en Prisma 7.2.0)
+const pool = new Pool({ connectionString: databaseUrl })
+const adapter = new PrismaPg(pool)
+const prisma = new PrismaClient({ adapter })
 
 async function main() {
   console.log('🌱 Iniciando seed...')

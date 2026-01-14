@@ -1,10 +1,9 @@
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 generator client {
-  provider   = "prisma-client-js"
-  engineType = "client"
+  provider = "prisma-client-js"
 }
 
 model User {
@@ -70,20 +69,28 @@ model Student {
   nombre    String
   createdAt DateTime @default(now())
 
-  attempts         Attempt[]
-  metrics          PerformanceMetric[]
-  practiceSessions PracticeSession[]
-  bookmarks        Bookmark[]
-  flashcards       Flashcard[]
-  studyNotes       StudyNote[]
-  studySchedules   StudySchedule[]
-  sharedExams      SharedExam[] @relation("SharedBy")
-  receivedExams    SharedExam[] @relation("SharedWith")
-  sharedMaterials  SharedMaterial[] @relation("SharedBy")
-  receivedMaterials SharedMaterial[] @relation("SharedWith")
-  challengesSent   Challenge[] @relation("Challenger")
-  challengesReceived Challenge[] @relation("Challenged")
-  challengesWon   Challenge[] @relation("Winner")
+  attempts           Attempt[]
+  metrics            PerformanceMetric[]
+  practiceSessions   PracticeSession[]
+  bookmarks          Bookmark[]
+  flashcards         Flashcard[]
+  studyNotes         StudyNote[]
+  studySchedules     StudySchedule[]
+  sharedExams        SharedExam[]        @relation("SharedBy")
+  receivedExams      SharedExam[]        @relation("SharedWith")
+  sharedMaterials    SharedMaterial[]    @relation("SharedBy")
+  receivedMaterials  SharedMaterial[]    @relation("SharedWith")
+  sharedFlashcards   SharedFlashcard[]   @relation("SharedFlashcardBy")
+  receivedFlashcards SharedFlashcard[]   @relation("SharedFlashcardWith")
+  sharedNotes        SharedNote[]        @relation("SharedNoteBy")
+  receivedNotes      SharedNote[]        @relation("SharedNoteWith")
+  sharedNoteVersions SharedNoteVersion[] @relation("SharedNoteVersionBy")
+  receivedNoteVersions SharedNoteVersion[] @relation("SharedNoteVersionWith")
+  challengesSent     Challenge[]         @relation("Challenger")
+  challengesReceived Challenge[]         @relation("Challenged")
+  challengesWon      Challenge[]         @relation("Winner")
+  notifications      Notification[]
+  webhooks           Webhook[]
 }
 
 model Subject {
@@ -99,21 +106,27 @@ model Subject {
 }
 
 model Topic {
-  id          String  @id @default(cuid())
-  subjectId   String
-  subject     Subject @relation(fields: [subjectId], references: [id])
-  nombre      String
-  ejeTematico String
-  descripcion String?
+  id                   String  @id @default(cuid())
+  subjectId            String
+  subject              Subject @relation(fields: [subjectId], references: [id])
+  nombre               String
+  ejeTematico          String
+  descripcion          String?
+  // Información de temario oficial DEMRE
+  codigoTemarioOficial String? // Código del temario oficial de DEMRE/UCE
+  habilidadesTemario   String? // Habilidades evaluadas según temario oficial (JSON)
+  vigenciaDesde        String? // Año desde el cual es vigente
+  vigenciaHasta        String? // Año hasta el cual es vigente (null si vigente)
 
   questions        Question[]
   materials        StudyMaterial[]
   metrics          PerformanceMetric[]
   practiceSessions PracticeSession[]
   studyNotes       StudyNote[]
-  studySchedules    StudySchedule[]
+  studySchedules   StudySchedule[]
 
   @@index([subjectId])
+  @@index([codigoTemarioOficial])
 }
 
 model StudyMaterial {
@@ -170,16 +183,21 @@ model QuestionOption {
 }
 
 model Exam {
-  id              String   @id @default(cuid())
-  subjectId       String
-  subject         Subject  @relation(fields: [subjectId], references: [id])
-  titulo          String
-  descripcion     String?
-  tipo            String
-  tiempoLimiteMin Int?
-  totalPreguntas  Int
-  fuente          String?
-  createdAt       DateTime @default(now())
+  id                  String    @id @default(cuid())
+  subjectId           String
+  subject             Subject   @relation(fields: [subjectId], references: [id])
+  titulo              String
+  descripcion         String?
+  tipo                String
+  tiempoLimiteMin     Int?
+  totalPreguntas      Int
+  fuente              String?
+  // Información de simulaciones oficiales
+  esSimulacionOficial Boolean   @default(false)
+  fuenteSimulacion    String? // URL o referencia a DEMRE
+  fechaSimulacion     DateTime? // Fecha de la simulación oficial
+  procesoAdmision     String? // "2026", "2027", etc.
+  createdAt           DateTime  @default(now())
 
   questions      ExamQuestion[]
   attempts       Attempt[]
@@ -189,6 +207,8 @@ model Exam {
 
   @@index([subjectId, tipo])
   @@index([tipo, createdAt])
+  @@index([esSimulacionOficial])
+  @@index([procesoAdmision])
 }
 
 model ExamQuestion {
@@ -242,9 +262,9 @@ model Attempt {
   recomendaciones  String?
   createdAt        DateTime  @default(now())
 
-  answers AttemptAnswer[]
-  challengerChallenges Challenge[] @relation("ChallengerAttempt")
-  challengedChallenges Challenge[] @relation("ChallengedAttempt")
+  answers              AttemptAnswer[]
+  challengerChallenges Challenge[]     @relation("ChallengerAttempt")
+  challengedChallenges Challenge[]     @relation("ChallengedAttempt")
 
   @@index([studentId, createdAt])
   @@index([studentId, estado])
@@ -288,37 +308,37 @@ model PerformanceMetric {
 }
 
 model PracticeSession {
-  id             String   @id @default(cuid())
-  studentId      String
-  student        Student  @relation(fields: [studentId], references: [id])
-  topicId        String
-  topic          Topic    @relation(fields: [topicId], references: [id])
-  totalPreguntas Int      @default(0)
-  correctas      Int      @default(0)
-  incorrectas    Int      @default(0)
-  omitidas       Int      @default(0)
-  porcentaje     Float    @default(0)
+  id               String    @id @default(cuid())
+  studentId        String
+  student          Student   @relation(fields: [studentId], references: [id])
+  topicId          String
+  topic            Topic     @relation(fields: [topicId], references: [id])
+  totalPreguntas   Int       @default(0)
+  correctas        Int       @default(0)
+  incorrectas      Int       @default(0)
+  omitidas         Int       @default(0)
+  porcentaje       Float     @default(0)
   duracionSegundos Int?
-  startedAt      DateTime @default(now())
-  finishedAt     DateTime?
+  startedAt        DateTime  @default(now())
+  finishedAt       DateTime?
 
-  answers        PracticeAnswer[]
+  answers PracticeAnswer[]
 
   @@index([studentId, topicId])
   @@index([studentId, startedAt])
 }
 
 model PracticeAnswer {
-  id               String          @id @default(cuid())
+  id                String          @id @default(cuid())
   practiceSessionId String
-  practiceSession  PracticeSession @relation(fields: [practiceSessionId], references: [id], onDelete: Cascade)
-  questionId       String
-  question         Question        @relation(fields: [questionId], references: [id])
-  optionSelectedId String?
-  optionSelected   QuestionOption? @relation(fields: [optionSelectedId], references: [id])
-  esCorrecta       Boolean?
-  omitida          Boolean         @default(false)
-  tiempoSegundos   Int?
+  practiceSession   PracticeSession @relation(fields: [practiceSessionId], references: [id], onDelete: Cascade)
+  questionId        String
+  question          Question        @relation(fields: [questionId], references: [id])
+  optionSelectedId  String?
+  optionSelected    QuestionOption? @relation(fields: [optionSelectedId], references: [id])
+  esCorrecta        Boolean?
+  omitida           Boolean         @default(false)
+  tiempoSegundos    Int?
 
   @@unique([practiceSessionId, questionId])
   @@index([practiceSessionId, esCorrecta])
@@ -331,7 +351,7 @@ model Bookmark {
   questionId String
   question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
   createdAt  DateTime @default(now())
-  notes      String?  // Notas opcionales sobre la pregunta
+  notes      String? // Notas opcionales sobre la pregunta
 
   @@unique([studentId, questionId])
   @@index([studentId, createdAt])
@@ -339,63 +359,124 @@ model Bookmark {
 }
 
 model Flashcard {
-  id          String   @id @default(cuid())
-  studentId   String
-  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  questionId  String?
-  question    Question? @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  front       String   // Pregunta o concepto (anverso)
-  back        String   // Respuesta o explicación (reverso)
-  difficulty  Float    @default(2.5) // Factor de dificultad (algoritmo SM-2)
-  lastReview  DateTime @default(now())
-  nextReview  DateTime @default(now()) // Próxima fecha de repaso
-  reviewCount Int      @default(0) // Número de repasos
-  easeFactor  Float    @default(2.5) // Factor de facilidad (SM-2)
-  interval    Int      @default(1) // Intervalo en días hasta próximo repaso
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id               String            @id @default(cuid())
+  studentId        String
+  student          Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  questionId       String?
+  question         Question?         @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  front            String // Pregunta o concepto (anverso)
+  back             String // Respuesta o explicación (reverso)
+  difficulty       Float             @default(2.5) // Factor de dificultad (algoritmo SM-2)
+  lastReview       DateTime          @default(now())
+  nextReview       DateTime          @default(now()) // Próxima fecha de repaso
+  reviewCount      Int               @default(0) // Número de repasos
+  easeFactor       Float             @default(2.5) // Factor de facilidad (SM-2)
+  interval         Int               @default(1) // Intervalo en días hasta próximo repaso
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  sharedFlashcards SharedFlashcard[]
 
   @@index([studentId, nextReview])
   @@index([studentId, createdAt])
 }
 
 model StudyNote {
-  id          String   @id @default(cuid())
-  studentId   String
-  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  id         String    @id @default(cuid())
+  studentId  String
+  student    Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
   questionId String?
-  question    Question? @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  topicId     String?
-  topic       Topic?   @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  title       String
-  content     String
-  tags        String?  // Tags separados por comas
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  question   Question? @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  topicId    String?
+  topic      Topic?    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  title      String
+  content    String
+  tags       String? // Tags separados por comas
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  sharedNotes SharedNote[]
+  sharedNoteVersions SharedNoteVersion[]
+  versions     StudyNoteVersion[]
+  restoreHistory VersionRestoreHistory[]
+  versionComments VersionComment[]
 
   @@index([studentId, createdAt])
   @@index([studentId, topicId])
   @@index([questionId])
 }
 
+model StudyNoteVersion {
+  id         String    @id @default(cuid())
+  noteId     String
+  note       StudyNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  title      String
+  content    String
+  tags       String? // Tags separados por comas
+  name       String? // Nombre personalizado opcional para la versión
+  color      String? // Color de etiqueta (hex)
+  isImportant Boolean  @default(false) // Marcar como importante para backup
+  isCompressed Boolean @default(false) // Indica si el contenido está comprimido con gzip
+  comment    String? // Comentario o nota sobre esta versión
+  createdAt  DateTime  @default(now())
+  createdBy  String // ID del estudiante que creó esta versión
+
+  @@index([noteId, createdAt])
+  @@index([noteId, isImportant, createdAt]) // Índice compuesto para búsquedas por importancia
+  @@index([noteId, createdAt, isImportant]) // Índice para queries con filtros de fecha e importancia
+  @@index([noteId, createdBy]) // Índice para queries que filtran por creador
+  @@index([noteId])
+  @@index([createdBy])
+  @@index([isImportant])
+  @@index([isCompressed])
+}
+
+model VersionComment {
+  id         String    @id @default(cuid())
+  versionId String
+  noteId     String
+  note       StudyNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  comment    String
+  createdBy  String // ID del estudiante que creó el comentario
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([versionId, createdAt])
+  @@index([noteId, versionId, createdAt]) // Índice compuesto para queries que buscan comentarios de una versión ordenados por fecha
+  @@index([noteId])
+  @@index([createdBy])
+}
+
+model VersionRestoreHistory {
+  id         String    @id @default(cuid())
+  noteId     String
+  note       StudyNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  restoredVersionId String // ID de la versión restaurada
+  restoredBy String // ID del estudiante que restauró
+  restoredAt DateTime @default(now())
+
+  @@index([noteId, restoredAt])
+  @@index([restoredBy, restoredAt]) // Índice para queries que buscan restauraciones por usuario ordenadas por fecha
+  @@index([restoredBy])
+}
+
 model StudySchedule {
-  id          String   @id @default(cuid())
-  studentId   String
-  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  title       String
-  description String?
-  scheduledAt DateTime // Fecha y hora de la sesión
-  durationMinutes Int  @default(60) // Duración en minutos
-  type        String   // 'exam', 'practice', 'review', 'flashcards', 'custom'
-  topicId     String?
-  topic       Topic?   @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  examId      String?
-  exam        Exam?    @relation(fields: [examId], references: [id], onDelete: Cascade)
-  completed   Boolean  @default(false)
-  completedAt DateTime?
-  reminderSent Boolean @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String    @id @default(cuid())
+  studentId       String
+  student         Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  title           String
+  description     String?
+  scheduledAt     DateTime // Fecha y hora de la sesión
+  durationMinutes Int       @default(60) // Duración en minutos
+  type            String // 'exam', 'practice', 'review', 'flashcards', 'custom'
+  topicId         String?
+  topic           Topic?    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  examId          String?
+  exam            Exam?     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  completed       Boolean   @default(false)
+  completedAt     DateTime?
+  reminderSent    Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@index([studentId, scheduledAt])
   @@index([studentId, completed])
@@ -403,17 +484,17 @@ model StudySchedule {
 }
 
 model SharedExam {
-  id         String   @id @default(cuid())
-  examId     String
-  exam       Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
-  sharedById String
-  sharedBy   Student  @relation("SharedBy", fields: [sharedById], references: [id], onDelete: Cascade)
+  id           String    @id @default(cuid())
+  examId       String
+  exam         Exam      @relation(fields: [examId], references: [id], onDelete: Cascade)
+  sharedById   String
+  sharedBy     Student   @relation("SharedBy", fields: [sharedById], references: [id], onDelete: Cascade)
   sharedWithId String
-  sharedWith Student  @relation("SharedWith", fields: [sharedWithId], references: [id], onDelete: Cascade)
-  message    String?  // Mensaje opcional al compartir
-  viewed     Boolean  @default(false)
-  viewedAt   DateTime?
-  createdAt  DateTime @default(now())
+  sharedWith   Student   @relation("SharedWith", fields: [sharedWithId], references: [id], onDelete: Cascade)
+  message      String? // Mensaje opcional al compartir
+  viewed       Boolean   @default(false)
+  viewedAt     DateTime?
+  createdAt    DateTime  @default(now())
 
   @@unique([examId, sharedById, sharedWithId])
   @@index([sharedWithId, viewed])
@@ -422,17 +503,17 @@ model SharedExam {
 }
 
 model SharedMaterial {
-  id         String   @id @default(cuid())
-  materialId String
-  material   StudyMaterial @relation(fields: [materialId], references: [id], onDelete: Cascade)
-  sharedById String
-  sharedBy   Student  @relation("SharedBy", fields: [sharedById], references: [id], onDelete: Cascade)
+  id           String        @id @default(cuid())
+  materialId   String
+  material     StudyMaterial @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  sharedById   String
+  sharedBy     Student       @relation("SharedBy", fields: [sharedById], references: [id], onDelete: Cascade)
   sharedWithId String
-  sharedWith Student  @relation("SharedWith", fields: [sharedWithId], references: [id], onDelete: Cascade)
-  message    String?  // Mensaje opcional al compartir
-  viewed     Boolean  @default(false)
-  viewedAt   DateTime?
-  createdAt  DateTime @default(now())
+  sharedWith   Student       @relation("SharedWith", fields: [sharedWithId], references: [id], onDelete: Cascade)
+  message      String? // Mensaje opcional al compartir
+  viewed       Boolean       @default(false)
+  viewedAt     DateTime?
+  createdAt    DateTime      @default(now())
 
   @@unique([materialId, sharedById, sharedWithId])
   @@index([sharedWithId, viewed])
@@ -440,30 +521,243 @@ model SharedMaterial {
   @@index([sharedWithId, createdAt])
 }
 
+model SharedFlashcard {
+  id           String    @id @default(cuid())
+  flashcardId  String
+  flashcard    Flashcard @relation(fields: [flashcardId], references: [id], onDelete: Cascade)
+  sharedById   String
+  sharedBy     Student   @relation("SharedFlashcardBy", fields: [sharedById], references: [id], onDelete: Cascade)
+  sharedWithId String
+  sharedWith   Student   @relation("SharedFlashcardWith", fields: [sharedWithId], references: [id], onDelete: Cascade)
+  message      String? // Mensaje opcional al compartir
+  viewed       Boolean   @default(false)
+  viewedAt     DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@unique([flashcardId, sharedById, sharedWithId])
+  @@index([sharedWithId, viewed])
+  @@index([sharedById, createdAt])
+  @@index([sharedWithId, createdAt])
+}
+
+model SharedNote {
+  id           String    @id @default(cuid())
+  noteId       String
+  note         StudyNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  sharedById   String
+  sharedBy     Student   @relation("SharedNoteBy", fields: [sharedById], references: [id], onDelete: Cascade)
+  sharedWithId String
+  sharedWith   Student   @relation("SharedNoteWith", fields: [sharedWithId], references: [id], onDelete: Cascade)
+  message      String? // Mensaje opcional al compartir
+  viewed       Boolean   @default(false)
+  viewedAt     DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@unique([noteId, sharedById, sharedWithId])
+  @@index([sharedWithId, viewed])
+  @@index([sharedById, createdAt])
+  @@index([sharedWithId, createdAt])
+}
+
+model SharedNoteVersion {
+  id           String    @id @default(cuid())
+  noteId       String
+  note         StudyNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  versionId    String // ID de la versión compartida (puede ser StudyNoteVersion.id o noteId para versión actual)
+  sharedById   String
+  sharedBy     Student   @relation("SharedNoteVersionBy", fields: [sharedById], references: [id], onDelete: Cascade)
+  sharedWithId String
+  sharedWith   Student   @relation("SharedNoteVersionWith", fields: [sharedWithId], references: [id], onDelete: Cascade)
+  message      String? // Mensaje opcional al compartir
+  viewed       Boolean   @default(false)
+  viewedAt     DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@unique([noteId, versionId, sharedById, sharedWithId])
+  @@index([sharedWithId, viewed])
+  @@index([sharedById, createdAt])
+  @@index([sharedWithId, createdAt])
+  @@index([versionId])
+}
+
 model Challenge {
-  id                String   @id @default(cuid())
-  examId            String?
-  exam              Exam?    @relation(fields: [examId], references: [id], onDelete: Cascade)
-  challengerId      String
-  challenger        Student  @relation("Challenger", fields: [challengerId], references: [id], onDelete: Cascade)
-  challengedId      String
-  challenged        Student  @relation("Challenged", fields: [challengedId], references: [id], onDelete: Cascade)
-  status            String   @default("pending") // pending, accepted, completed, declined, cancelled
-  message           String?  // Mensaje del desafío
-  deadline          DateTime? // Fecha límite opcional
+  id                  String    @id @default(cuid())
+  examId              String?
+  exam                Exam?     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  challengerId        String
+  challenger          Student   @relation("Challenger", fields: [challengerId], references: [id], onDelete: Cascade)
+  challengedId        String
+  challenged          Student   @relation("Challenged", fields: [challengedId], references: [id], onDelete: Cascade)
+  status              String    @default("pending") // pending, accepted, completed, declined, cancelled
+  message             String? // Mensaje del desafío
+  deadline            DateTime? // Fecha límite opcional
   challengerAttemptId String? // Intento del que desafía
-  challengerAttempt Attempt? @relation("ChallengerAttempt", fields: [challengerAttemptId], references: [id], onDelete: SetNull)
+  challengerAttempt   Attempt?  @relation("ChallengerAttempt", fields: [challengerAttemptId], references: [id], onDelete: SetNull)
   challengedAttemptId String? // Intento del desafiado
-  challengedAttempt Attempt? @relation("ChallengedAttempt", fields: [challengedAttemptId], references: [id], onDelete: SetNull)
-  winnerId          String? // Quien ganó el desafío
-  winner            Student? @relation("Winner", fields: [winnerId], references: [id], onDelete: SetNull)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  acceptedAt        DateTime?
-  completedAt       DateTime?
+  challengedAttempt   Attempt?  @relation("ChallengedAttempt", fields: [challengedAttemptId], references: [id], onDelete: SetNull)
+  winnerId            String? // Quien ganó el desafío
+  winner              Student?  @relation("Winner", fields: [winnerId], references: [id], onDelete: SetNull)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  acceptedAt          DateTime?
+  completedAt         DateTime?
 
   @@index([challengerId, status])
   @@index([challengedId, status])
   @@index([status, createdAt])
   @@index([examId, status])
+}
+
+// Calendario del proceso de admisión
+model AdmissionCalendar {
+  id          String   @id @default(cuid())
+  proceso     String // "2026", "2027", etc.
+  fecha       DateTime
+  hora        String? // "08:00", "09:00", etc.
+  titulo      String
+  descripcion String?
+  tipo        String // 'resultados', 'postulacion', 'aplicacion', 'inscripcion', 'otro'
+  importante  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([proceso, fecha])
+  @@index([tipo, fecha])
+  @@index([importante, fecha])
+}
+
+// Carreras y ponderaciones oficiales
+model Career {
+  id                  String   @id @default(cuid())
+  nombre              String
+  universidad         String
+  proceso             String // "2026", "2027", etc.
+  vacantes            Int?
+  // Ponderaciones (deben sumar 100)
+  ponderacionNEM      Float
+  ponderacionRanking  Float
+  ponderacionLectora  Float
+  ponderacionM1       Float
+  ponderacionM2       Float?
+  ponderacionCiencias Float? // BIO, FIS o QUI
+  ponderacionHistoria Float?
+  // Requisitos
+  puntajeMinimo       Int?
+  pruebasRequeridas   String? // JSON array: ["LECTORA", "M1", "M2"]
+  activa              Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([proceso, universidad])
+  @@index([nombre])
+  @@index([activa])
+}
+
+// Estadísticas oficiales de DEMRE
+model OfficialStatistics {
+  id                 String   @id @default(cuid())
+  prueba             String // "LECTORA", "M1", "M2", etc.
+  proceso            String // "2026", "2027", etc.
+  tipoAplicacion     String? // "Regular", "Invierno", etc.
+  // Estadísticas
+  promedio           Float
+  desviacionEstandar Float
+  percentil50        Float
+  percentil75        Float
+  percentil90        Float
+  percentil95        Float
+  // Distribución de dificultad
+  preguntasFaciles   Int?
+  preguntasMedias    Int?
+  preguntasDificiles Int?
+  // Datos adicionales (JSON)
+  datosAdicionales   String? // JSON con más estadísticas
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([prueba, proceso, tipoAplicacion])
+  @@index([prueba, proceso])
+}
+
+// Tablas de transformación de puntajes
+model ScoreTransformation {
+  id           String   @id @default(cuid())
+  tipo         String // "NEM", "PAES", "PSU_TO_PAES", "PDT_TO_PAES"
+  proceso      String? // "2026", "2027", etc. (null si es genérico)
+  prueba       String? // "LECTORA", "M1", etc. (solo para PAES)
+  valorOrigen  Float // Valor en escala origen
+  valorDestino Float // Valor en escala destino
+  activa       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tipo, proceso, prueba])
+  @@index([tipo, valorOrigen])
+  @@index([activa])
+}
+
+// Sistema de notificaciones
+model Notification {
+  id          String    @id @default(cuid())
+  studentId   String
+  student     Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  type        String // 'recommendation', 'reminder', 'achievement', 'challenge', 'shared', 'schedule', 'system'
+  title       String
+  message     String
+  read        Boolean   @default(false)
+  readAt      DateTime?
+  // Datos relacionados (opcionales)
+  relatedId   String? // ID del recurso relacionado (topicId, examId, etc.)
+  relatedType String? // Tipo de recurso: 'topic', 'exam', 'attempt', 'challenge', etc.
+  actionUrl   String? // URL para la acción (ej: '/practice/topicId', '/exams/examId')
+  priority    String    @default("normal") // 'low', 'normal', 'high', 'urgent'
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime? // Fecha de expiración (opcional)
+
+  @@index([studentId, read])
+  @@index([studentId, createdAt])
+  @@index([studentId, type])
+  @@index([read, createdAt])
+  @@index([expiresAt])
+}
+
+// Sistema de webhooks para eventos de versiones
+model Webhook {
+  id          String   @id @default(cuid())
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  url         String   // URL del webhook
+  secret      String?  // Secret para firmar payloads (opcional)
+  events      String   // JSON array de eventos: ["version.created", "version.restored", etc.]
+  active      Boolean  @default(true)
+  noteId      String?  // Si es null, escucha eventos de todas las notas
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  deliveries WebhookDelivery[]
+
+  @@index([studentId, active])
+  @@index([noteId])
+  @@index([active])
+}
+
+model WebhookDelivery {
+  id          String   @id @default(cuid())
+  webhookId   String
+  webhook     Webhook  @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  event       String   // Tipo de evento: "version.created", "version.restored", etc.
+  payload     String   // JSON del payload enviado
+  status      String   // "pending", "success", "failed"
+  statusCode  Int?     // Código HTTP de la respuesta
+  response    String?  // Respuesta del servidor remoto
+  attempts    Int      @default(0)
+  lastAttempt DateTime?
+  nextRetry   DateTime? // Próximo intento si falló
+  deliveredAt DateTime? // Fecha de entrega exitosa
+  createdAt   DateTime @default(now())
+
+  @@index([webhookId, status])
+  @@index([status, nextRetry])
+  @@index([createdAt])
 }
