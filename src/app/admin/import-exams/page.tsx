@@ -13,6 +13,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { getErrorMessage, extractErrorInfo, ERROR_CODES } from '@/lib/error-messages'
+import { trackError } from '@/lib/monitoring'
 import {
   Loader2,
   Upload,
@@ -125,7 +127,7 @@ export default function ImportExamsPage() {
     const updated = [...exams]
     const currentExam = updated[index]
     // Asegurar que todos los campos siempre tengan valores definidos
-    updated[index] = {
+    const updatedExam: ExamToImport = {
       pdfUrl: field === 'pdfUrl' ? value || '' : currentExam?.pdfUrl || '',
       pdfFile: currentExam?.pdfFile || null,
       inputType: currentExam?.inputType || 'url',
@@ -134,14 +136,16 @@ export default function ImportExamsPage() {
       examType: field === 'examType' ? value || 'oficial' : currentExam?.examType || 'oficial',
       year: field === 'year' ? value || '' : currentExam?.year || '',
     }
+    updated[index] = updatedExam
 
     // Auto-generar título si está vacío
     if (field === 'subjectName' || field === 'year' || field === 'examType') {
-      if (updated[index].subjectName && updated[index].year) {
+      if (updatedExam.subjectName && updatedExam.year && updatedExam.examType) {
         const typeLabel =
-          EXAM_TYPES.find(t => t.value === updated[index].examType)?.label || 'Examen'
-        updated[index].examTitle =
-          `PAES ${updated[index].year} - ${updated[index].subjectName} (${typeLabel})`
+          EXAM_TYPES.find(t => t.value === updatedExam.examType)?.label || 'Examen'
+        updatedExam.examTitle =
+          `PAES ${updatedExam.year} - ${updatedExam.subjectName} (${typeLabel})`
+        updated[index] = updatedExam
       }
     }
 
@@ -314,7 +318,7 @@ export default function ImportExamsPage() {
         reason: errorInfo.message,
       })
 
-      captureError(error instanceof Error ? error : new Error(String(error)), {
+      trackError(error instanceof Error ? error : new Error(String(error)), {
         type: 'exam_import_error',
         path: typeof window !== 'undefined' ? window.location.pathname : undefined,
       })
@@ -383,7 +387,7 @@ export default function ImportExamsPage() {
     }
   }
 
-  const usePDF = (pdf: { url: string; title: string; subject?: string; year?: string }) => {
+  const handleUsePDF = (pdf: { url: string; title: string; subject?: string; year?: string }) => {
     // Agregar o actualizar el primer examen con los datos del PDF
     const updated = [...exams]
     updated[0] = {
@@ -542,7 +546,7 @@ export default function ImportExamsPage() {
                   <div
                     key={index}
                     className="flex items-center justify-between p-2 border rounded hover:bg-muted cursor-pointer transition-colors"
-                    onClick={() => usePDF(pdf)}
+                    onClick={() => handleUsePDF(pdf)}
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{pdf.title}</p>
@@ -556,7 +560,7 @@ export default function ImportExamsPage() {
                       size="sm"
                       onClick={e => {
                         e.stopPropagation()
-                        usePDF(pdf)
+                        handleUsePDF(pdf)
                       }}
                       className="ml-2"
                     >
@@ -574,7 +578,7 @@ export default function ImportExamsPage() {
           {!fetchingPDFs && !searchError && availablePDFs.length === 0 && demreUrl && (
             <div className="text-sm text-muted-foreground text-center py-4">
               <p>
-                Haz clic en "Buscar PDFs" para encontrar los exámenes disponibles en esta página.
+                Haz clic en &quot;Buscar PDFs&quot; para encontrar los exámenes disponibles en esta página.
               </p>
             </div>
           )}
@@ -608,10 +612,10 @@ export default function ImportExamsPage() {
               </li>
               <li>Encuentra el PDF del examen que quieres importar</li>
               <li>
-                Copia la URL del PDF (clic derecho en el enlace → "Copiar dirección del enlace")
+                Copia la URL del PDF (clic derecho en el enlace → &quot;Copiar dirección del enlace&quot;)
               </li>
-              <li>Selecciona "URL" en el formulario de abajo y pega la URL</li>
-              <li>Completa los demás campos y haz clic en "Importar Exámenes"</li>
+              <li>Selecciona &quot;URL&quot; en el formulario de abajo y pega la URL</li>
+              <li>Completa los demás campos y haz clic en &quot;Importar Exámenes&quot;</li>
             </ol>
           </div>
           <div>
@@ -631,9 +635,9 @@ export default function ImportExamsPage() {
                 </a>
               </li>
               <li>Descarga el PDF del examen a tu computadora</li>
-              <li>Selecciona "Archivo Local" en el formulario de abajo</li>
-              <li>Haz clic en "Seleccionar archivo" y elige el PDF descargado</li>
-              <li>Completa los demás campos y haz clic en "Importar Exámenes"</li>
+              <li>Selecciona &quot;Archivo Local&quot; en el formulario de abajo</li>
+              <li>Haz clic en &quot;Seleccionar archivo&quot; y elige el PDF descargado</li>
+              <li>Completa los demás campos y haz clic en &quot;Importar Exámenes&quot;</li>
             </ol>
             <p className="mt-2 text-xs text-muted-foreground">
               💡 Esta opción evita problemas con headers mal formateados del servidor de DEMRE
@@ -667,6 +671,7 @@ export default function ImportExamsPage() {
                   <label className="flex items-center space-x-2 cursor-pointer">
                     <input
                       type="radio"
+                      id={`inputType-url-${index}`}
                       name={`inputType-${index}`}
                       value="url"
                       checked={exam?.inputType === 'url'}
@@ -678,6 +683,7 @@ export default function ImportExamsPage() {
                   <label className="flex items-center space-x-2 cursor-pointer">
                     <input
                       type="radio"
+                      id={`inputType-file-${index}`}
                       name={`inputType-${index}`}
                       value="file"
                       checked={exam?.inputType === 'file'}
@@ -708,6 +714,7 @@ export default function ImportExamsPage() {
                   <Label htmlFor={`pdfFile-${index}`}>Archivo PDF *</Label>
                   <Input
                     id={`pdfFile-${index}`}
+                    name={`pdfFile-${index}`}
                     type="file"
                     accept=".pdf"
                     onChange={e => {
