@@ -341,6 +341,25 @@ export default [
       // Desactivar reglas de React hooks en E2E (no usamos React hooks aquí)
       "react-hooks/rules-of-hooks": "off",
       "react-hooks/exhaustive-deps": "off",
+      // ✅ Enterprise: Reglas adicionales para e2e (testing sandbox)
+      // Console permitido en tests (debugging, logging de resultados)
+      "no-console": "off",
+      // Ignored exceptions permitidas en tests (pueden ser intencionales para validar errores)
+      "sonarjs/no-ignored-exceptions": "off",
+      // Expresiones idénticas permitidas en tests (pueden ser necesarias para validaciones)
+      "sonarjs/no-identical-expressions": "off",
+      // Regex lentos permitidos en tests (pueden ser necesarios para validar patrones)
+      "sonarjs/slow-regex": "off",
+      // Any permitido en tests (flexibilidad para mocks y datos de test)
+      "@typescript-eslint/no-explicit-any": "off",
+      // Prefer-regexp-exec no aplica en tests (pueden usar .match() directamente)
+      "sonarjs/prefer-regexp-exec": "off",
+      // Useless escape permitido en tests (puede ser necesario para validar patrones)
+      "no-useless-escape": "off",
+      // Unused vars permitidas en tests (pueden ser parámetros de callbacks no usados)
+      "@typescript-eslint/no-unused-vars": "off",
+      // Non-literal regex permitido en tests (puede ser necesario para validar patrones dinámicos)
+      "security/detect-non-literal-regexp": "off",
     },
   },
   // ✅ Enterprise: Configuración para scripts y tooling Node.js
