@@ -67,6 +67,7 @@ test-results/
 # Artefactos temporales y reportes
 *.txt
 !README.txt
+*.patch
 lint-*.txt
 *-output.txt
 *-check.txt
