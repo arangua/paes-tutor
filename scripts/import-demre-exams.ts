@@ -71,43 +71,57 @@ async function ensureDirectories() {
 }
 
 /**
+ * Helper para limpiar archivo en caso de error
+ */
+function cleanupFileOnError(dest: string, reject: (reason?: unknown) => void) {
+  return (err: Error) => {
+    fs.unlink(dest).catch(() => {})
+    reject(err)
+  }
+}
+
+/**
+ * Helper para manejar respuesta HTTP
+ */
+function handleHttpResponse(
+  response: http.IncomingMessage,
+  file: fsSync.WriteStream,
+  dest: string,
+  resolve: () => void,
+  reject: (reason?: unknown) => void
+) {
+  if (response.statusCode === 301 || response.statusCode === 302) {
+    // Seguir redirecciones
+    downloadFile(response.headers.location!, dest).then(resolve).catch(reject)
+    return
+  }
+
+  if (response.statusCode !== 200) {
+    reject(new Error(`Error descargando: ${response.statusCode}`))
+    return
+  }
+
+  response.pipe(file)
+
+  file.on('finish', () => {
+    file.close()
+    resolve()
+  })
+
+  file.on('error', cleanupFileOnError(dest, reject))
+}
+
+/**
  * Descargar archivo desde URL
  */
 function downloadFile(url: string, dest: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const protocol = url.startsWith('https') ? https : http
-
     const file = fsSync.createWriteStream(dest)
 
     protocol
-      .get(url, response => {
-        if (response.statusCode === 301 || response.statusCode === 302) {
-          // Seguir redirecciones
-          downloadFile(response.headers.location!, dest).then(resolve).catch(reject)
-          return
-        }
-
-        if (response.statusCode !== 200) {
-          reject(new Error(`Error descargando: ${response.statusCode}`))
-          return
-        }
-
-        response.pipe(file)
-
-        file.on('finish', () => {
-          file.close()
-          resolve()
-        })
-
-        file.on('error', err => {
-          fs.unlink(dest).catch(() => {})
-          reject(err)
-        })
-      })
-      .on('error', err => {
-        fs.unlink(dest).catch(() => {})
-        reject(err)
-      })
+      .get(url, (response) => handleHttpResponse(response, file, dest, resolve, reject))
+      .on('error', cleanupFileOnError(dest, reject))
   })
 }
 
@@ -333,7 +347,11 @@ async function importExamFromPDF(
       titulo: examTitle,
       descripcion: `Examen oficial PAES ${year} - ${subjectName}`,
       tipo: examType,
-      tiempoLimiteMin: subjectCode === 'LECTORA' ? 90 : subjectCode === 'M1' ? 135 : 120,
+      tiempoLimiteMin: (() => {
+        if (subjectCode === 'LECTORA') return 90
+        if (subjectCode === 'M1') return 135
+        return 120
+      })(),
       totalPreguntas: createdQuestions.length,
       fuente: `DEMRE ${year}`,
       questions: {

@@ -94,8 +94,9 @@ function scanFile(filePath: string): void {
         }
       })
     })
-  } catch (error) {
+  } catch {
     // Ignorar errores de lectura (archivos binarios, etc.)
+    // No es crítico si no se puede leer un archivo, continuar con el resto
   }
 }
 
@@ -121,11 +122,13 @@ function scanDirectory(dirPath: string): void {
           scanFile(fullPath)
         }
       } catch {
-        // Ignorar errores de acceso
+        // Ignorar errores de acceso (permisos, etc.)
+        // Continuar con el resto de archivos
       }
     })
-  } catch (error) {
-    // Ignorar errores de acceso
+  } catch {
+    // Ignorar errores de acceso al directorio
+    // Continuar con el resto del escaneo
   }
 }
 

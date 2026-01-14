@@ -110,8 +110,9 @@ function validateTODOs(): void {
         WARNINGS.push(`⚠️  TODO sin formato estándar encontrado: ${line.split(':')[0]}`)
       }
     }
-  } catch (error) {
+  } catch {
     // Ignorar errores de grep (puede no encontrar nada)
+    // No es crítico si grep falla, solo significa que no hay TODOs sin formato
   }
 }
 
@@ -145,8 +146,9 @@ function validateNoSecrets(): void {
         }
       }
     }
-  } catch (error) {
-    // Ignorar errores de grep
+  } catch {
+    // Ignorar errores de grep (no es crítico)
+    // Si grep falla, simplemente no se detectan secrets (mejor que fallar el script)
   }
 }
 
@@ -157,6 +159,7 @@ function validateTypeScript(): void {
   try {
     execSync('npx tsc --noEmit', { stdio: 'inherit' })
   } catch (error) {
+    console.error('TypeScript validation failed:', error instanceof Error ? error.message : String(error));
     ERRORS.push('❌ Errores de tipos TypeScript encontrados')
     process.exit(1)
   }

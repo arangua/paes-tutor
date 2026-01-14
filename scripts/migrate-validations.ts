@@ -170,7 +170,8 @@ function migrateFile(filePath: string, dryRun: boolean = false): MigrationResult
       if (matches && matches.length > 0) {
         // Aplicar reemplazo
         if (typeof pattern.replace === 'function') {
-          content = content.replace(pattern.search, pattern.replace as any)
+          // pattern.replace es una función que recibe match y retorna string
+          content = content.replace(pattern.search, pattern.replace as (match: string, ...args: unknown[]) => string)
         } else {
           content = content.replace(pattern.search, pattern.replace)
         }

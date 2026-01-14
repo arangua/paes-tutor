@@ -55,9 +55,10 @@ function findProjectRoot(): string {
   
   // Estrategia 1: __dirname (disponible en CommonJS y tsx)
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (typeof (global as any).__dirname !== 'undefined') {
-      startDir = (global as any).__dirname
+    // Verificar __dirname en global (puede estar disponible en algunos entornos)
+    const globalObj = global as Record<string, unknown>;
+    if (typeof globalObj.__dirname !== 'undefined' && typeof globalObj.__dirname === 'string') {
+      startDir = globalObj.__dirname
     } else if (typeof __dirname !== 'undefined') {
       startDir = __dirname
     }
@@ -302,10 +303,11 @@ function runFileTests(filePath: string): { success: boolean; output: string } {
       // Si falla, asumir que no hay tests específicos (no es error crítico)
       return { success: true, output: 'No se encontraron tests específicos para este archivo' }
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as { stdout?: { toString(): string }; stderr?: { toString(): string }; message?: string };
     return {
       success: false,
-      output: error.stdout?.toString() || error.stderr?.toString() || error.message || 'Error desconocido',
+      output: err.stdout?.toString() || err.stderr?.toString() || err.message || 'Error desconocido',
     }
   }
 }
@@ -323,10 +325,11 @@ function runLinter(filePath: string): { success: boolean; output: string } {
       cwd: PROJECT_ROOT, // Ejecutar desde el directorio del proyecto
     })
     return { success: true, output }
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as { stdout?: { toString(): string }; message?: string };
     return {
       success: false,
-      output: error.stdout?.toString() || error.message || 'Error desconocido',
+      output: err.stdout?.toString() || err.message || 'Error desconocido',
     }
   }
 }
@@ -391,7 +394,8 @@ function migrateFile(filePath: string, dryRun: boolean = false): MigrationResult
       const matches = content.match(pattern.search)
       if (matches && matches.length > 0) {
         if (typeof pattern.replace === 'function') {
-          content = content.replace(pattern.search, pattern.replace as any)
+          // pattern.replace es una función que recibe match y retorna string
+          content = content.replace(pattern.search, pattern.replace as (match: string, ...args: unknown[]) => string)
         } else {
           content = content.replace(pattern.search, pattern.replace)
         }

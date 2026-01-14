@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 import { execSync } from "node:child_process";
 
-// Allowlist vacía por defecto
-// Ejemplo futuro (solo con Decision Log):
-// const ALLOWLIST = [/\.snap$/];
-const ALLOWLIST = [];
+// Allowlist: actualmente vacía (sin excepciones permitidas)
+// Para agregar excepciones futuras, documentar en DECISION_LOG.md
+// Ejemplo: const ALLOWLIST = [/\.snap$/];
+const ALLOWLIST: RegExp[] = [];
 
 function getRepoChanges() {
   try {
@@ -12,15 +12,16 @@ function getRepoChanges() {
     if (!out) return [];
     return out.split("\n").map((l) => l.trim()).filter(Boolean);
   } catch (error) {
-    // Si no estamos en un repo git, retornar vacío
-    return [];
+    console.error("guard-repo-clean failed", error);
+    throw error;
   }
 }
 
 function isAllowed(changeLine) {
   // changeLine ejemplo: " M path/file.ts"
   const path = changeLine.slice(3);
-  return ALLOWLIST.some((rx) => rx.test(path));
+  // Si ALLOWLIST está vacío, ninguna ruta es permitida (comportamiento esperado)
+  return ALLOWLIST.length > 0 && ALLOWLIST.some((rx) => rx.test(path));
 }
 
 // Verificar si estamos en un repositorio git
