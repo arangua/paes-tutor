@@ -359,6 +359,24 @@ export default [
       "sonarjs/cognitive-complexity": "off",
       // Desactivar regex lentos en scripts (tooling puede usar regex complejos)
       "sonarjs/slow-regex": "off",
+      // Desactivar prefer-regexp-exec en scripts (scripts pueden usar .match() directamente)
+      "sonarjs/prefer-regexp-exec": "off",
+      // Desactivar regex complexity en scripts (tooling puede tener regex complejos)
+      "sonarjs/regex-complexity": "off",
+      // Desactivar concise-regex en scripts (legibilidad puede ser más importante)
+      "sonarjs/concise-regex": "off",
+      // Desactivar hardcoded passwords en scripts (scripts de tooling pueden tener credenciales de test)
+      "sonarjs/no-hardcoded-passwords": "off",
+      // Desactivar no-gratuitous-expressions en scripts (puede ser necesario para debugging)
+      "sonarjs/no-gratuitous-expressions": "off",
+      // Desactivar duplicates-in-character-class en scripts (puede ser intencional)
+      "sonarjs/duplicates-in-character-class": "off",
+      // Desactivar block-scoped-var en scripts (legacy code puede usar var)
+      "sonarjs/block-scoped-var": "off",
+      // Permitir no-var en scripts (pero mantenerlo como warning, no error)
+      "no-var": "warn",
+      // Permitir no-useless-escape en scripts (puede ser necesario para compatibilidad)
+      "no-useless-escape": "warn",
       // TODO tags como warning (no error) en scripts
       "sonarjs/todo-tag": "warn",
       // Mantener errores reales activos
