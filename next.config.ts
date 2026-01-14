@@ -5,7 +5,6 @@ import { fileURLToPath } from 'url'
 import { withSentryConfig } from '@sentry/nextjs'
 
 // Bundle analyzer (solo cuando ANALYZE=true)
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const withBundleAnalyzer = process.env.ANALYZE === 'true'
   ? require('@next/bundle-analyzer')({
       enabled: true,
@@ -69,8 +68,11 @@ function getProjectRoot(): string {
     // 1. package.json: Identifica un proyecto Node.js válido
     // 2. node_modules: Confirma que es un proyecto con dependencias instaladas
     // 3. next.config.ts: Garantiza que es ESTE proyecto específico (evita confusión con otros)
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- path is derived from trusted project root
     const hasPackageJson: boolean = existsSync(packageJsonPath)
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- path is derived from trusted project root
     const hasNodeModules: boolean = existsSync(nodeModulesPath)
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- path is derived from trusted project root
     const hasNextConfig: boolean = existsSync(nextConfigPath)
     
     if (hasPackageJson && hasNodeModules && hasNextConfig) {
