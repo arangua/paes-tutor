@@ -268,6 +268,26 @@ export default [
       },
     },
   },
+  // ✅ Enterprise: Configuración para scripts y tooling Node.js
+  // Permite console, require, comandos OS y reduce sensibilidad de SonarJS en tooling
+  {
+    files: ["scripts/**/*.{ts,tsx,js,mjs,cjs}", "next.config.ts", "proxy.ts", "sentry*.ts", "*.config.{ts,js,mjs}"],
+    rules: {
+      // Console permitido en scripts y tooling (esperado en scripts de Node)
+      "no-console": "off",
+      // Require permitido en scripts (común en scripts Node.js)
+      "@typescript-eslint/no-require-imports": "off",
+      // Comandos OS permitidos en scripts (scripts ejecutan comandos del sistema)
+      "sonarjs/os-command": "off",
+      "sonarjs/no-os-command-from-path": "off",
+      // Complejidad y regex: scripts de tooling pueden ser complejos
+      "sonarjs/cognitive-complexity": "off",
+      "sonarjs/slow-regex": "off",
+      // TODO tags: warning en lugar de error (scripts pueden tener TODOs)
+      "sonarjs/todo-tag": "warn",
+      // Mantener errores reales (unused vars, ignored exceptions siguen siendo errores)
+    },
+  },
   // Configuración para archivos de test
   {
     files: ["**/*.test.{js,jsx,ts,tsx}", "**/*.spec.{js,jsx,ts,tsx}", "src/test/**/*.{js,jsx,ts,tsx}"],
@@ -321,6 +341,29 @@ export default [
       // Desactivar reglas de React hooks en E2E (no usamos React hooks aquí)
       "react-hooks/rules-of-hooks": "off",
       "react-hooks/exhaustive-deps": "off",
+    },
+  },
+  // ✅ Enterprise: Configuración para scripts y tooling Node.js
+  // Scripts y archivos de configuración pueden usar console, require, comandos OS, etc.
+  {
+    files: ["scripts/**/*.{ts,tsx,js,mjs,cjs}", "next.config.ts", "proxy.ts", "sentry*.ts", "*.config.{ts,js,mjs}"],
+    rules: {
+      // Permitir console en scripts y tooling (es esperado para logging/debugging)
+      "no-console": "off",
+      // Permitir require() en scripts Node.js (común en tooling)
+      "@typescript-eslint/no-require-imports": "off",
+      // Permitir comandos OS en scripts (scripts ejecutan comandos del sistema)
+      "sonarjs/os-command": "off",
+      "sonarjs/no-os-command-from-path": "off",
+      // Desactivar complejidad cognitiva en scripts (scripts pueden ser complejos)
+      "sonarjs/cognitive-complexity": "off",
+      // Desactivar regex lentos en scripts (tooling puede usar regex complejos)
+      "sonarjs/slow-regex": "off",
+      // TODO tags como warning (no error) en scripts
+      "sonarjs/todo-tag": "warn",
+      // Mantener errores reales activos
+      // "@typescript-eslint/no-unused-vars": "error", // Se mantiene del bloque principal
+      // "sonarjs/no-ignored-exceptions": "error", // Se mantiene del bloque principal
     },
   },
 ];
