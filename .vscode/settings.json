@@ -1,24 +1,177 @@
 {
   "terminal.integrated.cwd": "${workspaceFolder}/paes-tutor",
-  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "terminal.integrated.defaultProfile.windows": "Command Prompt",
   "terminal.integrated.profiles.windows": {
     "PowerShell": {
       "source": "PowerShell",
       "icon": "terminal-powershell",
       "args": ["-NoExit", "-Command", "cd '${workspaceFolder}/paes-tutor'"]
+    },
+    "Command Prompt": {
+      "path": "cmd.exe",
+      "icon": "terminal-cmd",
+      "args": ["/K", "cd /d \"${workspaceFolder}/paes-tutor\""]
     }
   },
   "terminal.integrated.automationProfile.windows": {
-    "path": "powershell.exe",
-    "args": ["-NoExit", "-Command", "cd '${workspaceFolder}/paes-tutor'"]
+    "path": "cmd.exe",
+    "args": ["/K", "cd /d \"${workspaceFolder}/paes-tutor\""]
   },
   "files.exclude": {
     "**/.git": true,
     "**/.next": true,
     "**/node_modules": true
   },
-  "sonarlint.connectedMode.project": {
-    "connectionId": "arangua",
-    "projectKey": "paes-tutor"
-  }
+  // SonarLint COMPLETAMENTE DESHABILITADO para evitar conexiones externas que causan errores
+  "sonarlint.connectedMode.servers": [],
+  "sonarlint.ls.javaHome": "",
+  "sonarlint.enabled": false,
+  "sonarlint.connectedMode.project": null,
+  // Comentado para evitar cualquier intento de conexión
+  // "sonarlint.connectedMode.project": {
+  //   "connectionId": "arangua",
+  //   "projectKey": "paes-tutor"
+  // },
+  // Configuración para reducir conexiones automáticas y errores
+  "telemetry.enableTelemetry": false,
+  "telemetry.enableCrashReporter": false,
+  "update.enableWindowsBackgroundUpdates": false,
+  "extensions.autoCheckUpdates": false,
+  "extensions.autoUpdate": false,
+  // Reducir notificaciones de conexión
+  "notifications.showErrors": false,
+  "notifications.showWarnings": false,
+  // Configuraciones específicas de Cursor para evitar errores de conexión
+  "cursor.general.enableTelemetry": false,
+  "cursor.general.enableCrashReporter": false,
+  "cursor.chat.enableAutoSuggestions": false,
+  "cursor.chat.enableCodeActions": false,
+  "cursor.chat.enableInlineCompletion": false,
+  "cursor.chat.enableContextualSuggestions": false,
+  "cursor.general.enableAutoUpdates": false,
+  "cursor.general.enableUsageAnalytics": false,
+  // Deshabilitar conexiones automáticas durante ejecución de tests
+  "terminal.integrated.enablePersistentSessions": false,
+  "terminal.integrated.enableBell": false,
+  // Deshabilitar análisis automático del terminal para reducir conexiones
+  "terminal.integrated.enableMultiLinePasteWarning": false,
+  "terminal.integrated.enableImages": false,
+  "terminal.integrated.scrollback": 1000,
+  // Deshabilitar completamente el análisis automático de la salida del terminal
+  "terminal.integrated.enableFileLinks": false,
+  // Deshabilitar todas las conexiones HTTP automáticas
+  "http.systemCertificates": false,
+  "http.proxySupport": "off",
+  "http.proxyStrictSSL": false,
+  // Reducir carga del sistema durante ejecución de comandos
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules/**": true,
+    "**/.next/**": true,
+    "**/.stryker-tmp/**": true,
+    "**/coverage/**": true,
+    "**/test-results/**": true,
+    "**/playwright-report/**": true
+  },
+  "accessibility.signals.terminalBell": {
+    "sound": "off"
+  },
+  // Deshabilitar todas las extensiones que requieren conexión externa
+  "extensions.ignoreRecommendations": true,
+  // Deshabilitar sincronización de configuración
+  "settingsSync.enable": false,
+  "settingsSync.keybindingsPerPlatform": false,
+  // Deshabilitar búsqueda de actualizaciones
+  "update.mode": "none",
+  "update.showReleaseNotes": false,
+  // Deshabilitar marketplace y extensiones remotas
+  "extensions.autoUpdate": false,
+  "extensions.autoCheckUpdates": false,
+  // Deshabilitar diagnóstico remoto
+  "remote.extensionKind": {},
+  // Deshabilitar todas las notificaciones de conexión
+  "notifications.showErrors": false,
+  "notifications.showWarnings": false,
+  "notifications.showInfo": false,
+  // Deshabilitar análisis de código en tiempo real que requiere conexión
+  "typescript.tsserver.enableTracing": false,
+  "typescript.tsserver.log": "off",
+  "javascript.suggest.enabled": false,
+  "typescript.suggest.enabled": false,
+  // Deshabilitar completamente el análisis automático de la salida del terminal
+  "terminal.integrated.enablePersistentSessions": false,
+  "terminal.integrated.automationProfile.windows": {
+    "path": "cmd.exe",
+    "args": ["/K", "cd /d \"${workspaceFolder}/paes-tutor\""]
+  },
+  // Deshabilitar todas las características que requieren conexión a internet
+  "workbench.enableExperiments": false,
+  "workbench.settings.enableNaturalLanguageSearch": false,
+  "extensions.webWorker": false,
+  // Configuraciones adicionales para Cursor - deshabilitar conexiones de chat/IA
+  "cursor.chat.enableStreaming": false,
+  "cursor.chat.enableModelSwitching": false,
+  "cursor.chat.enableContextAwareness": false,
+  "cursor.general.enableNetworkDiagnostics": false,
+  "cursor.general.enableErrorReporting": false,
+  // Deshabilitar verificación de autenticación automática
+  "cursor.general.enableAuthCheck": false,
+  // Deshabilitar sincronización de estado
+  "cursor.general.enableStateSync": false,
+  // Deshabilitar análisis de código que requiere conexión
+  "cursor.codeActions.enabled": false,
+  "cursor.codeActions.enableAutoFix": false,
+  // Deshabilitar todas las notificaciones de red
+  "cursor.general.showNetworkErrors": false,
+  // Modo offline forzado para funcionalidades no críticas
+  "cursor.general.offlineMode": true,
+  // Configuraciones adicionales para reducir errores de conexión
+  "cursor.chat.enableBackgroundAnalysis": false,
+  "cursor.chat.enableTerminalAnalysis": false,
+  "cursor.chat.enableFileWatcher": false,
+  "cursor.general.enableBackgroundSync": false,
+  "cursor.general.enableAutoReconnect": false,
+  // Deshabilitar análisis de terminal que causa errores de conexión
+  "terminal.integrated.enableTerminalReconnection": false,
+  "terminal.integrated.enablePersistentSessions": false,
+  // Enterprise: Configuración ultra-conservadora para prevenir desconexiones
+  "cursor.general.connectionRetryDelay": 300000,
+  "cursor.general.maxConnectionRetries": 1,
+  "cursor.general.requestTimeout": 300000,
+  "cursor.chat.maxTokens": 2000,
+  "cursor.chat.enableStreaming": false,
+  // Deshabilitar completamente el análisis de terminal (causa principal de desconexiones)
+  "cursor.chat.enableTerminalAnalysis": false,
+  "cursor.chat.enableAutoAnalysis": false,
+  // Deshabilitar características que requieren conexión constante
+  "cursor.chat.enableRealTimeSuggestions": false,
+  "cursor.chat.enableLiveAnalysis": false,
+  // Enterprise: Deshabilitar todas las características que requieren conexión activa
+  "cursor.general.enableNetworkDiagnostics": false,
+  "cursor.general.enableErrorReporting": false,
+  "cursor.general.enableStateSync": false,
+  "cursor.general.enableBackgroundSync": false,
+  // Configuración de red más restrictiva
+  "http.timeout": 30000,
+  "http.maxRedirects": 2,
+  // Configuraciones adicionales para prevenir desconexiones frecuentes
+  "cursor.chat.enableComposer": false,
+  "cursor.chat.enableChatHistory": false,
+  "cursor.chat.enableMultiTurn": false,
+  "cursor.chat.enableCodebaseIndexing": false,
+  "cursor.chat.enableSemanticSearch": false,
+  "cursor.general.enableWorkspaceSync": false,
+  "cursor.general.enableCloudSync": false,
+  "cursor.general.enableFeatureFlags": false,
+  "cursor.general.enableExperiments": false,
+  // Deshabilitar todas las conexiones de red no esenciales
+  "cursor.general.disableNetworkRequests": true,
+  "cursor.chat.disableNetworkRequests": true,
+  // Configuración de heartbeat más larga para evitar timeouts
+  "cursor.general.heartbeatInterval": 600000,
+  "cursor.general.connectionKeepAlive": false,
+  // Deshabilitar polling automático
+  "cursor.general.enableAutoPolling": false,
+  "cursor.chat.enableAutoPolling": false
 }

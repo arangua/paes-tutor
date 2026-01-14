@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // Configuración para tests E2E con Playwright
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": [
+    "e2e/**/*.ts",
+    "e2e/**/*.tsx",
+    "playwright.config.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

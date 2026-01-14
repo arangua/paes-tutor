@@ -1,5 +1,66 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-npx lint-staged
+echo "🔍 Ejecutando validaciones pre-commit (Enterprise)..."
+echo ""
 
+# ✅ Enterprise: Ejecutar lint-staged (formato y lint básico)
+echo "📝 Ejecutando lint-staged..."
+npx lint-staged || {
+  echo "❌ lint-staged falló. Commit bloqueado."
+  exit 1
+}
+
+# ✅ Enterprise: Validar tipos TypeScript
+echo "📘 Validando tipos TypeScript..."
+npx tsc --noEmit || {
+  echo "❌ Errores de tipos TypeScript encontrados. Commit bloqueado."
+  exit 1
+}
+
+# ✅ Enterprise: Verificar configuración de Prisma
+echo "🔍 Verificando configuración de Prisma..."
+npm run guard:prisma || {
+  echo "❌ Configuración de Prisma inválida. Commit bloqueado."
+  exit 1
+}
+
+# ✅ Enterprise: Ejecutar linter estricto
+echo "🔍 Ejecutando linter estricto..."
+npm run lint:strict || {
+  echo "❌ Linter estricto encontró problemas. Commit bloqueado."
+  exit 1
+}
+
+# ✅ Enterprise: Validar que no haya console.log en producción
+echo "🚫 Validando console.log en código de producción..."
+npx eslint "src/**/*.{ts,tsx}" \
+  --rule "no-console: error" \
+  --rule "no-debugger: error" \
+  --ignore-pattern "**/*.test.*" \
+  --ignore-pattern "**/*.spec.*" \
+  --ignore-pattern "**/logger.ts" \
+  --ignore-pattern "**/monitoring.ts" \
+  --max-warnings 0 || {
+  echo "❌ Se encontraron console.log o debugger en código de producción. Commit bloqueado."
+  exit 1
+}
+
+# ✅ Enterprise: Ejecutar tests de regresión (solo si hay cambios en validation-utils)
+if git diff --cached --name-only | grep -q "validation-utils"; then
+  echo "🧪 Ejecutando tests de regresión para validation-utils..."
+  npm run test:run -- validation-utils.regression.test.ts || {
+    echo "❌ Tests de regresión fallaron. Commit bloqueado."
+    exit 1
+  }
+fi
+
+# ✅ Enterprise: Validar que no haya .md en la raíz (excepto README.md)
+echo "📄 Validando que no haya markdown en la raíz..."
+node scripts/guard-no-root-markdown.mjs || {
+  echo "❌ Se encontraron archivos .md en la raíz. Commit bloqueado."
+  exit 1
+}
+
+echo ""
+echo "✅ Todas las validaciones pre-commit pasaron correctamente."

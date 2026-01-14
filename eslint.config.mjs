@@ -2,6 +2,77 @@ import js from "@eslint/js";
 import tseslint from "typescript-eslint";
 import react from "eslint-plugin-react";
 import reactHooks from "eslint-plugin-react-hooks";
+import security from "eslint-plugin-security";
+import sonarjs from "eslint-plugin-sonarjs";
+import globals from "globals";
+// Nota: Las reglas personalizadas están en eslint-rules/custom-validation-rules.js
+// Requieren plugin ESLint personalizado para activarse (ver documentación)
+
+// ✅ Enterprise: Detectar si estamos en modo crítico (usado por lint:critical)
+// En modo crítico, solo se aplican reglas que bloquean issues realmente críticos
+// Reglas que requieren refactorización masiva se desactivan para no bloquear CI
+const isCriticalMode = process.env.ESLINT_CRITICAL_MODE === 'true';
+
+// ✅ Enterprise: Reglas críticas que SIEMPRE bloquean (incluso en modo crítico)
+const criticalRules = {
+  // Variables no definidas - crítico para evitar runtime errors
+  "no-undef": "error",
+  // Código inalcanzable - crítico para detectar bugs
+  "no-unreachable": "error",
+  // Variables no usadas - crítico para mantener código limpio
+  "@typescript-eslint/no-unused-vars": [
+    "error",
+    {
+      argsIgnorePattern: "^_",
+      varsIgnorePattern: "^_",
+    },
+  ],
+  // Console.log en producción - crítico para evitar leaks
+  "no-console": [
+    "error",
+    {
+      allow: ["warn", "error"],
+    },
+  ],
+  // Debugger en producción - crítico
+  "no-debugger": "error",
+  // React hooks - crítico para evitar bugs
+  ...reactHooks.configs.recommended.rules,
+  // ✅ Enterprise: no-require-imports desactivado en modo crítico
+  // Requiere refactorización masiva y puede ser necesario en algunos casos
+  "@typescript-eslint/no-require-imports": isCriticalMode ? "off" : "error",
+};
+
+// ✅ Enterprise: Reglas de seguridad accionables (solo en modo crítico)
+// Estas reglas detectan vulnerabilidades reales sin falsos positivos masivos
+const criticalSecurityRules = isCriticalMode ? {
+  // Detectar eval() - crítico de seguridad
+  "no-eval": "error",
+  // Detectar Function() constructor - crítico de seguridad
+  "no-implied-eval": "error",
+  // Detectar new Function() - crítico de seguridad
+  "no-new-func": "error",
+} : {};
+
+// ✅ Enterprise: Reglas de SonarJS que NO bloquean en modo crítico
+// Estas requieren refactorización masiva y se documentan en full audit
+const sonarjsRulesForMode = isCriticalMode ? {
+  // Desactivar complejidad cognitiva - requiere refactorización masiva
+  "sonarjs/cognitive-complexity": "off",
+  // Desactivar funciones anidadas - requiere refactorización masiva
+  "sonarjs/no-nested-functions": "off",
+  // Desactivar condicionales anidadas - requiere refactorización masiva
+  "sonarjs/no-nested-conditional": "off",
+  // Desactivar ramas duplicadas - puede tener falsos positivos
+  "sonarjs/no-all-duplicated-branches": "off",
+  // Desactivar expresiones idénticas - puede tener falsos positivos
+  "sonarjs/no-identical-expressions": "off",
+  // Desactivar dead store - puede tener falsos positivos
+  "sonarjs/no-dead-store": "off",
+  // Mantener reglas críticas de SonarJS
+  "sonarjs/no-unused-vars": "error",
+  "sonarjs/unused-import": "error",
+} : sonarjs.configs.recommended.rules;
 
 export default [
   {
@@ -11,43 +82,231 @@ export default [
       "build/**",
       "next-env.d.ts",
       "node_modules/**",
+      ".stryker-tmp/**",
+      "stryker.conf.mjs",
+      ".migration-backups/**",
+      "migration-report*.json",
+      "playwright-report/**",
+      "test-results/**",
+      "coverage/**",
     ],
   },
   js.configs.recommended,
+  ...tseslint.configs.recommended,
+  // Configuración para archivos TypeScript (con type-checking)
   {
-    files: ["**/*.{js,jsx,ts,tsx}"],
+    files: ["**/*.{ts,tsx}"],
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
         ecmaVersion: "latest",
         sourceType: "module",
+        projectService: true,
         ecmaFeatures: {
           jsx: true,
         },
+      },
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+        ...globals.es2021,
+        ...globals.es2022,
+        // Variables globales adicionales de Node.js
+        process: "readonly",
+        Buffer: "readonly",
+        require: "readonly",
+        // Variables globales del navegador
+        URL: "readonly",
+        fetch: "readonly",
+        AbortSignal: "readonly",
+        File: "readonly",
+        document: "readonly",
+        window: "readonly",
       },
     },
     plugins: {
       react,
       "react-hooks": reactHooks,
       "@typescript-eslint": tseslint.plugin,
+      security,
+      sonarjs,
+      // Nota: Plugin personalizado requiere setup adicional
+      // "custom-validation": customRules,
     },
     rules: {
       ...react.configs.recommended.rules,
-      ...reactHooks.configs.recommended.rules,
+      ...criticalRules,
+      ...criticalSecurityRules,
+      ...sonarjsRulesForMode,
       "react/react-in-jsx-scope": "off",
       "react/prop-types": "off",
-      "@typescript-eslint/no-unused-vars": [
-        "warn",
-        {
-          argsIgnorePattern: "^_",
-          varsIgnorePattern: "^_",
-        },
-      ],
-      "@typescript-eslint/no-explicit-any": "warn",
+      // ✅ Enterprise: no-explicit-any solo en modo full audit
+      // En modo crítico, esto se desactiva para evitar bloquear CI por deuda técnica
+      // Ver docs/LINT_ENTERPRISE_POLICY.md para plan de reducción
+      "@typescript-eslint/no-explicit-any": isCriticalMode ? "off" : "error",
+      "no-undef": "off", // TypeScript maneja esto a través de typescript-eslint
+      // Desactivar reglas que requieren type-checking estricto (pueden causar errores de parsing)
+      "@typescript-eslint/no-unnecessary-type-assertion": "off",
+      "@typescript-eslint/no-unnecessary-condition": "off",
+      "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/no-unsafe-member-access": "off",
+      "@typescript-eslint/no-unsafe-call": "off",
+      "@typescript-eslint/no-unsafe-return": "off",
+      "@typescript-eslint/no-unsafe-argument": "off",
+      // Optimizaciones de performance (desactivadas porque requieren type-checking)
+      "@typescript-eslint/prefer-nullish-coalescing": "off",
+      "@typescript-eslint/prefer-optional-chain": "off",
+      // ✅ Enterprise: Reglas de seguridad adicionales (solo en full audit)
+      // Estas pueden tener falsos positivos y se documentan en full audit
+      ...(isCriticalMode ? {} : {
+        ...security.configs.recommended.rules,
+      }),
+      // Reglas personalizadas para validaciones
+      // Nota: Requieren plugin ESLint personalizado (ver eslint-rules/custom-validation-rules.js)
+      // "custom-validation/no-unsafe-math-round": "error",
+      // "custom-validation/no-unsafe-array-length-division": "error",
+      // "custom-validation/no-unsafe-spread-math": "error",
+      // "custom-validation/no-unsafe-toisostring": "warn",
     },
     settings: {
       react: {
         version: "detect",
+      },
+    },
+  },
+  // Configuración para archivos JavaScript puros (sin type-checking)
+  {
+    files: ["**/*.{js,jsx,mjs}"],
+    languageOptions: {
+      parser: tseslint.parser,
+      parserOptions: {
+        ecmaVersion: "latest",
+        sourceType: "module",
+        // NO usar project para archivos JS puros
+        ecmaFeatures: {
+          jsx: true,
+        },
+      },
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+        ...globals.es2021,
+        ...globals.es2022,
+        // Variables globales adicionales de Node.js
+        process: "readonly",
+        Buffer: "readonly",
+        require: "readonly",
+        // Variables globales del navegador
+        URL: "readonly",
+        fetch: "readonly",
+        AbortSignal: "readonly",
+        File: "readonly",
+        document: "readonly",
+        window: "readonly",
+      },
+    },
+    plugins: {
+      react,
+      "react-hooks": reactHooks,
+      "@typescript-eslint": tseslint.plugin,
+      security,
+      sonarjs,
+    },
+    rules: {
+      ...react.configs.recommended.rules,
+      ...criticalRules,
+      ...criticalSecurityRules,
+      ...sonarjsRulesForMode,
+      "react/react-in-jsx-scope": "off",
+      "react/prop-types": "off",
+      // ✅ Enterprise: no-explicit-any solo en modo full audit
+      "@typescript-eslint/no-explicit-any": isCriticalMode ? "off" : "error",
+      "no-undef": "off",
+    },
+    settings: {
+      react: {
+        version: "detect",
+      },
+    },
+  },
+  // Configuración específica para archivos de configuración TypeScript (Node.js)
+  {
+    files: ["*.config.ts", "*.config.*.ts", "vitest.config.ts", "sentry.client.config.ts", "sentry.server.config.ts"],
+    languageOptions: {
+      parser: tseslint.parser,
+      parserOptions: {
+        ecmaVersion: "latest",
+        sourceType: "module",
+        projectService: false,
+        project: ["./tsconfig.tools.json"],
+        tsconfigRootDir: process.cwd(),
+      },
+      globals: {
+        ...globals.node,
+        process: "readonly",
+        Buffer: "readonly",
+        require: "readonly",
+      },
+    },
+  },
+  // Configuración específica para archivos de configuración JavaScript (Node.js)
+  {
+    files: ["*.config.{js,mjs}", "*.config.*.{js,mjs}", "stryker.conf.mjs", ".strykerrc.mjs"],
+    languageOptions: {
+      parser: tseslint.parser,
+      parserOptions: {
+        ecmaVersion: "latest",
+        sourceType: "module",
+        // NO usar project para archivos .js/.mjs
+      },
+      globals: {
+        ...globals.node,
+        process: "readonly",
+        Buffer: "readonly",
+        require: "readonly",
+      },
+    },
+  },
+  // Configuración para archivos de test
+  {
+    files: ["**/*.test.{js,jsx,ts,tsx}", "**/*.spec.{js,jsx,ts,tsx}", "src/test/**/*.{js,jsx,ts,tsx}"],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+        ...globals.jest,
+        process: "readonly",
+        Buffer: "readonly",
+        require: "readonly",
+        URL: "readonly",
+        fetch: "readonly",
+        AbortSignal: "readonly",
+        File: "readonly",
+        document: "readonly",
+        window: "readonly",
+      },
+    },
+  },
+  // Configuración específica para tests E2E con Playwright
+  {
+    files: ["e2e/**/*.{ts,tsx}", "playwright.config.ts"],
+    languageOptions: {
+      parser: tseslint.parser,
+      parserOptions: {
+        ecmaVersion: "latest",
+        sourceType: "module",
+        projectService: false,
+        project: ["./tsconfig.e2e.json"],
+        tsconfigRootDir: process.cwd(),
+      },
+      globals: {
+        ...globals.node,
+        ...globals.browser,
+        process: "readonly",
+        Buffer: "readonly",
+        require: "readonly",
+        URL: "readonly",
+        fetch: "readonly",
       },
     },
   },

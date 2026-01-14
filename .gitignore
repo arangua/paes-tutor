@@ -10,8 +10,15 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
-/coverage
+# testing/coverage
+.nyc_output
+
+# Generated test artifacts (do not commit)
+playwright-report/
+.tmp/
+
+# migration backups
+/.migration-backups
 
 # next.js
 /.next/
@@ -45,3 +52,6 @@ next-env.d.ts
 # PDFs descargados de DEMRE
 /data/pdfs/
 /data/temp/
+
+# Reportes de limpieza de código
+cleanup-report.json
