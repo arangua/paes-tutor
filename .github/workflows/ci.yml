@@ -148,9 +148,8 @@ jobs:
     - name: Generate Prisma Client
       run: npx prisma generate
 
-    - name: Run mutation tests with maximum logical depth
+    - name: Run mutation tests (gate)
       run: npm run test:mutation
-      continue-on-error: true  # No fallar el CI si mutation score es bajo
       timeout-minutes: 60  # Mutation testing puede tardar mucho tiempo
 
     - name: Upload mutation test report
