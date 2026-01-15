@@ -39,7 +39,7 @@ vi.mock('next/server', () => {
   }
 })
 
-import { describe, it, expect, beforeEach, vi as vitest } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi as vitest } from 'vitest'
 import { GET } from './route'
 import { prisma } from '@/lib/prisma'
 import {
@@ -338,6 +338,17 @@ describe('GET /api/admission-calendar', () => {
   })
 
   describe('Manejo de errores', () => {
+    let consoleErrorSpy: ReturnType<typeof vi.spyOn>
+
+    beforeEach(() => {
+      // Silenciar console.error esperado cuando se loguean errores intencionales
+      consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    })
+
+    afterEach(() => {
+      consoleErrorSpy.mockRestore()
+    })
+
     it('debe manejar errores de base de datos correctamente', async () => {
       vi.mocked(prisma.admissionCalendar.findMany).mockRejectedValue(
         new Error('Database error')

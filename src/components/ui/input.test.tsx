@@ -1,8 +1,20 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render } from '@testing-library/react'
 import { Input } from './input'
 
 describe('Input', () => {
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    // Silenciar warnings esperados de React sobre value sin onChange
+    // Estos warnings son esperados porque el componente Input siempre pasa value
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore()
+  })
+
   describe('id attribute', () => {
     it('should auto-generate id when not provided', () => {
       const { container } = render(<Input />)
