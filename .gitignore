@@ -83,3 +83,18 @@ migration-report*.json
 node-version.txt
 npm-version.txt
 last-commit-before.txt
+
+# --- Temp logs / outputs (local) ---
+# Generic log files (complementa los específicos de npm/yarn arriba)
+*.log
+*.tmp
+*.temp
+
+# ESLint / lint outputs (complementa los patrones específicos arriba)
+eslint-*-output.txt
+
+# Test / tool outputs (local)
+coverage/
+
+# OS / editor noise
+Thumbs.db
