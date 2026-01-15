@@ -13,11 +13,13 @@ import { prisma } from '@/lib/prisma'
 import { getCurrentStudentId } from '@/lib/get-session'
 import { getCached } from '@/lib/cache'
 import {
-  TEST_IDS,
-  DEFAULT_TEST_VALUES,
   createTestRequest,
   assertSuccessResponse,
   assertErrorResponse,
+} from '@/test/enterprise/shared-test-helpers'
+import {
+  TEST_IDS,
+  DEFAULT_TEST_VALUES,
 } from '@/app/api/attempts/__tests__/test-helpers'
 import type {
   Exam,

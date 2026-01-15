@@ -8,11 +8,11 @@ import { prisma } from '@/lib/prisma'
 import { getCurrentStudentId } from '@/lib/get-session'
 import { circuitBreakers } from '@/app/api/notes/versions/circuit-breaker'
 import {
-  TEST_IDS,
   createTestRequest,
   assertSuccessResponse,
   assertErrorResponse,
-} from '@/app/api/attempts/__tests__/test-helpers'
+} from '@/test/enterprise/shared-test-helpers'
+import { TEST_IDS } from '@/app/api/attempts/__tests__/test-helpers'
 import type { Attempt, PerformanceMetric, Challenge, ScoreTable } from '@prisma/client'
 
 export interface AttemptForSubmit extends Pick<Attempt, 'id' | 'studentId' | 'estado' | 'startedAt' | 'totalPreguntas' | 'proceso' | 'tipoAplicacion' | 'forma'> {

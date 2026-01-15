@@ -119,12 +119,15 @@ export function setupChallengeCreateConflictMock(): void {
 }
 
 // ✅ Enterprise: Re-exportar funciones y constantes necesarias
-export { 
-  createTestRequest, 
-  assertSuccessResponse, 
+import {
+  createTestRequest,
+  assertSuccessResponse,
   assertErrorResponse,
+} from '@/test/enterprise/shared-test-helpers'
+export {
   TEST_IDS,
   DEFAULT_TEST_VALUES,
 } from '@/app/api/bookmarks/__tests__/test-helpers'
+export { createTestRequest, assertSuccessResponse, assertErrorResponse }
 // createUserWithStudent está definido localmente arriba, no necesita re-exportarse
 

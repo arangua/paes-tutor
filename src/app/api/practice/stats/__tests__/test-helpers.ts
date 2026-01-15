@@ -6,11 +6,11 @@ import { vi } from 'vitest'
 import { prisma } from '@/lib/prisma'
 import { getCurrentStudentId } from '@/lib/get-session'
 import {
-  TEST_IDS,
   createTestRequest,
   assertSuccessResponse,
   assertErrorResponse,
-} from '@/app/api/attempts/__tests__/test-helpers'
+} from '@/test/enterprise/shared-test-helpers'
+import { TEST_IDS } from '@/app/api/attempts/__tests__/test-helpers'
 import type { PerformanceMetric, PracticeSession, Topic, Subject } from '@prisma/client'
 
 export interface PerformanceMetricWithRelations extends PerformanceMetric {

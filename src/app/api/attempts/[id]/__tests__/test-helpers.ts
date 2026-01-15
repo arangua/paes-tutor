@@ -15,11 +15,13 @@ import { invalidateCachePattern } from '@/lib/cache'
 import { validateBody } from '@/lib/api-helpers'
 import { circuitBreakers } from '@/app/api/notes/versions/circuit-breaker'
 import {
-  TEST_IDS,
-  DEFAULT_TEST_VALUES,
   createTestRequest,
   assertSuccessResponse,
   assertErrorResponse,
+} from '@/test/enterprise/shared-test-helpers'
+import {
+  TEST_IDS,
+  DEFAULT_TEST_VALUES,
   assertResponseHasFields,
   TestScenarioBuilder,
   ErrorScenarioBuilder,

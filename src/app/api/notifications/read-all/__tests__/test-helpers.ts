@@ -5,12 +5,14 @@
 import { vi } from 'vitest'
 import { prisma } from '@/lib/prisma'
 import {
-  TEST_IDS,
-  setupAuthenticatedSession,
-  setupUnauthenticatedSession,
   createTestRequest,
   assertSuccessResponse,
   assertErrorResponse,
+} from '@/test/enterprise/shared-test-helpers'
+import {
+  TEST_IDS,
+  setupAuthenticatedSession,
+  setupUnauthenticatedSession,
 } from '../../__tests__/test-helpers'
 
 export function setupNotificationUpdateManyMock(count: number = 0): void {

@@ -193,7 +193,7 @@ describe('POST /api/challenges', () => {
       body: { examId: TEST_IDS.EXAM },
     })
     const response = await POST(request)
-    const data = await assertSuccessResponse(response)
+    const data = await assertSuccessResponse(response, 201)
     expect(data.challenge).toBeDefined()
     expect(response.status).toBe(201)
   })

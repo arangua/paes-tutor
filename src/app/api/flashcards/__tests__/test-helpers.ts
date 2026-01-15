@@ -87,6 +87,12 @@ export function setupQuestionMock(question: Question | null): void {
   vi.mocked(prisma.question.findUnique).mockResolvedValue(question as any)
 }
 
-// Re-exportar funciones y constantes necesarias (TEST_IDS ya está exportado arriba)
-export { createUserWithStudent, createTestRequest, assertSuccessResponse, assertErrorResponse } from '@/app/api/bookmarks/__tests__/test-helpers'
+// Re-exportar funciones y constantes necesarias
+import {
+  createTestRequest,
+  assertSuccessResponse,
+  assertErrorResponse,
+} from '@/test/enterprise/shared-test-helpers'
+export { createUserWithStudent } from '@/app/api/bookmarks/__tests__/test-helpers'
+export { createTestRequest, assertSuccessResponse, assertErrorResponse }
 

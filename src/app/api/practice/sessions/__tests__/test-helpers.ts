@@ -6,11 +6,13 @@ import { vi } from 'vitest'
 import { prisma } from '@/lib/prisma'
 import { getAuthenticatedUserWithStudent } from '@/lib/get-session'
 import {
-  TEST_IDS,
-  createUserWithStudent,
   createTestRequest,
   assertSuccessResponse,
   assertErrorResponse,
+} from '@/test/enterprise/shared-test-helpers'
+import {
+  TEST_IDS,
+  createUserWithStudent,
 } from '@/app/api/bookmarks/__tests__/test-helpers'
 import type { PracticeSession, Topic, Question, QuestionOption, PerformanceMetric } from '@prisma/client'
 

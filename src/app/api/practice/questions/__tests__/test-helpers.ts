@@ -7,11 +7,11 @@ import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/get-session'
 import type { Question, QuestionOption, Topic } from '@prisma/client'
 import {
-  TEST_IDS,
   createTestRequest,
   assertSuccessResponse,
   assertErrorResponse,
-} from '@/app/api/attempts/__tests__/test-helpers'
+} from '@/test/enterprise/shared-test-helpers'
+import { TEST_IDS } from '@/app/api/attempts/__tests__/test-helpers'
 
 vi.mock('@/lib/get-session', () => ({
   getCurrentUser: vi.fn(),

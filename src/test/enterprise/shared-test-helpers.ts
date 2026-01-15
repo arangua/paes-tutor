@@ -227,19 +227,27 @@ export async function assertSuccessResponse(
 export async function assertErrorResponse(
   response: Response,
   expectedStatus: number,
-  expectedError?: string | RegExp
+  expectedError?: string | RegExp | ((error: string) => boolean)
 ) {
   expect(response.status).toBe(expectedStatus)
   
+  const text = await response.clone().text()
+  const data = text ? JSON.parse(text) : null
+  
   if (expectedError) {
-    const text = await response.clone().text()
-    const data = text ? JSON.parse(text) : null
+    const errorMessage = data?.error || data?.message || ''
+    
     if (typeof expectedError === 'string') {
-      expect(data?.error || data?.message).toContain(expectedError)
+      expect(errorMessage).toContain(expectedError)
+    } else if (expectedError instanceof RegExp) {
+      expect(errorMessage).toMatch(expectedError)
     } else {
-      expect(data?.error || data?.message).toMatch(expectedError)
+      // Función de validación
+      expect(expectedError(errorMessage)).toBe(true)
     }
   }
+  
+  return data
 }
 
 /**

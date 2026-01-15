@@ -7,11 +7,11 @@ import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/get-session'
 import { validateBody } from '@/lib/api-helpers'
 import {
-  TEST_IDS,
   createTestRequest,
   assertSuccessResponse,
   assertErrorResponse,
-} from '@/app/api/attempts/__tests__/test-helpers'
+} from '@/test/enterprise/shared-test-helpers'
+import { TEST_IDS } from '@/app/api/attempts/__tests__/test-helpers'
 import type { User, Student } from '@prisma/client'
 
 export function createUser(options: {

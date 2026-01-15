@@ -7,11 +7,11 @@ import { prisma } from '@/lib/prisma'
 import { getCached } from '@/lib/cache'
 import { getCurrentStudentId } from '@/lib/get-session'
 import {
-  TEST_IDS,
   createTestRequest,
   assertSuccessResponse,
   assertErrorResponse,
-} from '@/app/api/attempts/__tests__/test-helpers'
+} from '@/test/enterprise/shared-test-helpers'
+import { TEST_IDS } from '@/app/api/attempts/__tests__/test-helpers'
 import type { PerformanceMetric, Exam } from '@prisma/client'
 
 export interface PerformanceMetricWithSelect extends Pick<PerformanceMetric, 'topicId' | 'porcentaje' | 'totalPreguntas' | 'correctas' | 'nivel'> {

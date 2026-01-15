@@ -6,13 +6,15 @@ import { vi } from 'vitest'
 import { prisma } from '@/lib/prisma'
 import { getCached } from '@/lib/cache'
 import {
+  createTestRequest,
+  assertSuccessResponse,
+  assertErrorResponse,
+} from '@/test/enterprise/shared-test-helpers'
+import {
   TEST_IDS,
   createStudyMaterial,
   setupAuthenticatedSession,
   setupUnauthenticatedSession,
-  createTestRequest,
-  assertSuccessResponse,
-  assertErrorResponse,
 } from '../../__tests__/test-helpers'
 import type { StudyMaterial, Subject, Topic } from '@prisma/client'
 
