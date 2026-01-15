@@ -178,3 +178,11 @@ Cada decisión debe incluir:
 - Integrado en `ci:check` al final (después de todos los checks)
 - Política: archivos críticos NO deben modificarse durante ci:check  
 **Referencia:** PASO 9.3.1 - CI Determinism Guard (Reproducibilidad Total)
+
+### 2026-01-14 — Refresh deps snapshot baseline (Upstash version label normalization)
+
+- Contexto: `guard:deps-snapshot` detectó drift en dependencias resueltas tras `npm ci`.
+- Observación: paquetes Upstash aparecieron con etiqueta de versión normalizada (ej. `@upstash/*@1.35.8`) en lugar de formato previo con prefijo `v` (ej. `@upstash/*@v1.35.8`).
+- Decisión: aceptar drift como actualización legítima del snapshot de dependencias resueltas y reescribir baseline.
+- Acción: `npm run guard:deps-snapshot:write` → actualiza `docs/ci/DEPS_SNAPSHOT.json`.
+- Impacto: baseline CI actualizado; no cambia código de app, solo verificación de consistencia.
