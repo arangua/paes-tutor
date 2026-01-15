@@ -66,7 +66,6 @@ vi.mock('@/lib/prisma', () => ({
 
 // Mock de get-session
 declare global {
-  // eslint-disable-next-line no-var
   var __mockGetAuthenticatedUserWithStudent__: ReturnType<typeof vi.fn> | undefined
 }
 
