@@ -73,11 +73,7 @@ vi.mock('@/lib/prisma', () => ({
   },
 }))
 
-// Mock de get-session
-const mockGetAuthenticatedUserWithStudent = vi.fn()
-vi.mock('@/lib/get-session', () => ({
-  getAuthenticatedUserWithStudent: () => mockGetAuthenticatedUserWithStudent(),
-}))
+// Mock de get-session - el mock global está en src/test/setup.ts
 
 // Mock de rate-limit-middleware
 vi.mock('@/lib/rate-limit-middleware', () => ({
@@ -125,14 +121,14 @@ vi.mock('@/app/api/notes/versions/validation-utils', () => ({
 describe('GET /api/analytics/joint-progress', () => {
   beforeEach(() => {
     vitest.clearAllMocks()
-    mockGetAuthenticatedUserWithStudent.mockResolvedValue(
+    globalThis.__mockGetAuthenticatedUserWithStudent__.mockResolvedValue(
       createUserWithStudent({ studentId: TEST_IDS.STUDENT_1 })
     )
   })
 
   describe('Autenticación', () => {
     it('debe retornar 401 si no está autenticado', async () => {
-      mockGetAuthenticatedUserWithStudent.mockResolvedValue(null)
+      globalThis.__mockGetAuthenticatedUserWithStudent__.mockResolvedValue(null)
 
       const request = createTestRequest()
       const response = await GET(request)
@@ -141,7 +137,7 @@ describe('GET /api/analytics/joint-progress', () => {
     })
 
     it('debe retornar 401 si no hay estudiante asociado', async () => {
-      mockGetAuthenticatedUserWithStudent.mockResolvedValue({
+      globalThis.__mockGetAuthenticatedUserWithStudent__.mockResolvedValue({
         ...createUserWithStudent(),
         student: null,
       })
@@ -601,7 +597,7 @@ describe('GET /api/analytics/joint-progress', () => {
     })
 
     it('debe manejar errores inesperados correctamente', async () => {
-      mockGetAuthenticatedUserWithStudent.mockRejectedValue(
+      globalThis.__mockGetAuthenticatedUserWithStudent__.mockRejectedValue(
         new Error('Unexpected error')
       )
 

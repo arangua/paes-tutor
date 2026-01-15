@@ -1,9 +1,63 @@
 import '@testing-library/jest-dom/vitest'
-import { afterEach, vi, beforeAll } from 'vitest'
+import { afterEach, vi, beforeAll, beforeEach } from 'vitest'
 import { cleanup } from '@testing-library/react'
+
+// Declaraciones globales para mocks persistentes
+declare global {
+  // eslint-disable-next-line no-var
+  var __mockLogger__: {
+    info: ReturnType<typeof vi.fn>
+    warn: ReturnType<typeof vi.fn>
+    error: ReturnType<typeof vi.fn>
+    debug: ReturnType<typeof vi.fn>
+  } | undefined
+  // eslint-disable-next-line no-var
+  var __mockLogApiRequest__: ReturnType<typeof vi.fn> | undefined
+  // eslint-disable-next-line no-var
+  var __mockGetAuthenticatedUserWithStudent__: ReturnType<typeof vi.fn> | undefined
+}
 
 // Tipo para HeadersInit (no exportado por next/server)
 type HeadersInit = Headers | Record<string, string> | [string, string][]
+
+// Mock global de get-session ANTES de cualquier otra cosa
+// Esto es crítico porque muchos tests lo usan
+// Nota: Los tests que necesitan la función real deben usar vi.unmock('@/lib/get-session')
+vi.mock('@/lib/get-session', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/get-session')>('@/lib/get-session')
+
+  globalThis.__mockGetAuthenticatedUserWithStudent__ ??= vi.fn()
+
+  return {
+    ...actual,
+    getSession: vi.fn(),
+    getCurrentUser: vi.fn(),
+    getCurrentStudentId: vi.fn(),
+    getAuthenticatedUserWithStudent: (...args: any[]) =>
+      globalThis.__mockGetAuthenticatedUserWithStudent__!(...args),
+  }
+})
+
+// Mock global de logger
+vi.mock('@/lib/logger', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/logger')>('@/lib/logger')
+
+  globalThis.__mockLogger__ ??= {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  }
+  globalThis.__mockLogApiRequest__ ??= vi.fn().mockResolvedValue(undefined)
+
+  return {
+    ...actual,
+    // ✅ lo que rompe ahora
+    logger: globalThis.__mockLogger__,
+    // ✅ si tu código también usa esta función
+    logApiRequest: (...args: any[]) => globalThis.__mockLogApiRequest__!(...args),
+  }
+})
 
 // Mock global de next/server ANTES de cualquier otra cosa
 // Esto es crítico porque next-auth lo importa internamente
@@ -219,8 +273,38 @@ vi.mock('@/components/ui/badge', async () => {
   }
 })
 
+// Mock global de env para evitar validación en tests
+// Los tests individuales pueden override este mock si necesitan valores específicos
+vi.mock('@/lib/env/env', () => ({
+  env: {
+    NODE_ENV: 'test',
+    DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
+    NEXTAUTH_SECRET: 'test-secret-key-minimum-32-characters-long-for-validation',
+    ENCRYPTION_KEY: 'test-encryption-key-minimum-32-characters-long',
+    LOG_LEVEL: 'info',
+  },
+}))
+
 // Limpiar después de cada test
 afterEach(() => {
   cleanup()
   vi.clearAllMocks()
+})
+
+// Reset global de mocks para evitar flakiness
+// Esto asegura que los mocks no mantengan estado entre tests
+beforeEach(() => {
+  vi.clearAllMocks()
+  
+  // Reset mocks globales específicos
+  globalThis.__mockLogger__?.info.mockReset()
+  globalThis.__mockLogger__?.warn.mockReset()
+  globalThis.__mockLogger__?.error.mockReset()
+  globalThis.__mockLogger__?.debug.mockReset()
+  globalThis.__mockLogApiRequest__?.mockReset()
+  globalThis.__mockLogApiRequest__?.mockResolvedValue(undefined)
+  
+  // ✅ Default seguro para TODO el repo: NO autenticado
+  globalThis.__mockGetAuthenticatedUserWithStudent__?.mockReset()
+  globalThis.__mockGetAuthenticatedUserWithStudent__?.mockResolvedValue(null)
 })

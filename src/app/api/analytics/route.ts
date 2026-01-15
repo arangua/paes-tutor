@@ -3,11 +3,12 @@ import { prisma } from '@/lib/prisma'
 import { getCurrentStudentId } from '@/lib/get-session'
 import { handleApiError } from '@/lib/api-helpers'
 import { withRateLimit } from '@/lib/rate-limit-middleware'
-import { logApiRequest } from '@/lib/logger'
+import { logApiRequest, logger } from '@/lib/logger'
 import { getCached, cacheKeys } from '@/lib/cache'
 import { TIME_CONSTANTS } from '@/lib/constants'
 import { generateAdvancedAnalytics } from '@/lib/analytics'
 import { safeToISODate } from '@/app/api/notes/versions/validation-utils'
+import { circuitBreakers } from '@/app/api/notes/versions/circuit-breaker'
 
 // Especificar Node.js runtime
 export const runtime = 'nodejs'

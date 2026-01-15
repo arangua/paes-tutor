@@ -11,6 +11,15 @@ import {
 } from '../__tests__/test-helpers'
 
 // Mock de Prisma y autenticación
+vi.mock('@prisma/client', () => ({
+  Prisma: {
+    PrismaClientKnownRequestError: class PrismaClientKnownRequestError extends Error {},
+    PrismaClientValidationError: class PrismaClientValidationError extends Error {},
+    PrismaClientInitializationError: class PrismaClientInitializationError extends Error {},
+    PrismaClientRustPanicError: class PrismaClientRustPanicError extends Error {},
+  },
+}))
+
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     studyNote: {

@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
+// Desactivar mock global para este test específico (queremos probar la función real)
+vi.unmock('@/lib/get-session')
 import {
   getSession,
   getCurrentUser,
@@ -334,6 +336,85 @@ describe('get-session', () => {
 
       expect(result).toBe(mockUser)
       expect(result?.student).toBeNull()
+    })
+
+    it('nunca debe devolver undefined (contract enforcement)', async () => {
+      // Test todos los casos posibles para asegurar que nunca retorna undefined
+      
+      // Caso 1: Sin sesión
+      mockAuth.mockResolvedValue(null)
+      const result1 = await getAuthenticatedUserWithStudent()
+      expect(result1).not.toBeUndefined()
+      expect(result1).toBeNull()
+
+      // Caso 2: Sesión sin user
+      mockAuth.mockResolvedValue({})
+      const result2 = await getAuthenticatedUserWithStudent()
+      expect(result2).not.toBeUndefined()
+      expect(result2).toBeNull()
+
+      // Caso 3: Sesión con user sin email
+      mockAuth.mockResolvedValue({
+        user: {
+          id: 'user-1',
+          // Sin email
+        },
+      })
+      const result3 = await getAuthenticatedUserWithStudent()
+      expect(result3).not.toBeUndefined()
+      expect(result3).toBeNull()
+
+      // Caso 4: Usuario no existe en BD
+      mockAuth.mockResolvedValue({
+        user: {
+          id: 'user-1',
+          email: 'test@example.com',
+        },
+      })
+      mockPrisma.user.findUnique.mockResolvedValue(null)
+      const result4 = await getAuthenticatedUserWithStudent()
+      expect(result4).not.toBeUndefined()
+      expect(result4).toBeNull()
+
+      // Caso 5: Usuario existe (éxito)
+      const mockUser: User & { student: Student | null } = {
+        id: 'user-1',
+        email: 'test@example.com',
+        name: 'Test User',
+        emailVerified: null,
+        image: null,
+        password: null,
+        role: 'student',
+        openaiApiKey: null,
+        anthropicApiKey: null,
+        geminiApiKey: null,
+        preferredAIService: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        student: null,
+      }
+      mockAuth.mockResolvedValue({
+        user: {
+          id: 'user-1',
+          email: 'test@example.com',
+        },
+      })
+      mockPrisma.user.findUnique.mockResolvedValue(mockUser)
+      const result5 = await getAuthenticatedUserWithStudent()
+      expect(result5).not.toBeUndefined()
+      expect(result5).toBe(mockUser)
+
+      // Caso 6: Error en prisma (catch)
+      mockAuth.mockResolvedValue({
+        user: {
+          id: 'user-1',
+          email: 'test@example.com',
+        },
+      })
+      mockPrisma.user.findUnique.mockRejectedValue(new Error('Database error'))
+      const result6 = await getAuthenticatedUserWithStudent()
+      expect(result6).not.toBeUndefined()
+      expect(result6).toBeNull()
     })
   })
 })

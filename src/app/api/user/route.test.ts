@@ -31,9 +31,7 @@ vi.mock('@/lib/prisma', () => ({
   },
 }))
 
-vi.mock('@/lib/get-session', () => ({
-  getCurrentUser: vi.fn(),
-}))
+// Mock global está en src/test/setup.ts - solo sobrescribir valores específicos con vi.mocked()
 
 vi.mock('@/lib/api-helpers', () => ({
   validateBody: vi.fn(),
@@ -48,10 +46,7 @@ vi.mock('@/lib/cache', () => ({
   invalidateCachePattern: vi.fn(),
 }))
 
-vi.mock('@/lib/logger', () => ({
-  logApiRequest: vi.fn(),
-  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
-}))
+// Mock global de logger está en src/test/setup.ts
 
 vi.mock('@/lib/rate-limit-middleware', () => ({
   withRateLimit: vi.fn((request: NextRequest, handler: () => Promise<any>) => handler()),

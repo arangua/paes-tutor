@@ -22,7 +22,7 @@ describe('Error Types', () => {
 
     it('includes zodError in response', async () => {
       const zodError = {
-        errors: [
+        issues: [
           { path: ['field'], message: 'Invalid', code: 'invalid_type' },
         ],
       } as ZodError

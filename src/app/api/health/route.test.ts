@@ -58,11 +58,16 @@ describe('GET /api/health', () => {
 
     const response = await GET()
 
-    await assertSuccessResponse(response, 200, {
-      requiredFields: ['status', 'timestamp', 'uptime', 'checks'],
-    })
+    // Leer body una sola vez y reutilizar
+    const text = await response.text()
+    const data = JSON.parse(text)
 
-    const data = await response.json()
+    expect(response.status).toBe(200)
+    expect(data).toBeDefined()
+    expect(data).toHaveProperty('status')
+    expect(data).toHaveProperty('timestamp')
+    expect(data).toHaveProperty('uptime')
+    expect(data).toHaveProperty('checks')
     expect(data.status).toBe('healthy')
     expect(data.checks.database).toBe('ok')
   })

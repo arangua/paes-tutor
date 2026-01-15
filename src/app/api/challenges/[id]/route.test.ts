@@ -12,6 +12,10 @@ import { prisma } from '@/lib/prisma'
 import { determineChallengeWinner } from '@/lib/challenge-helpers'
 import { CHALLENGE_STATUS } from '@/lib/challenge-constants'
 import {
+  setupAuthenticatedUserWithStudent as setupAuthFromShared,
+  setupUnauthenticated as setupUnauthFromShared,
+} from '@/test/enterprise/shared-test-helpers'
+import {
   TEST_IDS,
   createUserWithStudent,
   createChallengeWithRelations,
@@ -33,13 +37,21 @@ vi.mock('@/lib/prisma', () => ({
   },
 }))
 
-vi.mock('@/lib/get-session', () => ({
-  getAuthenticatedUserWithStudent: vi.fn(),
-}))
+// Mock de get-session - el mock global está en src/test/setup.ts
 
-vi.mock('@/lib/logger', () => ({
-  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
-}))
+vi.mock('@/lib/logger', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/logger')>('@/lib/logger')
+  return {
+    ...actual,
+    logger: {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      debug: vi.fn(),
+    },
+    logApiRequest: vi.fn(),
+  }
+})
 
 vi.mock('@/lib/rate-limit-middleware', () => ({
   withRateLimit: vi.fn((req: NextRequest, handler: () => Promise<any>) => handler()),
@@ -53,92 +65,103 @@ vi.mock('@/lib/challenge-helpers', () => ({
 describe('GET /api/challenges/[id]', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    setupUnauthFromShared() // Default: no autenticado
   })
 
   it('debe retornar 401 si no está autenticado', async () => {
-    setupUnauthenticatedUser()
     const params = Promise.resolve({ id: TEST_IDS.ATTEMPT })
     const request = createTestRequestWithChallengeId()
     const response = await GET(request, { params })
     await assertErrorResponse(response, 401, 'No autorizado')
   })
 
-  it('debe retornar 404 si el desafío no existe', async () => {
-    const user = createUserWithStudent()
-    setupAuthenticatedUserWithStudent(user)
-    setupChallengeMock(null)
-    const params = Promise.resolve({ id: TEST_IDS.ATTEMPT })
-    const request = createTestRequestWithChallengeId()
-    const response = await GET(request, { params })
-    await assertErrorResponse(response, 404, 'Desafío no encontrado')
-  })
-
-  it('debe retornar 403 si el usuario no es parte del desafío', async () => {
-    const user = createUserWithStudent({ studentId: 'cotherstudent123456789012' })
-    setupAuthenticatedUserWithStudent(user)
-    const challenge = createChallengeWithRelations({
-      challengerId: TEST_IDS.STUDENT,
-      challengedId: TEST_IDS.STUDENT_2,
+  describe('cuando está autenticado', () => {
+    beforeEach(() => {
+      setupAuthFromShared()
     })
-    setupChallengeMock(challenge)
-    const params = Promise.resolve({ id: TEST_IDS.ATTEMPT })
-    const request = createTestRequestWithChallengeId()
-    const response = await GET(request, { params })
-    await assertErrorResponse(response, 403, 'No tienes permiso')
-  })
 
-  it('debe retornar el desafío si el usuario es el desafiador', async () => {
-    const user = createUserWithStudent({ studentId: TEST_IDS.STUDENT })
-    setupAuthenticatedUserWithStudent(user)
-    const challenge = createChallengeWithRelations({
-      challengerId: TEST_IDS.STUDENT,
-      challengedId: TEST_IDS.STUDENT_2,
+    it('debe retornar 404 si el desafío no existe', async () => {
+      const user = createUserWithStudent()
+      setupAuthenticatedUserWithStudent(user)
+      setupChallengeMock(null)
+      const params = Promise.resolve({ id: TEST_IDS.ATTEMPT })
+      const request = createTestRequestWithChallengeId()
+      const response = await GET(request, { params })
+      await assertErrorResponse(response, 404, 'Desafío no encontrado')
     })
-    setupChallengeMock(challenge)
-    const params = Promise.resolve({ id: TEST_IDS.ATTEMPT })
-    const request = createTestRequestWithChallengeId()
-    const response = await GET(request, { params })
-    const data = await assertSuccessResponse(response)
-    expect(data.challenge).toBeDefined()
-  })
 
-  it('debe retornar el desafío si el usuario es el desafiado', async () => {
-    const user = createUserWithStudent({ studentId: TEST_IDS.STUDENT_2 })
-    setupAuthenticatedUserWithStudent(user)
-    const challenge = createChallengeWithRelations({
-      challengerId: TEST_IDS.STUDENT,
-      challengedId: TEST_IDS.STUDENT_2,
+    it('debe retornar 403 si el usuario no es parte del desafío', async () => {
+      const user = createUserWithStudent({ studentId: 'cotherstudent123456789012' })
+      setupAuthenticatedUserWithStudent(user)
+      const challenge = createChallengeWithRelations({
+        challengerId: TEST_IDS.STUDENT,
+        challengedId: TEST_IDS.STUDENT_2,
+      })
+      setupChallengeMock(challenge)
+      const params = Promise.resolve({ id: TEST_IDS.ATTEMPT })
+      const request = createTestRequestWithChallengeId()
+      const response = await GET(request, { params })
+      await assertErrorResponse(response, 403, 'No tienes permiso')
     })
-    setupChallengeMock(challenge)
-    const params = Promise.resolve({ id: TEST_IDS.ATTEMPT })
-    const request = createTestRequestWithChallengeId()
-    const response = await GET(request, { params })
-    const data = await assertSuccessResponse(response)
-    expect(data.challenge).toBeDefined()
+
+    it('debe retornar el desafío si el usuario es el desafiador', async () => {
+      const user = createUserWithStudent({ studentId: TEST_IDS.STUDENT })
+      setupAuthenticatedUserWithStudent(user)
+      const challenge = createChallengeWithRelations({
+        challengerId: TEST_IDS.STUDENT,
+        challengedId: TEST_IDS.STUDENT_2,
+      })
+      setupChallengeMock(challenge)
+      const params = Promise.resolve({ id: TEST_IDS.ATTEMPT })
+      const request = createTestRequestWithChallengeId()
+      const response = await GET(request, { params })
+      const data = await assertSuccessResponse(response)
+      expect(data.challenge).toBeDefined()
+    })
+
+    it('debe retornar el desafío si el usuario es el desafiado', async () => {
+      const user = createUserWithStudent({ studentId: TEST_IDS.STUDENT_2 })
+      setupAuthenticatedUserWithStudent(user)
+      const challenge = createChallengeWithRelations({
+        challengerId: TEST_IDS.STUDENT,
+        challengedId: TEST_IDS.STUDENT_2,
+      })
+      setupChallengeMock(challenge)
+      const params = Promise.resolve({ id: TEST_IDS.ATTEMPT })
+      const request = createTestRequestWithChallengeId()
+      const response = await GET(request, { params })
+      const data = await assertSuccessResponse(response)
+      expect(data.challenge).toBeDefined()
+    })
   })
 })
 
 describe('PATCH /api/challenges/[id]', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    setupUnauthFromShared() // Default: no autenticado
   })
 
   it('debe retornar 401 si no está autenticado', async () => {
-    setupUnauthenticatedUser()
     const params = Promise.resolve({ id: TEST_IDS.ATTEMPT })
     const request = createTestRequestWithChallengeId(undefined, { method: 'PATCH', body: {} })
     const response = await PATCH(request, { params })
     await assertErrorResponse(response, 401, 'No autorizado')
   })
 
-  it('debe retornar 400 si el body no es válido', async () => {
-    const user = createUserWithStudent()
-    setupAuthenticatedUserWithStudent(user)
-    const params = Promise.resolve({ id: TEST_IDS.ATTEMPT })
-    const request = createTestRequestWithChallengeId(undefined, { method: 'PATCH', body: { status: 'invalid' } })
-    const response = await PATCH(request, { params })
-    await assertErrorResponse(response, 400, 'Datos inválidos')
-  })
+  describe('cuando está autenticado', () => {
+    beforeEach(() => {
+      setupAuthFromShared()
+    })
+
+    it('debe retornar 400 si el body no es válido', async () => {
+      const user = createUserWithStudent()
+      setupAuthenticatedUserWithStudent(user)
+      const params = Promise.resolve({ id: TEST_IDS.ATTEMPT })
+      const request = createTestRequestWithChallengeId(undefined, { method: 'PATCH', body: { status: 'invalid' } })
+      const response = await PATCH(request, { params })
+      await assertErrorResponse(response, 400, 'Datos inválidos')
+    })
 
   describe('Aceptar desafío', () => {
     it('debe retornar 403 si no es el desafiado', async () => {
@@ -380,5 +403,6 @@ describe('PATCH /api/challenges/[id]', () => {
       expect(data.challenge.winnerId).toBe(TEST_IDS.STUDENT_2)
     })
   })
+  }) // cierra "cuando está autenticado"
 })
 

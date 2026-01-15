@@ -7,9 +7,11 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { GET } from './route'
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getCached } from '@/lib/cache'
+import { getCached, cacheKeys } from '@/lib/cache'
 import { TIME_CONSTANTS } from '@/lib/constants'
 import { handleApiError } from '@/lib/api-helpers'
+import { generateRecommendations } from '@/lib/recommendations'
+import { getCurrentStudentId } from '@/lib/get-session'
 import {
   TEST_IDS,
   createPerformanceMetricForRecommendations,
@@ -31,20 +33,26 @@ vi.mock('@/lib/prisma', () => ({
   },
 }))
 
-vi.mock('@/lib/get-session', () => ({
-  getCurrentStudentId: vi.fn(),
-}))
+// Mock global de get-session está en src/test/setup.ts - solo sobrescribir valores específicos con vi.mocked()
 
-vi.mock('@/lib/cache', () => ({
-  getCached: vi.fn(),
-  cacheKeys: {
-    studentRecommendations: (studentId: string) => `recommendations:${studentId}`,
-  },
-}))
+vi.mock('@/lib/cache', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/cache')>('@/lib/cache')
+  return {
+    ...actual,
+    getCached: vi.fn(),
+    cacheKeys: {
+      studentRecommendations: (studentId: string) => `recommendations:${studentId}`,
+    },
+  }
+})
 
-vi.mock('@/lib/recommendations', () => ({
-  generateRecommendations: vi.fn(),
-}))
+vi.mock('@/lib/recommendations', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/recommendations')>('@/lib/recommendations')
+  return {
+    ...actual,
+    generateRecommendations: vi.fn(),
+  }
+})
 
 vi.mock('@/lib/constants', () => ({
   TIME_CONSTANTS: {
@@ -58,9 +66,7 @@ vi.mock('@/lib/api-helpers', () => ({
   }),
 }))
 
-vi.mock('@/lib/logger', () => ({
-  logApiRequest: vi.fn(),
-}))
+// Mock global de logger está en src/test/setup.ts
 
 vi.mock('@/lib/rate-limit-middleware', () => ({
   withRateLimit: vi.fn((_request: NextRequest, handler: () => Promise<any>, _type?: string) => handler()),

@@ -63,10 +63,16 @@ vi.mock('@/lib/prisma', () => ({
   },
 }))
 
-vi.mock('@/lib/get-session', () => ({
-  getCurrentStudentId: vi.fn(),
-  getSession: vi.fn(),
-}))
+vi.mock('@/lib/get-session', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/get-session')>('@/lib/get-session')
+  return {
+    ...actual,
+    getSession: vi.fn(),
+    getCurrentUser: vi.fn(),
+    getCurrentStudentId: vi.fn(),
+    getAuthenticatedUserWithStudent: vi.fn(),
+  }
+})
 
 vi.mock('@/lib/rate-limit-middleware', () => ({
   withRateLimit: vi.fn((req: any, handler: () => Promise<Response>) => handler()),
@@ -151,7 +157,7 @@ describe('GET /api/metrics', () => {
     const request = createTestRequest({ url: 'http://localhost:3000/api/metrics' })
     const response = await GET(request)
 
-    await assertArrayResponse(response, {
+    const data = await assertArrayResponse(response, {
       minLength: 1,
       itemValidator: (item: any) => {
         expect(item).toHaveProperty('codigo')
@@ -160,8 +166,6 @@ describe('GET /api/metrics', () => {
         expect(item).toHaveProperty('correctas')
       },
     })
-
-    const data = await response.json()
     const lectora = data.find((m: any) => m.codigo === 'LECTORA')
     expect(lectora).toBeDefined()
     expect(lectora.totalPreguntas).toBe(10)
@@ -212,8 +216,7 @@ describe('GET /api/metrics', () => {
     const request = createTestRequest({ url: 'http://localhost:3000/api/metrics' })
     const response = await GET(request)
 
-    await assertSuccessResponse(response, 200)
-    const data = await response.json()
+    const data = await assertSuccessResponse(response, 200)
     const lectora = data.find((m: any) => m.codigo === 'LECTORA')
     expect(lectora.porcentaje).toBe(80)
   })
@@ -276,8 +279,7 @@ describe('GET /api/metrics', () => {
     const request = createTestRequest({ url: 'http://localhost:3000/api/metrics' })
     const response = await GET(request)
 
-    await assertSuccessResponse(response, 200)
-    const data = await response.json()
+    const data = await assertSuccessResponse(response, 200)
     const lectora = data.find((m: any) => m.codigo === 'LECTORA')
     expect(lectora).toBeDefined()
     expect(lectora.totalPreguntas).toBe(10) // 5 + 5

@@ -1,4 +1,4 @@
-// @vitest-environment node
+﻿// @vitest-environment node
 /**
  * Tests Enterprise para API de Practice/Questions
  */
@@ -7,16 +7,19 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { GET } from './route'
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getCurrentUser } from '@/lib/get-session'
+import { logger } from '@/lib/logger'
+import { TEST_IDS as ATTEMPTS_TEST_IDS, assertErrorResponse as assertErrorResponseAttempts, assertSuccessResponse as assertSuccessResponseAttempts } from '@/app/api/attempts/__tests__/test-helpers'
 import {
-  TEST_IDS,
   createQuestionWithOptions,
-  setupAuthenticatedUser,
-  setupUnauthenticatedUser,
   setupTopicMock,
   setupQuestionsMock,
-  assertSuccessResponse,
-  assertErrorResponse,
 } from './__tests__/test-helpers'
+
+// Usar TEST_IDS directamente desde attempts
+const TEST_IDS = ATTEMPTS_TEST_IDS
+const assertSuccessResponse = assertSuccessResponseAttempts
+const assertErrorResponse = assertErrorResponseAttempts
 
 vi.mock('@/lib/prisma', () => ({
   prisma: {
@@ -25,13 +28,30 @@ vi.mock('@/lib/prisma', () => ({
   },
 }))
 
-vi.mock('@/lib/get-session', () => ({
-  getCurrentUser: vi.fn(),
-}))
+vi.mock('@/lib/get-session', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/get-session')>('@/lib/get-session')
+  return {
+    ...actual,
+    getSession: vi.fn(),
+    getCurrentUser: vi.fn(),
+    getCurrentStudentId: vi.fn(),
+    getAuthenticatedUserWithStudent: vi.fn(),
+  }
+})
 
-vi.mock('@/lib/logger', () => ({
-  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
-}))
+vi.mock('@/lib/logger', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/logger')>('@/lib/logger')
+  return {
+    ...actual,
+    logger: {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      debug: vi.fn(),
+    },
+    logApiRequest: vi.fn(),
+  }
+})
 
 vi.mock('@/lib/rate-limit-middleware', () => ({
   withRateLimit: vi.fn((request: NextRequest, handler: () => Promise<any>) => handler()),
@@ -40,24 +60,31 @@ vi.mock('@/lib/rate-limit-middleware', () => ({
 describe('GET /api/practice/questions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Default: authenticated user (para tests de validaci?n 400)
+    vi.mocked(getCurrentUser).mockResolvedValue({
+      id: 'user_test',
+      email: 'test@example.com',
+      name: 'Test User',
+    } as any)
   })
 
-  it('debe retornar 401 si no está autenticado', async () => {
-    setupUnauthenticatedUser()
+  it('debe retornar 401 si no est? autenticado', async () => {
+    // Override: no autenticado
+    vi.mocked(getCurrentUser).mockResolvedValue(null)
     const request = new NextRequest(`http://localhost/api/practice/questions?topicId=${TEST_IDS.TOPIC}`)
     const response = await GET(request)
     await assertErrorResponse(response, 401, 'No autorizado')
   })
 
   it('debe retornar 400 si topicId no está presente', async () => {
-    setupAuthenticatedUser()
+    // Ya está autenticado por defecto en beforeEach
     const request = new NextRequest('http://localhost/api/practice/questions')
     const response = await GET(request)
     await assertErrorResponse(response, 400, 'Parámetros inválidos')
   })
 
   it('debe retornar 404 si el tema no existe', async () => {
-    setupAuthenticatedUser()
+    // Ya está autenticado por defecto en beforeEach
     setupTopicMock(null)
     const request = new NextRequest(`http://localhost/api/practice/questions?topicId=${TEST_IDS.TOPIC}`)
     const response = await GET(request)
@@ -65,7 +92,7 @@ describe('GET /api/practice/questions', () => {
   })
 
   it('debe retornar preguntas del tema', async () => {
-    setupAuthenticatedUser()
+    // Ya está autenticado por defecto en beforeEach
     setupTopicMock({ id: TEST_IDS.TOPIC, nombre: 'Test Topic', subjectId: TEST_IDS.SUBJECT } as any)
     const questions = [
       createQuestionWithOptions({ id: TEST_IDS.QUESTION }),
@@ -82,7 +109,7 @@ describe('GET /api/practice/questions', () => {
   })
 
   it('debe filtrar por dificultad easy (1-2)', async () => {
-    setupAuthenticatedUser()
+    // Ya está autenticado por defecto en beforeEach
     setupTopicMock({ id: TEST_IDS.TOPIC, nombre: 'Test Topic', subjectId: TEST_IDS.SUBJECT } as any)
     const questions = [createQuestionWithOptions({ dificultad: 1 }), createQuestionWithOptions({ dificultad: 2 })]
     setupQuestionsMock(questions)
@@ -98,7 +125,7 @@ describe('GET /api/practice/questions', () => {
   })
 
   it('debe filtrar por dificultad medium (3-4)', async () => {
-    setupAuthenticatedUser()
+    // Ya está autenticado por defecto en beforeEach
     setupTopicMock({ id: TEST_IDS.TOPIC, nombre: 'Test Topic', subjectId: TEST_IDS.SUBJECT } as any)
     const questions = [createQuestionWithOptions({ dificultad: 3 }), createQuestionWithOptions({ dificultad: 4 })]
     setupQuestionsMock(questions)
@@ -114,7 +141,7 @@ describe('GET /api/practice/questions', () => {
   })
 
   it('debe filtrar por dificultad hard (5)', async () => {
-    setupAuthenticatedUser()
+    // Ya está autenticado por defecto en beforeEach
     setupTopicMock({ id: TEST_IDS.TOPIC, nombre: 'Test Topic', subjectId: TEST_IDS.SUBJECT } as any)
     const questions = [createQuestionWithOptions({ dificultad: 5 })]
     setupQuestionsMock(questions)
@@ -130,7 +157,7 @@ describe('GET /api/practice/questions', () => {
   })
 
   it('debe usar mode como alias de difficulty', async () => {
-    setupAuthenticatedUser()
+    // Ya está autenticado por defecto en beforeEach
     setupTopicMock({ id: TEST_IDS.TOPIC, nombre: 'Test Topic', subjectId: TEST_IDS.SUBJECT } as any)
     const questions = [createQuestionWithOptions({ dificultad: 1 })]
     setupQuestionsMock(questions)
@@ -145,8 +172,8 @@ describe('GET /api/practice/questions', () => {
     )
   })
 
-  it('debe aplicar límite de preguntas', async () => {
-    setupAuthenticatedUser()
+  it('debe aplicar l?mite de preguntas', async () => {
+    // Ya está autenticado por defecto en beforeEach
     setupTopicMock({ id: TEST_IDS.TOPIC, nombre: 'Test Topic', subjectId: TEST_IDS.SUBJECT } as any)
     const questions = Array.from({ length: 10 }, (_, i) => createQuestionWithOptions({ id: `c${i}` }))
     setupQuestionsMock(questions)
@@ -160,7 +187,7 @@ describe('GET /api/practice/questions', () => {
   })
 
   it('debe obtener todas las dificultades si no hay suficientes con filtro', async () => {
-    setupAuthenticatedUser()
+    // Ya está autenticado por defecto en beforeEach
     setupTopicMock({ id: TEST_IDS.TOPIC, nombre: 'Test Topic', subjectId: TEST_IDS.SUBJECT } as any)
     const filteredQuestions = [createQuestionWithOptions({ dificultad: 1 })]
     const allQuestions = [
@@ -178,7 +205,7 @@ describe('GET /api/practice/questions', () => {
   })
 
   it('debe incluir relaciones (options, subject, topic)', async () => {
-    setupAuthenticatedUser()
+    // Ya está autenticado por defecto en beforeEach
     setupTopicMock({ id: TEST_IDS.TOPIC, nombre: 'Test Topic', subjectId: TEST_IDS.SUBJECT } as any)
     const questions = [createQuestionWithOptions()]
     setupQuestionsMock(questions)
@@ -191,7 +218,7 @@ describe('GET /api/practice/questions', () => {
   })
 
   it('debe aleatorizar el orden de las preguntas', async () => {
-    setupAuthenticatedUser()
+    // Ya está autenticado por defecto en beforeEach
     setupTopicMock({ id: TEST_IDS.TOPIC, nombre: 'Test Topic', subjectId: TEST_IDS.SUBJECT } as any)
     const questions = Array.from({ length: 5 }, (_, i) => createQuestionWithOptions({ id: `c${i}` }))
     setupQuestionsMock(questions)
@@ -204,7 +231,7 @@ describe('GET /api/practice/questions', () => {
   })
 
   it('debe manejar errores correctamente', async () => {
-    setupAuthenticatedUser()
+    // Ya está autenticado por defecto en beforeEach
     setupTopicMock({ id: TEST_IDS.TOPIC, nombre: 'Test Topic', subjectId: TEST_IDS.SUBJECT } as any)
     vi.mocked(prisma.question.findMany).mockRejectedValue(new Error('Database error'))
     const request = new NextRequest(`http://localhost/api/practice/questions?topicId=${TEST_IDS.TOPIC}`)

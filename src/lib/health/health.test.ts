@@ -18,20 +18,34 @@ vi.mock('@/lib/prisma', () => ({
   },
 }))
 
-vi.mock('@/lib/env/env', () => ({
-  env: {
-    UPSTASH_REDIS_REST_URL: undefined,
-    UPSTASH_REDIS_REST_TOKEN: undefined,
-  },
-}))
+// Mock de env - usar factory function sin variables externas
+vi.mock('@/lib/env/env', () => {
+  return {
+    env: {
+      UPSTASH_REDIS_REST_URL: undefined as string | undefined,
+      UPSTASH_REDIS_REST_TOKEN: undefined as string | undefined,
+    },
+  }
+})
+
+// Mock de Redis - usar mock compartido para ping()
+const mockRedisPing = vi.fn()
 
 vi.mock('@upstash/redis', () => ({
-  Redis: vi.fn(),
+  Redis: class Redis {
+    ping = mockRedisPing
+    constructor(_config: any) {}
+  },
 }))
 
 describe('Health Checks', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Resetear env a estado sin Redis configurado
+    env.UPSTASH_REDIS_REST_URL = undefined
+    env.UPSTASH_REDIS_REST_TOKEN = undefined
+    // Resetear mock de Redis
+    mockRedisPing.mockReset()
   })
 
   describe('checkLiveness', () => {
@@ -75,44 +89,44 @@ describe('Health Checks', () => {
 
     it('retorna degraded cuando Redis está configurado pero down', async () => {
       // Mock env con Redis configurado
-      vi.mocked(env).UPSTASH_REDIS_REST_URL = 'https://redis.example.com'
-      vi.mocked(env).UPSTASH_REDIS_REST_TOKEN = 'token123'
+      env.UPSTASH_REDIS_REST_URL = 'https://redis.example.com'
+      env.UPSTASH_REDIS_REST_TOKEN = 'token123'
 
       vi.mocked(prisma.$queryRaw).mockResolvedValue([{ check: 1 }])
 
-      // Mock Redis que falla
-      const { Redis } = await import('@upstash/redis')
-      const mockRedis = {
-        ping: vi.fn().mockRejectedValue(new Error('Redis connection failed')),
-      }
-      vi.mocked(Redis).mockImplementation(() => mockRedis as any)
+      // Mock Redis que falla - configurar ping antes de llamar checkReadiness
+      mockRedisPing.mockRejectedValue(new Error('Redis connection failed'))
 
       const result = await checkReadiness()
 
       expect(result.status).toBe('degraded')
       expect(result.checks.database).toBe('ok')
       expect(result.checks.redis).toBe('down')
+
+      // Limpiar después del test
+      env.UPSTASH_REDIS_REST_URL = undefined
+      env.UPSTASH_REDIS_REST_TOKEN = undefined
     })
 
     it('retorna ok cuando Redis está configurado y disponible', async () => {
       // Mock env con Redis configurado
-      vi.mocked(env).UPSTASH_REDIS_REST_URL = 'https://redis.example.com'
-      vi.mocked(env).UPSTASH_REDIS_REST_TOKEN = 'token123'
+      env.UPSTASH_REDIS_REST_URL = 'https://redis.example.com'
+      env.UPSTASH_REDIS_REST_TOKEN = 'token123'
 
       vi.mocked(prisma.$queryRaw).mockResolvedValue([{ check: 1 }])
 
-      // Mock Redis que funciona
-      const { Redis } = await import('@upstash/redis')
-      const mockRedis = {
-        ping: vi.fn().mockResolvedValue('PONG'),
-      }
-      vi.mocked(Redis).mockImplementation(() => mockRedis as any)
+      // Mock Redis que funciona - configurar ping antes de llamar checkReadiness
+      mockRedisPing.mockResolvedValue('PONG')
 
       const result = await checkReadiness()
 
       expect(result.status).toBe('ok')
       expect(result.checks.database).toBe('ok')
       expect(result.checks.redis).toBe('ok')
+
+      // Limpiar después del test
+      env.UPSTASH_REDIS_REST_URL = undefined
+      env.UPSTASH_REDIS_REST_TOKEN = undefined
     })
 
     it('retorna skipped para Redis cuando no está configurado', async () => {

@@ -44,20 +44,20 @@ describe('Schema.prisma Validation', () => {
       expect(engineTypeClientLines.length).toBe(0)
     })
 
-    it('debe tener engineType = "binary"', () => {
-      // Buscar engineType = "binary" que no esté comentado
+    it('NO debe tener engineType (removido en Prisma 7.2.0+)', () => {
+      // Prisma 7.2.0+ removió engineType. El engine "client" es el predeterminado.
+      // Buscar engineType que no esté comentado
       const lines = schemaContent.split('\n')
-      const engineTypeBinaryLines = lines.filter(line => {
+      const engineTypeLines = lines.filter(line => {
         const trimmed = line.trim()
         return (
           trimmed.includes('engineType') &&
-          trimmed.includes('binary') &&
           !trimmed.startsWith('//') &&
           !trimmed.startsWith('*')
         )
       })
 
-      expect(engineTypeBinaryLines.length).toBeGreaterThan(0)
+      expect(engineTypeLines.length).toBe(0)
     })
 
     it('NO debe tener previewFeatures = ["driverAdapters"]', () => {

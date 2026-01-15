@@ -156,8 +156,8 @@ vi.mock('./response-helpers', () => ({
   addCorsHeaders: vi.fn((response) => response),
 }))
 
-vi.mock('./response-schemas', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./response-schemas')>()
+vi.mock('./response-schemas', async () => {
+  const actual = await vi.importActual<typeof import('./response-schemas')>('./response-schemas')
   return {
     ...actual,
     versionsResponseSchema: {
@@ -440,8 +440,8 @@ vi.mock('./processors', () => ({
 }))
 
 // Mock de helpers - Solución enterprise: definición explícita y organizada
-vi.mock('./helpers', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./helpers')>()
+vi.mock('./helpers', async () => {
+  const actual = await vi.importActual<typeof import('./helpers')>('./helpers')
   
   // Helper para crear respuestas de error
   const createErrorResponse = (message: string, status: number) => {
@@ -671,7 +671,7 @@ vi.mock('./helpers', async (importOriginal) => {
   }
 })
 
-// Mock de config - Solución enterprise: usar importOriginal para mantener todas las exportaciones
+// Mock de config - Solución enterprise: usar vi.importActual para mantener todas las exportaciones
 vi.mock('./config', async () => {
   const actual = await vi.importActual<typeof import('./config')>('./config')
   return {

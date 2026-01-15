@@ -1,8 +1,13 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import tsconfigPaths from 'vite-tsconfig-paths'
-import path from 'path'
+import path from 'node:path'
 import os from 'os'
+
+// Normaliza separadores Windows -> POSIX para comparar estable
+function normalizeId(id: string) {
+  return id.replace(/\\/g, '/')
+}
 
 // Plugin personalizado para excluir archivos de Stryker de forma robusta
 const excludeStrykerPlugin = () => ({
@@ -23,8 +28,68 @@ const excludeStrykerPlugin = () => ({
   },
 })
 
+// Plugin para interceptar next/server antes de que next-auth lo importe
+function nextServerMockPlugin() {
+  return {
+    name: 'next-server-mock',
+    enforce: 'pre' as const,
+
+    resolveId(source: string, importer?: string) {
+      // Normalizar también URLs file://
+      let s = normalizeId(source)
+      if (s.startsWith('file:///')) {
+        s = s.replace('file:///', '')
+      } else if (s.startsWith('file://')) {
+        s = s.replace('file://', '')
+      }
+
+      // 1) Imports directos
+      if (s === 'next/server' || s === 'next/server.js' || s === 'next/server.mjs') {
+        return { id: '\0virtual:next-server', external: false }
+      }
+
+      // 2) Resoluciones absolutas a node_modules/next/server...
+      // Ej: C:/.../node_modules/next/server.js  o  .../node_modules/next/server
+      // También captura cuando next-auth importa desde node_modules/next/server
+      if (s.includes('node_modules/next/server') || (s.includes('/next/server') && !s.includes('.stryker-tmp'))) {
+        return { id: '\0virtual:next-server', external: false }
+      }
+
+      // 3) Algunos resolvers entregan .../next/server (sin .js) pero sin node_modules en el string
+      // Captura conservadora: (*/next/server(.js|.mjs)?) solo si parece path absoluto
+      if ((s.startsWith('/') || /^[a-zA-Z]:\//.test(s)) && /\/next\/server(\.(js|mjs))?$/.test(s)) {
+        return { id: '\0virtual:next-server', external: false }
+      }
+
+      return null
+    },
+    
+    load(id: string) {
+      if (id === '\0virtual:next-server') {
+        return `export class NextRequest {}
+export class NextResponse {
+  static json(body, init) {
+    return new Response(JSON.stringify(body), {
+      status: init?.status ?? 200,
+      headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) },
+    })
+  }
+  static redirect(url, init) {
+    return new Response(null, {
+      status: init?.status ?? 307,
+      headers: { location: String(url) },
+    })
+  }
+}`
+      }
+      return null
+    },
+  }
+}
+
 export default defineConfig({
   plugins: [
+    nextServerMockPlugin(), // PRIMERO: Debe estar antes de otros plugins que puedan importar next/server
     react(),
     tsconfigPaths(),
     excludeStrykerPlugin(),
@@ -33,6 +98,10 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./vitest.setup.ts', './src/test/setup.ts'],
+    // ✅ Enterprise: Asegurar que el mock de next/server se ejecute antes de cualquier import
+    sequence: {
+      hooks: 'stack',
+    },
     css: true,
     testTimeout: 10000, // 10 segundos para tests que cargan datos
     hookTimeout: 10000, // 10 segundos para hooks
@@ -130,6 +199,31 @@ export default defineConfig({
   },
   resolve: {
     alias: [
+      // ✅ Alias de next-auth - deben estar ANTES de otros alias para evitar que entre a node_modules/next-auth
+      {
+        find: /^next-auth$/,
+        replacement: path.resolve(process.cwd(), 'src/test/mocks/next-auth.ts'),
+      },
+      {
+        find: /^next-auth\/jwt$/,
+        replacement: path.resolve(process.cwd(), 'src/test/mocks/next-auth-jwt.ts'),
+      },
+      {
+        find: /^next-auth\/react$/,
+        replacement: path.resolve(process.cwd(), 'src/test/mocks/next-auth-react.ts'),
+      },
+      {
+        find: /^next-auth\/providers\/credentials$/,
+        replacement: path.resolve(process.cwd(), 'src/test/mocks/next-auth-providers-credentials.ts'),
+      },
+      {
+        find: /^next\/server$/,
+        replacement: path.resolve(process.cwd(), 'src/test/mocks/next-server.ts'),
+      },
+      {
+        find: /^@prisma\/client$/,
+        replacement: path.resolve(process.cwd(), 'src/test/mocks/prisma-client.ts'),
+      },
       {
         find: '@',
         replacement: path.resolve(process.cwd(), 'src'),
@@ -152,9 +246,9 @@ export default defineConfig({
     conditions: ['import', 'module', 'browser', 'default'],
   },
   optimizeDeps: {
-    exclude: ['openai', '@google/generative-ai'],
+    exclude: ['openai', '@google/generative-ai', 'next/server'],
   },
   ssr: {
-    noExternal: ['@anthropic-ai/sdk'],
+    noExternal: ['@anthropic-ai/sdk', 'next/server'],
   },
 })

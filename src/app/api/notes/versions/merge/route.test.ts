@@ -58,6 +58,10 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { POST } from './route'
 import { prisma } from '@/lib/prisma'
 import {
+  setupAuthenticatedUserWithStudent,
+  setupUnauthenticated,
+} from '@/test/enterprise/shared-test-helpers'
+import {
   TEST_IDS,
   setupAuthenticatedUser,
   setupUnauthenticatedUser,
@@ -113,9 +117,15 @@ vi.mock('../helpers', () => ({
       },
     }
   }),
-  parseRequestBody: vi.fn(async (_req: any, _method: string) => {
+  parseRequestBody: vi.fn(async (req: any, _method: string) => {
     try {
       const body = await req.json()
+      if (!body || Object.keys(body).length === 0) {
+        return { 
+          success: false, 
+          error: new Response(JSON.stringify({ error: 'El cuerpo de la solicitud no puede estar vacío' }), { status: 400 }) 
+        }
+      }
       return { success: true, data: body }
     } catch {
       return { 
@@ -169,11 +179,10 @@ vi.mock('@/lib/utils/version-content', () => ({
 describe('POST /api/notes/versions/merge', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    setupUnauthenticated() // Default: no autenticado
   })
 
   it('debe retornar 401 si el usuario no está autenticado', async () => {
-    await setupUnauthenticatedUser()
-
     const request = createTestRequest({
       baseUrl: 'http://localhost/api/notes/versions/merge',
       method: 'POST',
@@ -188,7 +197,20 @@ describe('POST /api/notes/versions/merge', () => {
     await assertErrorResponse(response, 401, 'No autorizado')
   })
 
-  it('debe retornar 400 si se proporcionan menos de 2 versiones', async () => {
+  describe('cuando está autenticado', () => {
+    beforeEach(async () => {
+      setupAuthenticatedUserWithStudent({
+        student: { id: TEST_IDS.STUDENT },
+      })
+      await setupAuthenticatedUser({ studentId: TEST_IDS.STUDENT })
+      // Mock por defecto de studyNote.findFirst
+      vi.mocked(prisma.studyNote.findFirst).mockResolvedValue(createStudyNote({
+        id: TEST_IDS.NOTE,
+        studentId: TEST_IDS.STUDENT,
+      }) as any)
+    })
+
+    it('debe retornar 400 si se proporcionan menos de 2 versiones', async () => {
     await setupAuthenticatedUser({ studentId: TEST_IDS.STUDENT })
 
     const request = createTestRequest({
@@ -260,6 +282,7 @@ describe('POST /api/notes/versions/merge', () => {
 
     expect(data.message).toContain('fusionadas')
     expect(data.mergedNote).toBeDefined()
-  })
+    })
+  }) // cierra "cuando está autenticado"
 })
 

@@ -68,35 +68,39 @@ vi.mock('@/lib/prisma', () => ({
   },
 }))
 
-// Mock de get-session
-const mockGetCurrentStudentId = vi.fn()
-vi.mock('@/lib/get-session', () => ({
-  getCurrentStudentId: () => mockGetCurrentStudentId(),
-}))
+// Mock global de get-session está en src/test/setup.ts - solo sobrescribir valores específicos con vi.mocked()
+import { getCurrentStudentId } from '@/lib/get-session'
 
 // Mock de rate-limit-middleware
 vi.mock('@/lib/rate-limit-middleware', () => ({
   withRateLimit: vi.fn((req: unknown, handler: () => Promise<Response>) => handler()),
 }))
 
-// Mock de logger
-vi.mock('@/lib/logger', () => ({
-  logApiRequest: vi.fn(),
-  logger: {
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  },
-}))
+// Mock global de logger está en src/test/setup.ts
 
 // Mock de cache
-const mockGetCached = vi.fn()
-vi.mock('@/lib/cache', () => ({
-  getCached: (key: string, fetcher: () => Promise<unknown>) => mockGetCached(key, fetcher),
-  cacheKeys: {
-    studentAnalytics: (studentId: string) => `student:${studentId}:analytics`,
-  },
-}))
+declare global {
+  // eslint-disable-next-line no-var
+  var __mockGetCached__: ReturnType<typeof vi.fn> | undefined
+  // eslint-disable-next-line no-var
+  var __mockGenerateAdvancedAnalytics__: ReturnType<typeof vi.fn> | undefined
+  // eslint-disable-next-line no-var
+  var __mockLogApiRequest__: ReturnType<typeof vi.fn> | undefined
+}
+
+vi.mock('@/lib/cache', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/cache')>('@/lib/cache')
+
+  globalThis.__mockGetCached__ ??= vi.fn()
+  return {
+    ...actual,
+    getCached: (...args: any[]) => globalThis.__mockGetCached__!(...args),
+    cacheKeys: {
+      ...actual.cacheKeys,
+      studentAnalytics: (studentId: string) => `student:${studentId}:analytics`,
+    },
+  }
+})
 
 // Mock de constants
 vi.mock('@/lib/constants', () => ({
@@ -106,10 +110,16 @@ vi.mock('@/lib/constants', () => ({
 }))
 
 // Mock de analytics
-const mockGenerateAdvancedAnalytics = vi.fn()
-vi.mock('@/lib/analytics', () => ({
-  generateAdvancedAnalytics: (...args: unknown[]) => mockGenerateAdvancedAnalytics(...args),
-}))
+vi.mock('@/lib/analytics', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/analytics')>('@/lib/analytics')
+
+  globalThis.__mockGenerateAdvancedAnalytics__ ??= vi.fn()
+  return {
+    ...actual,
+    generateAdvancedAnalytics: (...args: any[]) =>
+      globalThis.__mockGenerateAdvancedAnalytics__!(...args),
+  }
+})
 
 // Mock de api-helpers
 vi.mock('@/lib/api-helpers', () => ({
@@ -117,6 +127,39 @@ vi.mock('@/lib/api-helpers', () => ({
     return new Response(JSON.stringify({ error: message }), { status: 500 })
   }),
 }))
+
+// Mock de circuit-breaker
+vi.mock('@/app/api/notes/versions/circuit-breaker', () => ({
+  circuitBreakers: {
+    database: {
+      execute: async (fn: () => Promise<any>, _fallback?: () => Promise<any>) => {
+        return await fn()
+      },
+    },
+  },
+}))
+
+// Mock de logger
+declare global {
+  // eslint-disable-next-line no-var
+  var __mockLogApiRequest__: ReturnType<typeof vi.fn> | undefined
+}
+
+vi.mock('@/lib/logger', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/logger')>('@/lib/logger')
+
+  globalThis.__mockLogApiRequest__ ??= vi.fn()
+
+  return {
+    ...actual,
+    logger: {
+      warn: vi.fn(),
+      error: vi.fn(),
+      info: vi.fn(),
+    },
+    logApiRequest: (...args: any[]) => globalThis.__mockLogApiRequest__!(...args),
+  }
+})
 
 // Mock de validation-utils
 vi.mock('@/app/api/notes/versions/validation-utils', () => ({
@@ -128,20 +171,41 @@ vi.mock('@/app/api/notes/versions/validation-utils', () => ({
   }),
 }))
 
+// Mock de circuit-breaker
+vi.mock('@/app/api/notes/versions/circuit-breaker', () => ({
+  circuitBreakers: {
+    database: {
+      execute: vi.fn(async (fn: () => Promise<any>) => {
+        return await fn()
+      }),
+    },
+  },
+}))
+
 describe('GET /api/analytics', () => {
   beforeEach(() => {
-    vitest.clearAllMocks()
-    mockGetCurrentStudentId.mockResolvedValue(TEST_IDS.STUDENT)
-    
-    // Mock getCached para que ejecute el fetcher por defecto
-    mockGetCached.mockImplementation(async (key: string, fetcher: () => Promise<unknown>) => {
+    vi.clearAllMocks() // limpia spies creados dentro del archivo
+
+    globalThis.__mockGetCached__?.mockReset()
+    globalThis.__mockGenerateAdvancedAnalytics__?.mockReset()
+    globalThis.__mockLogApiRequest__?.mockReset()
+    globalThis.__mockLogApiRequest__?.mockResolvedValue(undefined)
+
+    // defaults seguros para evitar "undefined" en tests que esperan respuesta
+    globalThis.__mockGetCached__?.mockImplementation(async (key: string, fetcher: () => Promise<unknown>) => {
       return await fetcher()
     })
+    globalThis.__mockGenerateAdvancedAnalytics__?.mockResolvedValue({
+      ok: true,
+      data: {},
+    })
+
+    vi.mocked(getCurrentStudentId).mockResolvedValue(TEST_IDS.STUDENT)
   })
 
   describe('Autenticación', () => {
     it('debe retornar 401 si no está autenticado', async () => {
-      mockGetCurrentStudentId.mockResolvedValue(null)
+      vi.mocked(getCurrentStudentId).mockResolvedValue(null)
 
       const request = createTestRequest()
       const response = await GET(request)
@@ -156,7 +220,7 @@ describe('GET /api/analytics', () => {
       setupAttemptsMocks(attempts)
       setupPerformanceMetricsMocks([])
 
-      mockGenerateAdvancedAnalytics.mockReturnValue({
+      globalThis.__mockGenerateAdvancedAnalytics__.mockReturnValue({
         trends: [],
         strengths: [],
         weaknesses: [],
@@ -200,7 +264,7 @@ describe('GET /api/analytics', () => {
       const metrics = createMultipleMetrics(3)
       setupPerformanceMetricsMocks(metrics)
 
-      mockGenerateAdvancedAnalytics.mockReturnValue({
+      globalThis.__mockGenerateAdvancedAnalytics__.mockReturnValue({
         trends: [],
         strengths: [],
         weaknesses: [],
@@ -239,7 +303,7 @@ describe('GET /api/analytics', () => {
       setupAttemptsMocks(attempts)
       setupPerformanceMetricsMocks([])
 
-      mockGenerateAdvancedAnalytics.mockReturnValue({
+      globalThis.__mockGenerateAdvancedAnalytics__.mockReturnValue({
         trends: [],
         strengths: [],
         weaknesses: [],
@@ -272,7 +336,7 @@ describe('GET /api/analytics', () => {
       setupAttemptsMocks(attempts)
       setupPerformanceMetricsMocks([])
 
-      mockGenerateAdvancedAnalytics.mockReturnValue({
+      globalThis.__mockGenerateAdvancedAnalytics__.mockReturnValue({
         trends: [],
         strengths: [],
         weaknesses: [],
@@ -285,8 +349,8 @@ describe('GET /api/analytics', () => {
       await GET(request)
 
       // Verificar que generateAdvancedAnalytics fue llamado con datos formateados
-      expect(mockGenerateAdvancedAnalytics).toHaveBeenCalled()
-      const callArgs = mockGenerateAdvancedAnalytics.mock.calls[0]
+      expect(globalThis.__mockGenerateAdvancedAnalytics__).toHaveBeenCalled()
+      const callArgs = globalThis.__mockGenerateAdvancedAnalytics__.mock.calls[0]
       expect(Array.isArray(callArgs[0])).toBe(true) // formattedAttempts
       expect(Array.isArray(callArgs[1])).toBe(true) // formattedMetrics
     })
@@ -300,7 +364,7 @@ describe('GET /api/analytics', () => {
       setupAttemptsMocks(attempts)
       setupPerformanceMetricsMocks([])
 
-      mockGenerateAdvancedAnalytics.mockReturnValue({
+      globalThis.__mockGenerateAdvancedAnalytics__.mockReturnValue({
         trends: [],
         strengths: [],
         weaknesses: [],
@@ -313,7 +377,7 @@ describe('GET /api/analytics', () => {
       await GET(request)
 
       // Debe llamar a generateAdvancedAnalytics con intentos filtrados
-      expect(mockGenerateAdvancedAnalytics).toHaveBeenCalled()
+      expect(globalThis.__mockGenerateAdvancedAnalytics__).toHaveBeenCalled()
     })
 
     it('debe formatear métricas correctamente', async () => {
@@ -328,7 +392,7 @@ describe('GET /api/analytics', () => {
       ]
       setupPerformanceMetricsMocks(metrics)
 
-      mockGenerateAdvancedAnalytics.mockReturnValue({
+      globalThis.__mockGenerateAdvancedAnalytics__.mockReturnValue({
         trends: [],
         strengths: [],
         weaknesses: [],
@@ -341,8 +405,8 @@ describe('GET /api/analytics', () => {
       await GET(request)
 
       // Verificar que generateAdvancedAnalytics fue llamado con métricas formateadas
-      expect(mockGenerateAdvancedAnalytics).toHaveBeenCalled()
-      const callArgs = mockGenerateAdvancedAnalytics.mock.calls[0]
+      expect(globalThis.__mockGenerateAdvancedAnalytics__).toHaveBeenCalled()
+      const callArgs = globalThis.__mockGenerateAdvancedAnalytics__.mock.calls[0]
       const formattedMetrics = callArgs[1]
       expect(Array.isArray(formattedMetrics)).toBe(true)
       if (formattedMetrics.length > 0) {
@@ -362,7 +426,7 @@ describe('GET /api/analytics', () => {
       ]
       setupPerformanceMetricsMocks(metrics)
 
-      mockGenerateAdvancedAnalytics.mockReturnValue({
+      globalThis.__mockGenerateAdvancedAnalytics__.mockReturnValue({
         trends: [],
         strengths: [],
         weaknesses: [],
@@ -375,7 +439,7 @@ describe('GET /api/analytics', () => {
       await GET(request)
 
       // Debe llamar a generateAdvancedAnalytics con métricas filtradas
-      expect(mockGenerateAdvancedAnalytics).toHaveBeenCalled()
+      expect(globalThis.__mockGenerateAdvancedAnalytics__).toHaveBeenCalled()
     })
   })
 
@@ -391,7 +455,7 @@ describe('GET /api/analytics', () => {
       }
 
       // Simular que el caché tiene un valor
-      mockGetCached.mockResolvedValue(cachedAnalytics)
+      globalThis.__mockGetCached__.mockResolvedValue(cachedAnalytics)
 
       const request = createTestRequest()
       const response = await GET(request)
@@ -407,7 +471,7 @@ describe('GET /api/analytics', () => {
       setupAttemptsMocks([])
       setupPerformanceMetricsMocks([])
 
-      mockGenerateAdvancedAnalytics.mockReturnValue({
+      globalThis.__mockGenerateAdvancedAnalytics__.mockReturnValue({
         trends: [],
         strengths: [],
         weaknesses: [],
@@ -417,7 +481,7 @@ describe('GET /api/analytics', () => {
       })
 
       // Mock getCached para que ejecute el fetcher
-      mockGetCached.mockImplementation(async (key: string, fetcher: () => Promise<unknown>) => {
+      globalThis.__mockGetCached__.mockImplementation(async (key: string, fetcher: () => Promise<unknown>) => {
         return await fetcher()
       })
 
@@ -464,7 +528,7 @@ describe('GET /api/analytics', () => {
         ],
       }
 
-      mockGenerateAdvancedAnalytics.mockReturnValue(mockAnalytics)
+      globalThis.__mockGenerateAdvancedAnalytics__.mockReturnValue(mockAnalytics)
 
       const request = createTestRequest()
       const response = await GET(request)
@@ -473,7 +537,7 @@ describe('GET /api/analytics', () => {
       assertAdvancedAnalyticsResponse(data)
 
       // Verificar que se llamó con los datos correctos
-      expect(mockGenerateAdvancedAnalytics).toHaveBeenCalled()
+      expect(globalThis.__mockGenerateAdvancedAnalytics__).toHaveBeenCalled()
       expect(data).toEqual(mockAnalytics)
     })
   })
@@ -483,7 +547,7 @@ describe('GET /api/analytics', () => {
       setupAttemptsMocks([])
       setupPerformanceMetricsMocks([])
 
-      mockGenerateAdvancedAnalytics.mockReturnValue({
+      globalThis.__mockGenerateAdvancedAnalytics__.mockReturnValue({
         trends: [],
         strengths: [],
         weaknesses: [],
@@ -509,7 +573,7 @@ describe('GET /api/analytics', () => {
       setupAttemptsMocks(attempts)
       setupPerformanceMetricsMocks([])
 
-      mockGenerateAdvancedAnalytics.mockReturnValue({
+      globalThis.__mockGenerateAdvancedAnalytics__.mockReturnValue({
         trends: [],
         strengths: [],
         weaknesses: [],
@@ -542,7 +606,7 @@ describe('GET /api/analytics', () => {
       setupAttemptsMocks(attempts)
       setupPerformanceMetricsMocks([])
 
-      mockGenerateAdvancedAnalytics.mockReturnValue({
+      globalThis.__mockGenerateAdvancedAnalytics__.mockReturnValue({
         trends: [],
         strengths: [],
         weaknesses: [],
@@ -568,7 +632,7 @@ describe('GET /api/analytics', () => {
       setupAttemptsMocks(attempts)
       setupPerformanceMetricsMocks([])
 
-      mockGenerateAdvancedAnalytics.mockReturnValue({
+      globalThis.__mockGenerateAdvancedAnalytics__.mockReturnValue({
         trends: [],
         strengths: [],
         weaknesses: [],
@@ -593,7 +657,7 @@ describe('GET /api/analytics', () => {
       setupAttemptsMocks(attempts)
       setupPerformanceMetricsMocks(metrics)
 
-      mockGenerateAdvancedAnalytics.mockReturnValue({
+      globalThis.__mockGenerateAdvancedAnalytics__.mockReturnValue({
         trends: [],
         strengths: [],
         weaknesses: [],
@@ -631,7 +695,7 @@ describe('GET /api/analytics', () => {
     })
 
     it('debe manejar errores inesperados correctamente', async () => {
-      mockGetCurrentStudentId.mockRejectedValue(
+      vi.mocked(getCurrentStudentId).mockRejectedValue(
         new Error('Unexpected error')
       )
 
@@ -644,11 +708,10 @@ describe('GET /api/analytics', () => {
 
   describe('Logging', () => {
     it('debe registrar la petición API', async () => {
-      const { logApiRequest } = await import('@/lib/logger')
       setupAttemptsMocks([])
       setupPerformanceMetricsMocks([])
 
-      mockGenerateAdvancedAnalytics.mockReturnValue({
+      globalThis.__mockGenerateAdvancedAnalytics__.mockReturnValue({
         trends: [],
         strengths: [],
         weaknesses: [],
@@ -658,9 +721,12 @@ describe('GET /api/analytics', () => {
       })
 
       const request = createTestRequest()
-      await GET(request)
+      const response = await GET(request)
 
-      expect(logApiRequest).toHaveBeenCalledWith('GET', '/api/analytics')
+      // Asegurar que se drenó la cola de promises/microtasks
+      await Promise.resolve()
+
+      expect(globalThis.__mockLogApiRequest__).toHaveBeenCalledWith('GET', '/api/analytics')
     })
   })
 })

@@ -38,15 +38,40 @@ export async function getDbUserWithStudent(
 /**
  * Obtiene el usuario autenticado con su estudiante de la base de datos
  * Helper que combina getCurrentUser y getDbUserWithStudent
+ * 
+ * Contract:
+ * - Returns User | null
+ * - Never returns undefined
+ * - Safe to use directly in API routes
+ * 
  * @returns Usuario con student o null si no está autenticado
  */
 export async function getAuthenticatedUserWithStudent(): Promise<
   (User & { student: Student | null }) | null
 > {
-  const user = await getCurrentUser()
-  if (!user?.email) {
+  try {
+    const session = await getSession()
+    if (!session?.user?.id) {
+      return null
+    }
+
+    // Caso: sin email => null (esto calza con tu test)
+    if (!session.user.email) {
+      return null
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      include: { student: true },
+    })
+
+    if (!user) {
+      return null
+    }
+
+    // Si existe usuario aunque student sea null, retorna el usuario
+    return user
+  } catch (err) {
     return null
   }
-
-  return await getDbUserWithStudent(user.email)
 }

@@ -60,6 +60,10 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { POST } from './route'
 import { prisma } from '@/lib/prisma'
 import {
+  setupAuthenticatedUserWithStudent,
+  setupUnauthenticated,
+} from '@/test/enterprise/shared-test-helpers'
+import {
   TEST_IDS,
   setupAuthenticatedUser,
   setupUnauthenticatedUser,
@@ -114,9 +118,15 @@ vi.mock('../helpers', () => ({
       },
     }
   }),
-  parseRequestBody: vi.fn(async (_req: any, _method: string) => {
+  parseRequestBody: vi.fn(async (req: any, _method: string) => {
     try {
       const body = await req.json()
+      if (!body || Object.keys(body).length === 0) {
+        return { 
+          success: false, 
+          error: new Response(JSON.stringify({ error: 'El cuerpo de la solicitud no puede estar vacío' }), { status: 400 }) 
+        }
+      }
       return { success: true, data: body }
     } catch {
       return { 
@@ -209,12 +219,40 @@ vi.mock('docx', () => {
 })
 
 describe('POST /api/notes/versions/export-bulk', () => {
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.clearAllMocks()
-    await setupAuthenticatedUser({ studentId: TEST_IDS.STUDENT })
+    setupUnauthenticated() // Default: no autenticado
   })
 
-  it('debe exportar múltiples versiones en formato DOCX por defecto', async () => {
+  it('debe retornar 401 si no está autenticado', async () => {
+    const request = createTestRequest({
+      baseUrl: 'http://localhost:3000/api/notes/versions/export-bulk',
+      method: 'POST',
+      body: {
+        noteId: TEST_IDS.NOTE,
+        versionIds: [TEST_IDS.VERSION],
+      },
+    })
+
+    const response = await POST(request)
+
+    await assertErrorResponse(response, 401, 'No autorizado')
+  })
+
+  describe('cuando está autenticado', () => {
+    beforeEach(async () => {
+      setupAuthenticatedUserWithStudent({
+        student: { id: TEST_IDS.STUDENT },
+      })
+      await setupAuthenticatedUser({ studentId: TEST_IDS.STUDENT })
+      // Mock por defecto de studyNote.findFirst
+      vi.mocked(prisma.studyNote.findFirst).mockResolvedValue(createStudyNote({
+        id: TEST_IDS.NOTE,
+        studentId: TEST_IDS.STUDENT,
+      }) as any)
+    })
+
+    it('debe exportar múltiples versiones en formato DOCX por defecto', async () => {
     setupStudyNote(createStudyNote())
     vi.mocked(prisma.studyNoteVersion.findFirst).mockImplementation(async (args: any) => {
       const versionId = args?.where?.id
@@ -260,9 +298,9 @@ describe('POST /api/notes/versions/export-bulk', () => {
     expect(response.status).toBe(200)
     expect(response.headers.get('Content-Type')).toContain('application/vnd.openxmlformats')
     expect(response.headers.get('Content-Disposition')).toContain('.docx')
-  })
+    })
 
-  it('debe exportar múltiples versiones en formato JSON', async () => {
+    it('debe exportar múltiples versiones en formato JSON', async () => {
     setupStudyNote(createStudyNote())
     vi.mocked(prisma.studyNoteVersion.findFirst).mockImplementation(async (args: any) => {
       const versionId = args?.where?.id
@@ -333,9 +371,9 @@ describe('POST /api/notes/versions/export-bulk', () => {
     const response = await POST(request)
 
     await assertErrorResponse(response, 400, 'Datos inválidos')
-  })
+    })
 
-  it('debe validar que versionIds sea requerido', async () => {
+    it('debe validar que versionIds sea requerido', async () => {
     const request = createTestRequest({
       baseUrl: 'http://localhost:3000/api/notes/versions/export-bulk',
       method: 'POST',
@@ -347,10 +385,10 @@ describe('POST /api/notes/versions/export-bulk', () => {
     const response = await POST(request)
 
     await assertErrorResponse(response, 400, 'Datos inválidos')
-  })
+    })
 
-  it('debe validar que versionIds no esté vacío', async () => {
-    const request = createTestRequest({
+    it('debe validar que versionIds no esté vacío', async () => {
+      const request = createTestRequest({
       baseUrl: 'http://localhost:3000/api/notes/versions/export-bulk',
       method: 'POST',
       body: {
@@ -362,10 +400,10 @@ describe('POST /api/notes/versions/export-bulk', () => {
     const response = await POST(request)
 
     await assertErrorResponse(response, 400, 'Datos inválidos')
-  })
+    })
 
-  it('debe validar formato inválido', async () => {
-    const request = createTestRequest({
+    it('debe validar formato inválido', async () => {
+      const request = createTestRequest({
       baseUrl: 'http://localhost:3000/api/notes/versions/export-bulk',
       method: 'POST',
       body: {
@@ -378,10 +416,11 @@ describe('POST /api/notes/versions/export-bulk', () => {
     const response = await POST(request)
 
     await assertErrorResponse(response, 400, 'Datos inválidos')
-  })
+    })
 
-  it('debe validar que la nota pertenezca al estudiante', async () => {
-    setupStudyNote(null)
+    it('debe validar que la nota pertenezca al estudiante', async () => {
+      setupStudyNote(null)
+      vi.mocked(prisma.studyNote.findFirst).mockResolvedValue(null)
 
     const request = createTestRequest({
       baseUrl: 'http://localhost:3000/api/notes/versions/export-bulk',
@@ -395,9 +434,9 @@ describe('POST /api/notes/versions/export-bulk', () => {
     const response = await POST(request)
 
     await assertErrorResponse(response, 404, 'Nota no encontrada')
-  })
+    })
 
-  it('debe incluir versión actual si está en versionIds', async () => {
+    it('debe incluir versión actual si está en versionIds', async () => {
     const mockNote = createStudyNote({
       id: TEST_IDS.NOTE,
       title: 'Nota actual',
@@ -445,9 +484,9 @@ describe('POST /api/notes/versions/export-bulk', () => {
     expect(jsonData.versions.length).toBe(2)
     expect(jsonData.versions[0].id).toBe(TEST_IDS.NOTE)
     expect(jsonData.versions[0].title).toBe('Nota actual')
-  })
+    })
 
-  it('debe filtrar versiones no encontradas', async () => {
+    it('debe filtrar versiones no encontradas', async () => {
     setupStudyNote(createStudyNote())
     vi.mocked(prisma.studyNoteVersion.findFirst).mockResolvedValue(null)
 
@@ -467,9 +506,9 @@ describe('POST /api/notes/versions/export-bulk', () => {
     expect(response.status).toBe(404)
     const data = await response.json()
     expect(data.error).toBe('No se encontraron versiones válidas')
-  })
+    })
 
-  it('debe retornar error si no hay versiones válidas', async () => {
+    it('debe retornar error si no hay versiones válidas', async () => {
     setupStudyNote(createStudyNote())
     vi.mocked(prisma.studyNoteVersion.findFirst).mockResolvedValue(null)
 
@@ -486,9 +525,9 @@ describe('POST /api/notes/versions/export-bulk', () => {
     const response = await POST(request)
 
     await assertErrorResponse(response, 404, 'No se encontraron versiones válidas')
-  })
+    })
 
-  it('debe manejar contenido comprimido', async () => {
+    it('debe manejar contenido comprimido', async () => {
     setupStudyNote(createStudyNote())
     vi.mocked(prisma.studyNoteVersion.findFirst).mockImplementation(async (args: any) => {
       const versionId = args?.where?.id
@@ -523,10 +562,10 @@ describe('POST /api/notes/versions/export-bulk', () => {
 
     // El endpoint debe manejar la descompresión sin errores
     expect(response.status).toBeGreaterThanOrEqual(200)
-  })
+    })
 
-  it('debe manejar errores correctamente', async () => {
-    vi.mocked(prisma.studyNote.findFirst).mockRejectedValue(new Error('Database error'))
+    it('debe manejar errores correctamente', async () => {
+      vi.mocked(prisma.studyNote.findFirst).mockRejectedValue(new Error('Database error'))
 
     const request = createTestRequest({
       baseUrl: 'http://localhost:3000/api/notes/versions/export-bulk',
@@ -540,6 +579,7 @@ describe('POST /api/notes/versions/export-bulk', () => {
     const response = await POST(request)
 
     await assertErrorResponse(response, 500, 'Error al exportar versiones')
-  })
+    })
+  }) // cierra "cuando está autenticado"
 })
 

@@ -117,8 +117,36 @@ export async function setupStandardAuth(options: {
  * Configurar usuario no autenticado
  */
 export function setupUnauthenticated() {
-  vi.mocked(getCurrentStudentId).mockResolvedValue(null)
-  vi.mocked(getAuthenticatedUserWithStudent).mockResolvedValue(null)
+  // Usar el global directamente - es la fuente de verdad
+  globalThis.__mockGetAuthenticatedUserWithStudent__?.mockResolvedValue(null)
+}
+
+/**
+ * Configurar usuario autenticado con estudiante usando el global directamente
+ * Esta función es más estable porque no depende de vi.mocked()
+ * 
+ * @param overrides - Valores opcionales para sobrescribir el usuario por defecto
+ */
+export function setupAuthenticatedUserWithStudent(overrides?: {
+  user?: { id?: string; email?: string; name?: string }
+  student?: { id?: string; userId?: string; nombre?: string }
+}) {
+  const defaultUser = createAuthenticatedUserWithStudent()
+  const user = {
+    id: overrides?.user?.id || defaultUser.id,
+    email: overrides?.user?.email || defaultUser.email,
+    name: overrides?.user?.name || 'Test User',
+    student: {
+      id: overrides?.student?.id || defaultUser.student.id,
+      userId: overrides?.student?.userId || defaultUser.id,
+      nombre: overrides?.student?.nombre || defaultUser.student.nombre || 'Test Student',
+      createdAt: defaultUser.student.createdAt,
+      updatedAt: defaultUser.student.updatedAt,
+    },
+  }
+  
+  // Usar el global directamente - es la fuente de verdad
+  globalThis.__mockGetAuthenticatedUserWithStudent__?.mockResolvedValue(user as any)
 }
 
 /**
@@ -179,7 +207,8 @@ export async function assertSuccessResponse(
   expect(response.status).toBe(expectedStatus)
   
   if (options?.hasData !== false) {
-    const data = await response.json()
+    const text = await response.clone().text()
+    const data = text ? JSON.parse(text) : null
     expect(data).toBeDefined()
     
     if (options?.requiredFields) {
@@ -187,7 +216,9 @@ export async function assertSuccessResponse(
         expect(data).toHaveProperty(field)
       })
     }
+    return data
   }
+  return null
 }
 
 /**
@@ -201,11 +232,12 @@ export async function assertErrorResponse(
   expect(response.status).toBe(expectedStatus)
   
   if (expectedError) {
-    const data = await response.json()
+    const text = await response.clone().text()
+    const data = text ? JSON.parse(text) : null
     if (typeof expectedError === 'string') {
-      expect(data.error || data.message).toContain(expectedError)
+      expect(data?.error || data?.message).toContain(expectedError)
     } else {
-      expect(data.error || data.message).toMatch(expectedError)
+      expect(data?.error || data?.message).toMatch(expectedError)
     }
   }
 }
@@ -221,7 +253,8 @@ export async function assertArrayResponse(
   }
 ) {
   expect(response.status).toBe(200)
-  const data = await response.json()
+  const text = await response.clone().text()
+  const data = text ? JSON.parse(text) : null
   
   expect(Array.isArray(data)).toBe(true)
   
@@ -232,6 +265,7 @@ export async function assertArrayResponse(
   if (options?.itemValidator && data.length > 0) {
     options.itemValidator(data[0])
   }
+  return data
 }
 
 // ============================================

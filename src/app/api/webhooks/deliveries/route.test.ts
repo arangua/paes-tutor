@@ -50,21 +50,22 @@ vi.mock('@/lib/prisma', () => ({
   },
 }))
 
-vi.mock('@/lib/get-session', () => ({
-  getCurrentStudentId: vi.fn(),
-}))
+vi.mock('@/lib/get-session', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/get-session')>('@/lib/get-session')
+  return {
+    ...actual,
+    getSession: vi.fn(),
+    getCurrentUser: vi.fn(),
+    getCurrentStudentId: vi.fn(),
+    getAuthenticatedUserWithStudent: vi.fn(),
+  }
+})
 
 vi.mock('@/lib/rate-limit-middleware', () => ({
   withRateLimit: vi.fn((req: NextRequest, handler: () => Promise<Response>) => handler()),
 }))
 
-vi.mock('@/lib/logger', () => ({
-  logger: {
-    error: vi.fn(),
-    warn: vi.fn(),
-    info: vi.fn(),
-  },
-}))
+// Mock global de logger está en src/test/setup.ts
 
 describe('GET /api/webhooks/deliveries', () => {
   beforeEach(() => {

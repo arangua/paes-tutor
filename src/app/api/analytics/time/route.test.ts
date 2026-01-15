@@ -69,10 +69,24 @@ vi.mock('@/lib/prisma', () => ({
 }))
 
 // Mock de get-session
-const mockGetAuthenticatedUserWithStudent = vi.fn()
-vi.mock('@/lib/get-session', () => ({
-  getAuthenticatedUserWithStudent: () => mockGetAuthenticatedUserWithStudent(),
-}))
+declare global {
+  // eslint-disable-next-line no-var
+  var __mockGetAuthenticatedUserWithStudent__: ReturnType<typeof vi.fn> | undefined
+}
+
+vi.mock('@/lib/get-session', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/get-session')>('@/lib/get-session')
+  
+  globalThis.__mockGetAuthenticatedUserWithStudent__ ??= vi.fn()
+  
+  return {
+    ...actual,
+    getSession: vi.fn(),
+    getCurrentUser: vi.fn(),
+    getCurrentStudentId: vi.fn(),
+    getAuthenticatedUserWithStudent: () => globalThis.__mockGetAuthenticatedUserWithStudent__?.(),
+  }
+})
 
 // Mock de rate-limit-middleware
 vi.mock('@/lib/rate-limit-middleware', () => ({
@@ -119,14 +133,14 @@ vi.mock('@/app/api/notes/versions/validation-utils', () => ({
 describe('GET /api/analytics/time', () => {
   beforeEach(() => {
     vitest.clearAllMocks()
-    mockGetAuthenticatedUserWithStudent.mockResolvedValue(
+    globalThis.__mockGetAuthenticatedUserWithStudent__?.mockResolvedValue(
       createUserWithStudent({ studentId: TEST_IDS.STUDENT })
     )
   })
 
   describe('Autenticación', () => {
     it('debe retornar 401 si no está autenticado', async () => {
-      mockGetAuthenticatedUserWithStudent.mockResolvedValue(null)
+      globalThis.__mockGetAuthenticatedUserWithStudent__?.mockResolvedValue(null)
 
       const request = createTestRequest()
       const response = await GET(request)
@@ -135,7 +149,7 @@ describe('GET /api/analytics/time', () => {
     })
 
     it('debe retornar 404 si no hay estudiante asociado', async () => {
-      mockGetAuthenticatedUserWithStudent.mockResolvedValue({
+      globalThis.__mockGetAuthenticatedUserWithStudent__?.mockResolvedValue({
         ...createUserWithStudent(),
         student: null,
       })
@@ -793,7 +807,7 @@ describe('GET /api/analytics/time', () => {
     })
 
     it('debe manejar errores inesperados correctamente', async () => {
-      mockGetAuthenticatedUserWithStudent.mockRejectedValue(
+      globalThis.__mockGetAuthenticatedUserWithStudent__?.mockRejectedValue(
         new Error('Unexpected error')
       )
 

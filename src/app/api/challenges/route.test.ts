@@ -35,13 +35,8 @@ vi.mock('@/lib/prisma', () => ({
   },
 }))
 
-vi.mock('@/lib/get-session', () => ({
-  getAuthenticatedUserWithStudent: vi.fn(),
-}))
-
-vi.mock('@/lib/logger', () => ({
-  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
-}))
+// Mock global está en src/test/setup.ts - solo sobrescribir valores específicos con vi.mocked()
+// Nota: este test usa setupAuthenticatedUserWithStudent de auth-mock.ts
 
 vi.mock('@/lib/rate-limit-middleware', () => ({
   withRateLimit: vi.fn((_req: NextRequest, handler: () => Promise<any>, _type?: string) => handler()),

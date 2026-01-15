@@ -134,9 +134,7 @@ vi.mock('@/lib/prisma', () => ({
   },
 }))
 
-vi.mock('@/lib/get-session', () => ({
-  getCurrentUser: vi.fn(),
-}))
+// Mock global está en src/test/setup.ts - solo sobrescribir valores específicos con vi.mocked()
 
 vi.mock('@/lib/rate-limit-middleware', () => ({
   withRateLimit: async (_req: any, handler: () => Promise<Response>) => {
@@ -153,19 +151,7 @@ vi.mock('fs/promises', () => ({
   },
 }))
 
-// Mock del logger que funciona con importaciones dinámicas
-vi.mock('@/lib/logger', async () => {
-  const mockLogger = {
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn(),
-  }
-  return {
-    logger: mockLogger,
-    default: { logger: mockLogger },
-  }
-})
+// Mock global de logger está en src/test/setup.ts
 
 describe('POST /api/admin/import-answer-key', () => {
   beforeEach(() => {

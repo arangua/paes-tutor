@@ -20,8 +20,8 @@ import { z } from 'zod'
  */
 export const EnvSchema = z
   .object({
-    // Entorno de ejecución
-    NODE_ENV: z.enum(['development', 'test', 'production']),
+    // Entorno de ejecución (opcional porque el loader aplica default)
+    NODE_ENV: z.enum(['development', 'test', 'production']).optional(),
 
     // Base de datos
     DATABASE_URL: z.string().min(1, 'DATABASE_URL es requerida'),

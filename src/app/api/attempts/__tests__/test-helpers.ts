@@ -429,12 +429,14 @@ export function createTestRequest(options: CreateRequestOptions = {}): NextReque
  */
 export async function assertSuccessResponse<T = any>(response: Response): Promise<T> {
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+    const text = await response.clone().text().catch(() => '')
+    const errorData = text ? JSON.parse(text) : { error: 'Unknown error' }
     throw new Error(
       `Expected successful response but got ${response.status}: ${JSON.stringify(errorData)}`
     )
   }
-  return await response.json()
+  const text = await response.clone().text()
+  return text ? JSON.parse(text) : null
 }
 
 /**
@@ -457,8 +459,9 @@ export async function assertErrorResponse(
   expectedError: string | ((error: string) => boolean)
 ): Promise<void> {
   expect(response.status).toBe(expectedStatus)
-  const data = await response.json()
-  const errorMessage = data.error || data.message || ''
+  const text = await response.clone().text()
+  const data = text ? JSON.parse(text) : null
+  const errorMessage = data?.error || data?.message || ''
   
   if (typeof expectedError === 'string') {
     expect(errorMessage).toContain(expectedError)

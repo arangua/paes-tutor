@@ -64,7 +64,7 @@ describe('EnvSchema', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error.errors.some((e) => e.path.includes('DATABASE_URL'))).toBe(true)
+        expect(result.error.issues.some((e) => e.path.includes('DATABASE_URL'))).toBe(true)
       }
     })
 
@@ -163,7 +163,7 @@ describe('EnvSchema', () => {
       expect(result.success).toBe(false)
       if (!result.success) {
         expect(
-          result.error.errors.some(
+          result.error.issues.some(
             (e) => e.path.includes('NEXTAUTH_URL') && e.message.includes('requerida en producción')
           )
         ).toBe(true)
@@ -216,7 +216,7 @@ describe('EnvSchema', () => {
       expect(result.success).toBe(false)
       if (!result.success) {
         expect(
-          result.error.errors.some(
+          result.error.issues.some(
             (e) =>
               e.path.includes('ENCRYPTION_KEY') &&
               e.message.includes('prefijos de desarrollo/test')

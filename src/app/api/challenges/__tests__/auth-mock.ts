@@ -1,17 +1,12 @@
-import { vi } from "vitest";
-
-// ✅ referencia única: esto es lo que se setea desde los tests
-export const mockGetAuthenticatedUserWithStudent = vi.fn();
-
-// ✅ IMPORTANTÍSIMO: el specifier DEBE ser idéntico al que usa el route
-vi.mock("@/lib/get-session", () => ({
-  getAuthenticatedUserWithStudent: mockGetAuthenticatedUserWithStudent,
-}));
+// ✅ Mock global está en src/test/setup.ts
+// Usamos el global directamente para máxima estabilidad
 
 export function setupAuthenticated(userWithStudent: unknown) {
-  mockGetAuthenticatedUserWithStudent.mockResolvedValue(userWithStudent);
+  // Usar el global directamente - es la fuente de verdad
+  globalThis.__mockGetAuthenticatedUserWithStudent__?.mockResolvedValue(userWithStudent as any);
 }
 
 export function setupUnauthenticated() {
-  mockGetAuthenticatedUserWithStudent.mockResolvedValue(null);
+  // Usar el global directamente - es la fuente de verdad
+  globalThis.__mockGetAuthenticatedUserWithStudent__?.mockResolvedValue(null);
 }

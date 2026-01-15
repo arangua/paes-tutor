@@ -5,6 +5,7 @@
 import { vi } from 'vitest'
 import { prisma } from '@/lib/prisma'
 import { getCached } from '@/lib/cache'
+import { getCurrentStudentId } from '@/lib/get-session'
 import {
   TEST_IDS,
   createTestRequest,

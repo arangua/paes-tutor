@@ -7,7 +7,6 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { POST } from './route'
-import { NextRequest } from 'next/server'
 import { getCurrentUser } from '@/lib/get-session'
 import { prisma } from '@/lib/prisma'
 import {
@@ -16,9 +15,7 @@ import {
   clearAllMocks,
 } from '@/test/enterprise/shared-test-helpers'
 
-vi.mock('@/lib/get-session', () => ({
-  getCurrentUser: vi.fn(),
-}))
+// Mock global está en src/test/setup.ts - solo sobrescribir valores específicos con vi.mocked()
 
 vi.mock('@/lib/prisma', () => ({
   prisma: {
@@ -39,6 +36,17 @@ vi.mock('@/lib/rate-limit-middleware', () => ({
   withRateLimit: vi.fn((req, handler) => handler()),
 }))
 
+vi.mock('@/lib/logger', () => ({
+  logger: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
+  logApiRequest: vi.fn(),
+  logApiError: vi.fn(),
+}))
+
 vi.mock('fs/promises', () => ({
   default: {
     mkdir: vi.fn(),
@@ -51,6 +59,7 @@ vi.mock('fs/promises', () => ({
 vi.mock('path', () => ({
   default: {
     join: vi.fn((...args) => args.join('/')),
+    resolve: vi.fn((...args) => args.join('/')),
   },
 }))
 
@@ -75,7 +84,7 @@ const validTopics = [
   },
 ]
 
-const invalidTopics = [
+const _invalidTopics = [
   {
     asignatura: '', // Inválido: asignatura vacía
     ejeTematico: 'Eje temático',

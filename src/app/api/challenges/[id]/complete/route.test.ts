@@ -11,6 +11,10 @@ import { NextRequest } from 'next/server'
 import { validateChallengeAttempt, determineChallengeWinner } from '@/lib/challenge-helpers'
 import { CHALLENGE_STATUS } from '@/lib/challenge-constants'
 import {
+  setupAuthenticatedUserWithStudent as setupAuthFromShared,
+  setupUnauthenticated as setupUnauthFromShared,
+} from '@/test/enterprise/shared-test-helpers'
+import {
   TEST_IDS,
   createUserWithStudent,
   createChallengeWithRelations,
@@ -32,13 +36,21 @@ vi.mock('@/lib/prisma', () => ({
   },
 }))
 
-vi.mock('@/lib/get-session', () => ({
-  getAuthenticatedUserWithStudent: vi.fn(),
-}))
+// Mock de get-session - el mock global está en src/test/setup.ts
 
-vi.mock('@/lib/logger', () => ({
-  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
-}))
+vi.mock('@/lib/logger', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/logger')>('@/lib/logger')
+  return {
+    ...actual,
+    logger: {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      debug: vi.fn(),
+    },
+    logApiRequest: vi.fn(),
+  }
+})
 
 vi.mock('@/lib/rate-limit-middleware', () => ({
   withRateLimit: vi.fn((req: NextRequest, handler: () => Promise<any>) => handler()),
@@ -53,17 +65,22 @@ vi.mock('@/lib/challenge-helpers', () => ({
 describe('POST /api/challenges/[id]/complete', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    setupUnauthFromShared() // Default: no autenticado
   })
 
   it('debe retornar 401 si no está autenticado', async () => {
-    setupUnauthenticatedUser()
     const params = Promise.resolve({ id: TEST_IDS.ATTEMPT })
     const request = createTestRequestWithChallengeId(undefined, { method: 'POST', body: {} })
     const response = await POST(request, { params })
     await assertErrorResponse(response, 401, 'No autorizado')
   })
 
-  it('debe retornar 400 si el body no es válido', async () => {
+  describe('cuando está autenticado', () => {
+    beforeEach(() => {
+      setupAuthFromShared()
+    })
+
+    it('debe retornar 400 si el body no es válido', async () => {
     const user = createUserWithStudent()
     setupAuthenticatedUserWithStudent(user)
     // ✅ Enterprise: Mockear desafío para evitar 404
@@ -82,7 +99,7 @@ describe('POST /api/challenges/[id]/complete', () => {
     await assertErrorResponse(response, 400, 'Datos inválidos')
   })
 
-  it('debe retornar 404 si el desafío no existe', async () => {
+    it('debe retornar 404 si el desafío no existe', async () => {
     const user = createUserWithStudent()
     setupAuthenticatedUserWithStudent(user)
     setupChallengeMock(null)
@@ -95,7 +112,7 @@ describe('POST /api/challenges/[id]/complete', () => {
     await assertErrorResponse(response, 404, 'Desafío no encontrado')
   })
 
-  it('debe retornar 400 si el desafío no está aceptado', async () => {
+    it('debe retornar 400 si el desafío no está aceptado', async () => {
     const user = createUserWithStudent({ studentId: TEST_IDS.STUDENT })
     setupAuthenticatedUserWithStudent(user)
     const challenge = createChallengeWithRelations({
@@ -113,7 +130,7 @@ describe('POST /api/challenges/[id]/complete', () => {
     await assertErrorResponse(response, 400, 'debe estar aceptado')
   })
 
-  describe('Registrar intento del desafiador', () => {
+    describe('Registrar intento del desafiador', () => {
     it('debe retornar 403 si no es el desafiador', async () => {
       const user = createUserWithStudent({ studentId: TEST_IDS.STUDENT_2 })
       setupAuthenticatedUserWithStudent(user)
@@ -165,9 +182,9 @@ describe('POST /api/challenges/[id]/complete', () => {
       const data = await assertSuccessResponse(response)
       expect(data.challenge.challengerAttemptId).toBe(TEST_IDS.ATTEMPT)
     })
-  })
+    })
 
-  describe('Registrar intento del desafiado', () => {
+    describe('Registrar intento del desafiado', () => {
     it('debe retornar 403 si no es el desafiado', async () => {
       const user = createUserWithStudent({ studentId: TEST_IDS.STUDENT })
       setupAuthenticatedUserWithStudent(user)
@@ -219,9 +236,9 @@ describe('POST /api/challenges/[id]/complete', () => {
       const data = await assertSuccessResponse(response)
       expect(data.challenge.challengedAttemptId).toBe(attempt.id)
     })
-  })
+    })
 
-  describe('Completar desafío cuando ambos han terminado', () => {
+    describe('Completar desafío cuando ambos han terminado', () => {
     it('debe determinar el ganador y completar el desafío', async () => {
       const user = createUserWithStudent({ studentId: TEST_IDS.STUDENT_2 })
       setupAuthenticatedUserWithStudent(user)
@@ -274,9 +291,9 @@ describe('POST /api/challenges/[id]/complete', () => {
       expect(data.challenge.status).toBe(CHALLENGE_STATUS.COMPLETED)
       expect(data.challenge.winnerId).toBe(TEST_IDS.STUDENT_2)
     })
-  })
+    })
 
-  it('debe retornar 400 si el intento no es válido', async () => {
+    it('debe retornar 400 si el intento no es válido', async () => {
     const user = createUserWithStudent({ studentId: TEST_IDS.STUDENT })
     setupAuthenticatedUserWithStudent(user)
     const challenge = createChallengeWithRelations({
@@ -298,5 +315,6 @@ describe('POST /api/challenges/[id]/complete', () => {
     const response = await POST(request, { params })
     await assertErrorResponse(response, 400, 'Intento no encontrado')
   })
+  }) // cierra "cuando está autenticado"
 })
 

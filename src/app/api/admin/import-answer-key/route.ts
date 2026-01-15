@@ -178,8 +178,8 @@ function detectCorrectAnswers(text: string): Map<number, string> {
   const answerPatterns = [
     // Formato de tabla DEMRE: "Nº	Clave" con tabs/espacios múltiples (ej: "1 	B" o "1\tB")
     // Este formato es muy común en clavijeros oficiales de DEMRE
-    /^(\d+)[\*\s\t]+\b([A-E])\b/gm, // Línea completa: número, espacios/tabs, letra (puede tener asterisco)
-    /(\d+)[\*\s\t]{2,}([A-E])\b/g, // Múltiples espacios/tabs entre número y letra
+    /^(\d+)[*\s\t]+\b([A-E])\b/gm, // Línea completa: número, espacios/tabs, letra (puede tener asterisco)
+    /(\d+)[*\s\t]{2,}([A-E])\b/g, // Múltiples espacios/tabs entre número y letra
     // Formato invertido: "A1", "B2" (letra-número) - debe ir primero para evitar conflictos
     /^([A-E])(\d+)$/gm, // Solo si está en su propia línea
     /([A-E])(\d+)(?=\s|$|,|\.)/g, // Con delimitadores claros
@@ -194,7 +194,7 @@ function detectCorrectAnswers(text: string): Map<number, string> {
     // Formato: "1) A", "2) B" (sin inicio de línea, más flexible)
     /(\d+)\)\s*([A-E])(?=\s|$|,|\.)/g,
     // Formato: "1-A", "1-A,", "1-A ", "1 - A", "1-A."
-    /(\d+)[\s\-]+([A-E])(?=\s|$|,|\.)/g,
+    /(\d+)[\s-]+([A-E])(?=\s|$|,|\.)/g,
     // Formato: "1 A" (con espacio), "1  A" (múltiples espacios) - menos específico, al final
     /(\d+)\s+([A-E])(?=\s|$|,|\.)/g,
   ]
@@ -669,18 +669,18 @@ export async function POST(request: NextRequest) {
           examId: result.examId,
         })
       } catch (error) {
-        // Log mínimo del error (sin stack trace completo para evitar desconexiones)
-        const errorMessage = error instanceof Error ? error.message : String(error)
-        logger.error(
-          {
-            error: errorMessage,
-          },
-          'Error al importar clavijero'
-        )
-
         // Determinar status code apropiado según el tipo de error
         let statusCode = 500
         let errorMessage = 'Error al importar clavijero'
+
+        // Log mínimo del error (sin stack trace completo para evitar desconexiones)
+        const errorMessageForLog = error instanceof Error ? error.message : String(error)
+        logger.error(
+          {
+            error: errorMessageForLog,
+          },
+          'Error al importar clavijero'
+        )
 
         if (error instanceof Error) {
           // Errores de validación o recursos no encontrados → 400/404

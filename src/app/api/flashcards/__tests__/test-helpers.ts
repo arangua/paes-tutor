@@ -4,6 +4,7 @@
 
 import { vi } from 'vitest'
 import { prisma } from '@/lib/prisma'
+import { getAuthenticatedUserWithStudent } from '@/lib/get-session'
 import {
   TEST_IDS as BOOKMARKS_TEST_IDS,
   createUserWithStudent,

@@ -101,7 +101,7 @@ export class ContractError extends AppError {
       {
         error: 'Invalid request contract',
         code: this.code,
-        details: this.zodError
+        details: this.zodError?.issues
           ? this.zodError.issues.map((e) => ({
               path: e.path.join('.'),
               message: e.message,

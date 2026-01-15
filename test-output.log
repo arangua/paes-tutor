@@ -1,0 +1,2282 @@
+﻿
+ RUN  v4.0.16 C:/Users/arang/OneDrive/Escritorio/PROY. PAES/paes-tutor/paes-tutor
+
+ × src/app/api/admin/cleanup-test-data/route.test.ts > POST /api/admin/cleanup-test-data > debe retornar error si el usuario no está autenticado 53ms
+   → [vitest] No "NextResponse" export is defined on the "next/server" mock. Did you forget to return it from "vi.mock"?
+If you need to partially mock a module, you can use "importOriginal" helper inside:
+
+ × src/app/api/admin/cleanup-test-data/route.test.ts > POST /api/admin/cleanup-test-data > debe validar el schema correctamente 8ms
+   → [vitest] No "NextResponse" export is defined on the "next/server" mock. Did you forget to return it from "vi.mock"?
+If you need to partially mock a module, you can use "importOriginal" helper inside:
+
+ × src/app/api/admin/cleanup-test-data/route.test.ts > POST /api/admin/cleanup-test-data > debe eliminar exámenes de prueba cuando deleteExams es true 5ms
+   → [vitest] No "NextResponse" export is defined on the "next/server" mock. Did you forget to return it from "vi.mock"?
+If you need to partially mock a module, you can use "importOriginal" helper inside:
+
+ × src/app/api/admin/cleanup-test-data/route.test.ts > POST /api/admin/cleanup-test-data > debe filtrar por año cuando se proporciona yearFilter 2ms
+   → [vitest] No "NextResponse" export is defined on the "next/server" mock. Did you forget to return it from "vi.mock"?
+If you need to partially mock a module, you can use "importOriginal" helper inside:
+
+ × src/app/api/admin/cleanup-test-data/route.test.ts > POST /api/admin/cleanup-test-data > debe eliminar todos los datos cuando onlyTestData es false 3ms
+   → [vitest] No "NextResponse" export is defined on the "next/server" mock. Did you forget to return it from "vi.mock"?
+If you need to partially mock a module, you can use "importOriginal" helper inside:
+
+ × src/app/api/admin/cleanup-test-data/route.test.ts > POST /api/admin/cleanup-test-data > debe manejar errores en la transacción 2ms
+   → [vitest] No "NextResponse" export is defined on the "next/server" mock. Did you forget to return it from "vi.mock"?
+If you need to partially mock a module, you can use "importOriginal" helper inside:
+
+ × src/app/api/flashcards/route.test.ts > GET /api/flashcards > debe retornar 401 si no está autenticado 12ms
+   → getAuthenticatedUserWithStudent is not defined
+ × src/app/api/flashcards/route.test.ts > GET /api/flashcards > debe retornar todos los flashcards 2ms
+   → getAuthenticatedUserWithStudent is not defined
+ × src/app/api/flashcards/route.test.ts > GET /api/flashcards > debe filtrar por dueOnly=true 2ms
+   → getAuthenticatedUserWithStudent is not defined
+ × src/app/api/flashcards/route.test.ts > GET /api/flashcards > debe filtrar por flashcardId 3ms
+   → getAuthenticatedUserWithStudent is not defined
+ × src/app/api/flashcards/route.test.ts > GET /api/flashcards > debe limitar resultados con limit 1ms
+   → getAuthenticatedUserWithStudent is not defined
+ × src/app/api/flashcards/route.test.ts > POST /api/flashcards > debe retornar 401 si no está autenticado 1ms
+   → getAuthenticatedUserWithStudent is not defined
+ × src/app/api/flashcards/route.test.ts > POST /api/flashcards > debe retornar 400 si el body no es válido 2ms
+   → getAuthenticatedUserWithStudent is not defined
+ × src/app/api/flashcards/route.test.ts > POST /api/flashcards > debe crear flashcard sin questionId 1ms
+   → getAuthenticatedUserWithStudent is not defined
+ × src/app/api/flashcards/route.test.ts > POST /api/flashcards > debe crear flashcard con questionId válido 1ms
+   → getAuthenticatedUserWithStudent is not defined
+ × src/app/api/flashcards/route.test.ts > POST /api/flashcards > debe retornar 404 si questionId no existe 1ms
+   → getAuthenticatedUserWithStudent is not defined
+ × src/app/api/flashcards/route.test.ts > PUT /api/flashcards > debe retornar 401 si no está autenticado 1ms
+   → getAuthenticatedUserWithStudent is not defined
+ × src/app/api/flashcards/route.test.ts > PUT /api/flashcards > debe retornar 400 si el body no es válido 2ms
+   → getAuthenticatedUserWithStudent is not defined
+ × src/app/api/flashcards/route.test.ts > PUT /api/flashcards > debe retornar 404 si el flashcard no existe 1ms
+   → getAuthenticatedUserWithStudent is not defined
+ × src/app/api/flashcards/route.test.ts > PUT /api/flashcards > debe actualizar flashcard con algoritmo SM-2 1ms
+   → getAuthenticatedUserWithStudent is not defined
+ × src/app/api/flashcards/route.test.ts > DELETE /api/flashcards > debe retornar 401 si no está autenticado 1ms
+   → getAuthenticatedUserWithStudent is not defined
+ × src/app/api/flashcards/route.test.ts > DELETE /api/flashcards > debe retornar 400 si flashcardId no está presente 1ms
+   → getAuthenticatedUserWithStudent is not defined
+ × src/app/api/flashcards/route.test.ts > DELETE /api/flashcards > debe retornar 404 si el flashcard no existe 1ms
+   → getAuthenticatedUserWithStudent is not defined
+ × src/app/api/flashcards/route.test.ts > DELETE /api/flashcards > debe eliminar flashcard correctamente 2ms
+   → getAuthenticatedUserWithStudent is not defined
+ ✓ src/app/api/bookmarks/route.test.ts > GET /api/bookmarks > debe retornar 401 si no está autenticado 57ms
+ ✓ src/app/api/bookmarks/route.test.ts > GET /api/bookmarks > debe retornar 404 si no hay estudiante 5ms
+ ✓ src/app/api/bookmarks/route.test.ts > GET /api/bookmarks > debe retornar todos los bookmarks del estudiante 15ms
+ ✓ src/app/api/bookmarks/route.test.ts > GET /api/bookmarks > debe retornar bookmarks ordenados por createdAt descendente 3ms
+ ✓ src/app/api/bookmarks/route.test.ts > GET /api/bookmarks > debe filtrar bookmarks por topicId 11ms
+ ✓ src/app/api/bookmarks/route.test.ts > GET /api/bookmarks > debe filtrar bookmarks por subjectId 6ms
+ × src/app/api/practice/questions/route.test.ts > GET /api/practice/questions > debe retornar 401 si no está autenticado 11ms
+   → Cannot read properties of undefined (reading 'TOPIC')
+ × src/app/api/practice/questions/route.test.ts > GET /api/practice/questions > debe retornar 400 si topicId no está presente 65ms
+   → __vi_import_3__.assertErrorResponse is not a function
+ × src/app/api/practice/questions/route.test.ts > GET /api/practice/questions > debe retornar 404 si el tema no existe 15ms
+   → Cannot read properties of undefined (reading 'TOPIC')
+ × src/app/api/practice/questions/route.test.ts > GET /api/practice/questions > debe retornar preguntas del tema 2ms
+   → Cannot read properties of undefined (reading 'TOPIC')
+ ✓ src/app/api/search/route.test.ts > GET /api/search > debe retornar 401 si no está autenticado 61ms
+ × src/app/api/practice/questions/route.test.ts > GET /api/practice/questions > debe filtrar por dificultad easy (1-2) 4ms
+   → Cannot read properties of undefined (reading 'TOPIC')
+ × src/app/api/practice/questions/route.test.ts > GET /api/practice/questions > debe filtrar por dificultad medium (3-4) 1ms
+   → Cannot read properties of undefined (reading 'TOPIC')
+ × src/app/api/practice/questions/route.test.ts > GET /api/practice/questions > debe filtrar por dificultad hard (5) 1ms
+   → Cannot read properties of undefined (reading 'TOPIC')
+ × src/app/api/practice/questions/route.test.ts > GET /api/practice/questions > debe usar mode como alias de difficulty 2ms
+   → Cannot read properties of undefined (reading 'TOPIC')
+ × src/app/api/practice/questions/route.test.ts > GET /api/practice/questions > debe aplicar límite de preguntas 2ms
+   → Cannot read properties of undefined (reading 'TOPIC')
+ × src/app/api/practice/questions/route.test.ts > GET /api/practice/questions > debe obtener todas las dificultades si no hay suficientes con filtro 1ms
+   → Cannot read properties of undefined (reading 'TOPIC')
+ × src/app/api/practice/questions/route.test.ts > GET /api/practice/questions > debe incluir relaciones (options, subject, topic) 1ms
+   → Cannot read properties of undefined (reading 'TOPIC')
+ × src/app/api/practice/questions/route.test.ts > GET /api/practice/questions > debe aleatorizar el orden de las preguntas 3ms
+   → Cannot read properties of undefined (reading 'TOPIC')
+ × src/app/api/practice/questions/route.test.ts > GET /api/practice/questions > debe manejar errores correctamente 1ms
+   → Cannot read properties of undefined (reading 'TOPIC')
+ ✓ src/app/api/bookmarks/route.test.ts > GET /api/bookmarks > debe filtrar bookmarks por topicId y subjectId simultáneamente 7ms
+ ✓ src/app/api/bookmarks/route.test.ts > GET /api/bookmarks > debe retornar 400 si topicId no tiene formato CUID válido 3ms
+ ✓ src/app/api/bookmarks/route.test.ts > GET /api/bookmarks > debe retornar 400 si subjectId no tiene formato CUID válido 4ms
+ ✓ src/app/api/bookmarks/route.test.ts > GET /api/bookmarks > debe incluir relaciones completas (question, options, subject, topic) 4ms
+ ✓ src/app/api/bookmarks/route.test.ts > GET /api/bookmarks > debe ordenar opciones por letra ascendente 4ms
+ ✓ src/app/api/bookmarks/route.test.ts > GET /api/bookmarks > debe retornar array vacío si no hay bookmarks 1ms
+ × src/app/api/bookmarks/route.test.ts > GET /api/bookmarks > debe manejar errores de base de datos correctamente 15ms
+   → logger is not defined
+ ✓ src/app/api/bookmarks/route.test.ts > POST /api/bookmarks > debe retornar 401 si no está autenticado 10ms
+ ✓ src/app/api/bookmarks/route.test.ts > POST /api/bookmarks > debe retornar 404 si no hay estudiante 1ms
+ ✓ src/app/api/bookmarks/route.test.ts > POST /api/bookmarks > debe retornar 400 si el body no es válido 3ms
+ ✓ src/app/api/bookmarks/route.test.ts > POST /api/bookmarks > debe retornar 400 si questionId está vacío 3ms
+ ✓ src/app/api/bookmarks/route.test.ts > POST /api/bookmarks > debe retornar 404 si la pregunta no existe 1ms
+ ✓ src/app/api/bookmarks/route.test.ts > POST /api/bookmarks > debe retornar 409 si el bookmark ya existe 2ms
+ ✓ src/app/api/bookmarks/route.test.ts > POST /api/bookmarks > debe crear un bookmark correctamente sin notas 4ms
+ ✓ src/app/api/bookmarks/route.test.ts > POST /api/bookmarks > debe crear un bookmark correctamente con notas 2ms
+ ✓ src/app/api/bookmarks/route.test.ts > POST /api/bookmarks > debe incluir relaciones completas al crear bookmark 3ms
+ ✓ src/app/api/bookmarks/route.test.ts > POST /api/bookmarks > debe usar el studentId del usuario autenticado 2ms
+ × src/app/api/bookmarks/route.test.ts > POST /api/bookmarks > debe manejar errores de base de datos correctamente 2ms
+   → logger is not defined
+ ✓ src/app/api/bookmarks/route.test.ts > POST /api/bookmarks > debe manejar errores al parsear JSON del body 6ms
+ ✓ src/app/api/bookmarks/route.test.ts > DELETE /api/bookmarks > debe retornar 401 si no está autenticado 13ms
+ ✓ src/app/api/bookmarks/route.test.ts > DELETE /api/bookmarks > debe retornar 404 si no hay estudiante 2ms
+ ✓ src/app/api/bookmarks/route.test.ts > DELETE /api/bookmarks > debe retornar 400 si questionId no tiene formato CUID válido 3ms
+ ✓ src/app/api/bookmarks/route.test.ts > DELETE /api/bookmarks > debe retornar 400 si questionId está vacío 1ms
+ ✓ src/app/api/bookmarks/route.test.ts > DELETE /api/bookmarks > debe retornar 404 si el bookmark no existe 6ms
+ ✓ src/app/api/bookmarks/route.test.ts > DELETE /api/bookmarks > debe eliminar un bookmark correctamente 2ms
+ ✓ src/app/api/bookmarks/route.test.ts > DELETE /api/bookmarks > debe usar el studentId del usuario autenticado para buscar el bookmark 5ms
+ × src/app/api/bookmarks/route.test.ts > DELETE /api/bookmarks > debe manejar errores de base de datos correctamente 2ms
+   → logger is not defined
+ ✓ src/app/api/bookmarks/route.test.ts > DELETE /api/bookmarks > debe manejar errores al buscar el bookmark 3ms
+ ✓ src/app/api/search/route.test.ts > GET /api/search > debe retornar 400 si q no está presente 44ms
+ ✓ src/app/api/search/route.test.ts > GET /api/search > debe retornar resultados vacíos si q está vacío 12ms
+ ✓ src/app/api/search/route.test.ts > GET /api/search > debe buscar en exámenes 22ms
+ ✓ src/app/api/search/route.test.ts > GET /api/search > debe buscar en materiales 8ms
+ ✓ src/app/api/search/route.test.ts > GET /api/search > debe buscar en temas 14ms
+ ✓ src/app/api/search/route.test.ts > GET /api/search > debe buscar en intentos 12ms
+ ✓ src/app/api/search/route.test.ts > GET /api/search > debe buscar en todos los tipos por defecto 7ms
+ ✓ src/app/api/search/route.test.ts > GET /api/search > debe aplicar paginación correctamente 9ms
+ ✓ src/app/api/search/route.test.ts > GET /api/search > debe ordenar resultados por relevancia 13ms
+ ✓ src/app/api/search/route.test.ts > GET /api/search > debe generar sugerencias 6ms
+ × src/app/api/search/route.test.ts > GET /api/search > debe manejar errores correctamente 15ms
+   → logger is not defined
+ × src/app/api/metrics/route.test.ts > GET /api/metrics > debe retornar métricas agrupadas por asignatura 80ms
+   → Body is unusable: Body has already been read
+ ✓ src/app/api/metrics/route.test.ts > GET /api/metrics > debe retornar 404 si no hay estudiante 3ms
+ × src/app/api/metrics/route.test.ts > GET /api/metrics > debe calcular correctamente el porcentaje por asignatura 4ms
+   → Body is unusable: Body has already been read
+ ✓ src/app/api/metrics/route.test.ts > GET /api/metrics > debe manejar errores correctamente 1ms
+ × src/app/api/metrics/route.test.ts > GET /api/metrics > debe agrupar múltiples métricas de la misma asignatura 2ms
+   → Body is unusable: Body has already been read
+ ✓ src/app/api/health/route.test.ts > GET /api/health > debe retornar estado healthy cuando todo está bien 80ms
+ ✓ src/app/api/health/route.test.ts > GET /api/health > debe retornar estado degraded cuando la base de datos es lenta 1104ms
+ ✓ src/app/api/health/route.test.ts > GET /api/health > debe retornar estado unhealthy cuando la base de datos falla 3ms
+ ✓ src/app/api/health/route.test.ts > GET /api/health > debe incluir información de memoria cuando está disponible 1ms
+ ✓ src/lib/performance/performance.guard.test.ts > Performance Regression Guard > API Performance > API response debe cumplir con baseline (< 500ms) 108ms
+ ✓ src/lib/performance/performance.guard.test.ts > Performance Regression Guard > API Performance > API crítica debe cumplir con baseline (< 200ms) 53ms
+ ✓ src/lib/performance/performance.guard.test.ts > Performance Regression Guard > Database Performance > Query simple debe cumplir con baseline (< 100ms) 62ms
+ ✓ src/lib/performance/performance.guard.test.ts > Performance Regression Guard > Database Performance > Query compleja debe cumplir con baseline (< 500ms) 214ms
+ ✓ src/lib/encryption.test.ts > encryption > encrypt > debe encriptar texto correctamente 723ms
+ ✓ src/lib/encryption.test.ts > encryption > encrypt > debe retornar string vacío si el texto está vacío 1ms
+ ✓ src/lib/performance/performance.guard.test.ts > Performance Regression Guard > SSR Performance > SSR debe cumplir con baseline (< 1000ms) 310ms
+ ✓ src/lib/performance/performance.guard.test.ts > Performance Regression Guard > Client Performance > Hydration debe cumplir con baseline (< 500ms) 203ms
+ ✓ src/app/auth/signin/page.test.tsx > SignInPage > debe renderizar el formulario de inicio de sesión 283ms
+ ✓ src/lib/performance/performance.guard.test.ts > Performance Regression Guard > Client Performance > Initial render debe cumplir con baseline (< 1000ms) 312ms
+ ✓ src/lib/performance/api-baseline.test.ts > API Performance Baseline > API Response Time > debe cumplir con el baseline de API normal (< 500ms) 117ms
+ ✓ src/lib/performance/api-baseline.test.ts > API Performance Baseline > API Response Time > debe cumplir con el baseline de API crítica (< 200ms) 59ms
+ ✓ src/app/dashboard/page.test.tsx > DashboardPage > debe mostrar estado de carga inicialmente 60ms
+ ✓ src/lib/performance/api-baseline.test.ts > API Performance Baseline > Database Query Time > debe cumplir con el baseline de query simple (< 100ms) 61ms
+ ✓ src/app/dashboard/page.test.tsx > DashboardPage > debe mostrar datos del estudiante cuando se cargan 167ms
+ ✓ src/lib/performance/api-baseline.test.ts > API Performance Baseline > Database Query Time > debe cumplir con el baseline de query compleja (< 500ms) 216ms
+ ✓ src/lib/encryption.test.ts > encryption > encrypt > debe lanzar error si falla la encriptación 594ms
+ ✓ src/lib/performance/performance.guard.test.ts > Performance Regression Guard > Regression Detection > debe fallar si API response excede baseline 601ms
+ ✓ src/app/dashboard/page.test.tsx > DashboardPage > debe mostrar mensaje de error si no hay estudiante 233ms
+ ✓ src/app/dashboard/page.test.tsx > DashboardPage > debe mostrar gráficos cuando hay datos 58ms
+ ✓ src/app/dashboard/page.test.tsx > DashboardPage > debe mostrar mensaje cuando no hay intentos 69ms
+ ✓ src/lib/performance/performance.guard.test.ts > Performance Regression Guard > Regression Detection > debe fallar si API crítica excede baseline 264ms
+ ✓ src/lib/performance/api-baseline.test.ts > API Performance Baseline > SSR Time > debe cumplir con el baseline de SSR (< 1000ms) 312ms
+ ✓ src/app/dashboard/page.test.tsx > DashboardPage > debe manejar errores en la respuesta de métricas 104ms
+ ✓ src/app/dashboard/page.test.tsx > DashboardPage > debe manejar cuando metricsData no es un array 144ms
+ ✓ src/app/dashboard/page.test.tsx > DashboardPage > debe manejar cuando studentData tiene error 43ms
+ ✓ src/app/dashboard/page.test.tsx > DashboardPage > debe manejar cuando metricsData es array con error en primer elemento 27ms
+ ✓ src/app/auth/signin/page.test.tsx > SignInPage > debe mostrar error si el email es inválido 1686ms
+ ✓ src/app/dashboard/page.test.tsx > DashboardPage > debe manejar cuando metricsRes no es ok 34ms
+ ✓ src/app/dashboard/page.test.tsx > DashboardPage > debe mostrar badge "default" para métricas con porcentaje >= 70 68ms
+ ✓ src/app/dashboard/page.test.tsx > DashboardPage > debe mostrar badge "secondary" para métricas con porcentaje >= 50 y < 70 65ms
+ ✓ src/app/dashboard/page.test.tsx > DashboardPage > debe mostrar badge "destructive" para métricas con porcentaje < 50 58ms
+ ✓ src/app/dashboard/page.test.tsx > DashboardPage > debe mostrar badge "default" para intentos con estado completado 59ms
+ ✓ src/app/dashboard/page.test.tsx > DashboardPage > debe mostrar badge "secondary" para intentos con estado diferente a completado 53ms
+ ✓ src/lib/encryption.test.ts > encryption > encrypt > debe encriptar diferentes textos de forma diferente 1341ms
+ ✓ src/app/auth/signin/page.test.tsx > SignInPage > debe llamar a signIn con las credenciales correctas 1378ms
+node.exe : Not implemented: navigation to another Document
+En línea: 1 Carácter: 1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Not implemented...nother Document:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ ✓ src/components/ui/select-trigger.test.tsx > SelectTrigger > renderiza un trigger accesible (role=combobox o button) 707ms
+ ✓ src/components/ui/select-trigger.test.tsx > SelectTrigger > NO tiene atributo name por defecto (no es input) 58ms
+ ✓ src/components/ui/select-trigger.test.tsx > SelectTrigger > si alguien intenta pasar name, NO debe aparecer en el DOM 61ms
+ ✓ src/components/ui/select-trigger.test.tsx > SelectTrigger > puede tener id (si se entrega) y NO implica name 62ms
+ ✓ src/app/auth/signin/page.test.tsx > SignInPage > debe mostrar error si signIn retorna error 1549ms
+ ✓ src/lib/encryption.test.ts > encryption > encrypt > debe poder desencriptar lo que encripta 1628ms
+ ✓ src/lib/encryption.test.ts > encryption > decrypt > debe desencriptar texto encriptado correctamente 1868ms
+ ✓ src/lib/encryption.test.ts > encryption > decrypt > debe lanzar error si el texto encriptado está vacío 3ms
+ ✓ src/app/auth/signin/page.test.tsx > SignInPage > debe normalizar el email a minúsculas 1618ms
+Not implemented: navigation to another Document
+ ✓ src/lib/encryption.test.ts > encryption > decrypt > debe intentar método legacy si AES falla 637ms
+ ✓ src/app/auth/signin/page.test.tsx > SignInPage > debe manejar errores de red o excepciones 2427ms
+ ✓ src/app/api/notes/versions/timeline/route.test.ts > GET /api/notes/versions/timeline > debe retornar timeline agrupado por mes por defecto 174ms
+ ✓ src/app/api/notes/versions/timeline/route.test.ts > GET /api/notes/versions/timeline > debe retornar 401 si no está autenticado 4ms
+ ✓ src/app/api/notes/versions/timeline/route.test.ts > GET /api/notes/versions/timeline > debe validar vista inválida 7ms
+ ✓ src/app/api/notes/versions/timeline/route.test.ts > GET /api/notes/versions/timeline > debe agrupar por día cuando view=day 6ms
+ ✓ src/app/api/notes/versions/timeline/route.test.ts > GET /api/notes/versions/timeline > debe agrupar por semana cuando view=week 5ms
+ ✓ src/app/api/notes/versions/timeline/route.test.ts > GET /api/notes/versions/timeline > debe agrupar por año cuando view=year 3ms
+ ✓ src/app/api/notes/versions/timeline/route.test.ts > GET /api/notes/versions/timeline > debe filtrar por noteId si se proporciona 12ms
+ ✓ src/app/api/notes/versions/timeline/route.test.ts > GET /api/notes/versions/timeline > debe filtrar por rango de fechas 5ms
+ ✓ src/app/api/notes/versions/timeline/route.test.ts > GET /api/notes/versions/timeline > debe incluir versión actual por defecto 5ms
+ ✓ src/app/api/notes/versions/timeline/route.test.ts > GET /api/notes/versions/timeline > debe excluir versión actual si includeCurrent=false 3ms
+ ✓ src/app/api/notes/versions/timeline/route.test.ts > GET /api/notes/versions/timeline > debe retornar grupos vacíos si no hay versiones 4ms
+ ✓ src/app/api/notes/versions/timeline/route.test.ts > GET /api/notes/versions/timeline > debe incluir estadísticas en la respuesta 8ms
+ ✓ src/app/api/notes/versions/timeline/route.test.ts > GET /api/notes/versions/timeline > debe incluir rango de fechas en la respuesta 4ms
+ ✓ src/app/api/notes/versions/timeline/route.test.ts > GET /api/notes/versions/timeline > debe manejar errores correctamente 15ms
+ ✓ src/lib/encryption.test.ts > encryption > decrypt > debe lanzar error si ambos métodos fallan 1402ms
+ ✓ src/hooks/useExams.test.ts > useExams > debe cargar exámenes correctamente 123ms
+ ✓ src/hooks/useExams.test.ts > useExams > debe manejar estados de loading 7ms
+ ✓ src/hooks/useExams.test.ts > useExams > debe manejar errores de API 95ms
+ ✓ src/lib/performance/measure.test.ts > measurePerformance > debe medir el tiempo de una operación asíncrona 63ms
+ ✓ src/hooks/useExams.test.ts > useExams > debe filtrar exámenes por búsqueda 167ms
+ ✓ src/lib/encryption.test.ts > encryption > decrypt > debe manejar texto encriptado con AES correctamente 2404ms
+ ✓ src/hooks/useExams.test.ts > useExams > debe extraer subjects únicos 79ms
+ ✓ src/lib/performance/measure.test.ts > measurePerformance > debe detectar cuando no se cumple el baseline 265ms
+ ✓ src/lib/performance/measure.test.ts > measurePerformance > debe propagar errores con información de performance 5ms
+ ✓ src/lib/performance/measure.test.ts > measurePerformanceSync > debe medir el tiempo de una operación síncrona 2ms
+ ✓ src/lib/performance/measure.test.ts > measurePerformanceBatch > debe medir múltiples operaciones en paralelo 129ms
+ ✓ src/hooks/useExams.test.ts > useExams > debe extraer tipos únicos 108ms
+ ✓ src/hooks/useExams.test.ts > useExams > debe actualizar cuando cambian los filtros 142ms
+ ✓ src/hooks/useExams.test.ts > useExams > debe validar estructura de exámenes 135ms
+ ✓ src/components/ExamCard.test.tsx > ExamCard > debe renderizar información del examen 291ms
+ ✓ src/lib/encryption.test.ts > encryption > decrypt - método legacy > debe desencriptar texto legacy correctamente 900ms
+ ✓ src/components/ExamCard.test.tsx > ExamCard > debe llamar onStartExam al hacer click 78ms
+ ✓ src/components/ExamCard.test.tsx > ExamCard > debe mostrar badge de asignatura 47ms
+ ✓ src/components/ExamCard.test.tsx > ExamCard > debe manejar descripción nula 77ms
+ ✓ src/components/ExamCard.test.tsx > ExamCard > debe manejar examen sin tiempo límite 40ms
+ ✓ src/components/ExamCard.test.tsx > ExamCard > debe evitar re-renders innecesarios con React.memo 51ms
+ ✓ src/lib/encryption.test.ts > encryption > decrypt - método legacy > debe manejar texto legacy sin clave al final 858ms
+ ✓ src/app/api/analytics/time/route.test.ts > GET /api/analytics/time > Autenticación > debe retornar 401 si no está autenticado 68ms
+ ✓ src/app/api/analytics/time/route.test.ts > GET /api/analytics/time > Autenticación > debe retornar 404 si no hay estudiante asociado 2ms
+ ✓ src/app/api/analytics/time/route.test.ts > GET /api/analytics/time > Validación de query parameters > debe aceptar query params válidos 11ms
+ ✓ src/app/api/analytics/time/route.test.ts > GET /api/analytics/time > Validación de query parameters > debe retornar 400 si period es inválido 3ms
+ ✓ src/app/api/analytics/time/route.test.ts > GET /api/analytics/time > Validación de query parameters > debe retornar 400 si groupBy es inválido 3ms
+ ✓ src/app/api/analytics/time/route.test.ts > GET /api/analytics/time > Validación de query parameters > debe usar period "all" por defecto 2ms
+ ✓ src/app/api/analytics/time/route.test.ts > GET /api/analytics/time > Validación de query parameters > debe usar groupBy "difficulty" por defecto 2ms
+ ✓ src/app/api/analytics/time/route.test.ts > GET /api/analytics/time > Validación de query parameters > debe aceptar todos los períodos válidos 12ms
+ ✓ src/app/api/analytics/time/route.test.ts > GET /api/analytics/time > Validación de query parameters > debe aceptar todos los groupBy válidos 7ms
+ ✓ src/app/api/analytics/time/route.test.ts > GET /api/analytics/time > Filtrado por período > debe filtrar respuestas por período 30d 10ms
+ ✓ src/app/api/analytics/time/route.test.ts > GET /api/analytics/time > Filtrado por período > debe incluir todas las respuestas cuando period es "all" 3ms
+ ✓ src/app/api/analytics/time/route.test.ts > GET /api/analytics/time > Filtrado por asignatura > debe filtrar respuestas por subjectId cuando se proporciona 2ms
+ ✓ src/app/api/analytics/time/route.test.ts > GET /api/analytics/time > Filtrado por asignatura > debe incluir todas las asignaturas cuando subjectId no se proporciona 1ms
+ ✓ src/app/api/analytics/time/route.test.ts > GET /api/analytics/time > Agrupación de datos > debe agrupar por dificultad cuando groupBy es "difficulty" 5ms
+ ✓ src/app/api/analytics/time/route.test.ts > GET /api/analytics/time > Agrupación de datos > debe agrupar por asignatura cuando groupBy es "subject" 2ms
+ ✓ src/app/api/analytics/time/route.test.ts > GET /api/analytics/time > Agrupación de datos > debe agrupar por tema cuando groupBy es "topic" 6ms
+ ✓ src/app/api/analytics/time/route.test.ts > GET /api/analytics/time > Agrupación de datos > debe agrupar por correctitud cuando groupBy es "correctness" 2ms
+ ✓ src/app/api/analytics/time/route.test.ts > GET /api/analytics/time > Cálculo de estadísticas > debe calcular estadísticas de tiempo correctamente 3ms
+ ✓ src/app/api/analytics/time/route.test.ts > GET /api/analytics/time > Cálculo de estadísticas > debe calcular eficiencia vs tiempo ideal 2ms
+ ✓ src/app/api/analytics/time/route.test.ts > GET /api/analytics/time > Cálculo de estadísticas > debe calcular estadísticas por grupo correctamente 2ms
+ ✓ src/app/api/analytics/time/route.test.ts > GET /api/analytics/time > Combinación de respuestas > debe combinar respuestas de intentos y práctica 3ms
+ ✓ src/app/api/analytics/time/route.test.ts > GET /api/analytics/time > Combinación de respuestas > debe filtrar solo respuestas con tiempoSegundos no null 1ms
+ ✓ src/app/api/analytics/time/route.test.ts > GET /api/analytics/time > Generación de recomendaciones > debe generar recomendación si el tiempo promedio es mayor al ideal 2ms
+ ✓ src/app/api/analytics/time/route.test.ts > GET /api/analytics/time > Generación de recomendaciones > debe generar recomendación si el tiempo promedio es menor al ideal 3ms
+ ✓ src/app/api/analytics/time/route.test.ts > GET /api/analytics/time > Generación de recomendaciones > debe generar recomendación para grupos lentos 2ms
+ ✓ src/app/api/analytics/time/route.test.ts > GET /api/analytics/time > Casos borde > debe manejar estudiante sin respuestas con tiempo 2ms
+ ✓ src/app/api/analytics/time/route.test.ts > GET /api/analytics/time > Casos borde > debe manejar respuestas con tiempoSegundos inválido 2ms
+ ✓ src/app/api/analytics/time/route.test.ts > GET /api/analytics/time > Casos borde > debe manejar preguntas sin tema 1ms
+ ✓ src/app/api/analytics/time/route.test.ts > GET /api/analytics/time > Casos borde > debe manejar preguntas sin asignatura 1ms
+ ✓ src/app/api/analytics/time/route.test.ts > GET /api/analytics/time > Estructura de respuesta > debe retornar estructura correcta con todos los campos requeridos 1ms
+ ✓ src/app/api/analytics/time/route.test.ts > GET /api/analytics/time > Estructura de respuesta > debe incluir generatedAt en formato ISO 1ms
+ ✓ src/app/api/analytics/time/route.test.ts > GET /api/analytics/time > Manejo de errores > debe manejar errores de base de datos correctamente 11ms
+ ✓ src/app/api/analytics/time/route.test.ts > GET /api/analytics/time > Manejo de errores > debe manejar errores inesperados correctamente 1ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > GET /api/attempts/[id] > debe retornar 400 si el ID no tiene formato CUID válido 68ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > GET /api/attempts/[id] > debe retornar 401 si no está autenticado 1ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > GET /api/attempts/[id] > debe retornar 404 si el intento no existe 2ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > GET /api/attempts/[id] > debe retornar 403 si el intento no pertenece al estudiante 3ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > GET /api/attempts/[id] > debe retornar el intento completo con todas sus relaciones 7ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > GET /api/attempts/[id] > debe ordenar las preguntas del examen por orden ascendente 2ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > GET /api/attempts/[id] > debe manejar circuit breaker fallback correctamente 1ms
+ ✓ src/lib/encryption.test.ts > encryption > decrypt - método legacy > debe manejar clave antigua por defecto 895ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > GET /api/attempts/[id] > debe manejar errores de base de datos correctamente 13ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > GET /api/attempts/[id] > debe manejar errores al obtener params en catch 4ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > PUT /api/attempts/[id] > debe retornar 400 si el ID no tiene formato CUID válido 7ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > PUT /api/attempts/[id] > debe retornar 401 si no está autenticado 1ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > PUT /api/attempts/[id] > debe retornar 400 si el body no es válido 1ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > PUT /api/attempts/[id] > debe retornar 404 si el intento no existe 2ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > PUT /api/attempts/[id] > debe retornar 403 si el intento no pertenece al estudiante 2ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > PUT /api/attempts/[id] > debe retornar 400 si el intento ya está completado 1ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > PUT /api/attempts/[id] > debe retornar 400 si hay respuestas duplicadas para la misma pregunta 1ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > PUT /api/attempts/[id] > debe retornar 400 si el número de respuestas excede el total de preguntas 1ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > PUT /api/attempts/[id] > debe retornar 400 si una pregunta no pertenece al examen 3ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > PUT /api/attempts/[id] > debe retornar 400 si una opción no pertenece a su pregunta 1ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > PUT /api/attempts/[id] > debe retornar 400 si el examen no tiene preguntas válidas 1ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > PUT /api/attempts/[id] > debe retornar 400 si la transición de estado es inválida 1ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > PUT /api/attempts/[id] > debe permitir transición de en_progreso a completado 3ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > PUT /api/attempts/[id] > debe permitir transición de en_progreso a cancelado 1ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > PUT /api/attempts/[id] > debe actualizar respuestas correctamente 3ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > PUT /api/attempts/[id] > debe recalcular estadísticas después de actualizar respuestas 3ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > PUT /api/attempts/[id] > debe calcular duración correctamente al completar 2ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > PUT /api/attempts/[id] > debe retornar 400 si la duración excede 24 horas 1ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > PUT /api/attempts/[id] > debe manejar duración negativa (usar 0) 1ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > PUT /api/attempts/[id] > debe manejar startedAt inválido 1ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > PUT /api/attempts/[id] > debe invalidar caché después de actualizar 4ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > PUT /api/attempts/[id] > debe manejar errores de circuit breaker 2ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > PUT /api/attempts/[id] > debe manejar errores al guardar respuestas 3ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > PUT /api/attempts/[id] > debe manejar errores al obtener params en catch 2ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > PUT /api/attempts/[id] > debe manejar actualización solo de estado sin respuestas 1ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > PUT /api/attempts/[id] > debe manejar actualización solo de respuestas sin estado 4ms
+ ✓ src/app/api/attempts/[id]/route.test.ts > PUT /api/attempts/[id] > debe manejar respuestas con totalPreguntas = 0 1ms
+ ✓ src/components/ErrorBoundary.test.tsx > ErrorBoundary > debe renderizar children cuando no hay error 60ms
+ ✓ src/components/ErrorBoundary.test.tsx > ErrorBoundary > debe mostrar UI de error cuando hay error 47ms
+ ✓ src/components/ErrorBoundary.test.tsx > ErrorBoundary > debe mostrar mensaje de error en desarrollo 19ms
+ ✓ src/components/ErrorBoundary.test.tsx > ErrorBoundary > debe llamar onError callback si está definido 22ms
+ ✓ src/components/ErrorBoundary.test.tsx > ErrorBoundary > debe permitir resetear el error 37ms
+ ✓ src/components/ErrorBoundary.test.tsx > ErrorBoundary > debe redirigir a inicio si se solicita 15ms
+ ✓ src/components/ErrorBoundary.test.tsx > ErrorBoundary > debe usar fallback personalizado si se proporciona 6ms
+ ✓ src/components/ErrorBoundary.test.tsx > ErrorBoundary > debe manejar múltiples errores 25ms
+ ✓ src/lib/encryption.test.ts > encryption > migrateEncryption > debe migrar texto legacy a AES correctamente 1521ms
+ ✓ src/app/api/analytics/comparison/route.test.ts > GET /api/analytics/comparison > Autenticación > debe retornar 401 si no está autenticado 60ms
+ ✓ src/app/api/analytics/comparison/route.test.ts > GET /api/analytics/comparison > Autenticación > debe retornar 404 si no hay estudiante asociado 3ms
+ ✓ src/app/api/analytics/comparison/route.test.ts > GET /api/analytics/comparison > Validación de query parameters > debe aceptar query params válidos 9ms
+ ✓ src/app/api/analytics/comparison/route.test.ts > GET /api/analytics/comparison > Validación de query parameters > debe retornar 400 si period es inválido 4ms
+ ✓ src/app/api/analytics/comparison/route.test.ts > GET /api/analytics/comparison > Validación de query parameters > debe usar period "all" por defecto 1ms
+ ✓ src/app/api/analytics/comparison/route.test.ts > GET /api/analytics/comparison > Validación de query parameters > debe aceptar todos los períodos válidos 8ms
+ ✓ src/app/api/analytics/comparison/route.test.ts > GET /api/analytics/comparison > Filtrado por período > debe filtrar métricas por período 30d 7ms
+ ✓ src/app/api/analytics/comparison/route.test.ts > GET /api/analytics/comparison > Filtrado por período > debe incluir todas las métricas cuando period es "all" 3ms
+ ✓ src/app/api/analytics/comparison/route.test.ts > GET /api/analytics/comparison > Filtrado por asignatura > debe filtrar métricas por subjectId cuando se proporciona 2ms
+ ✓ src/app/api/analytics/comparison/route.test.ts > GET /api/analytics/comparison > Filtrado por asignatura > debe incluir todas las asignaturas cuando subjectId no se proporciona 3ms
+ ✓ src/app/api/analytics/comparison/route.test.ts > GET /api/analytics/comparison > Cálculo de comparación > debe calcular comparación correctamente con métricas del estudiante 3ms
+ ✓ src/app/api/analytics/comparison/route.test.ts > GET /api/analytics/comparison > Cálculo de comparación > debe agrupar métricas por asignatura 2ms
+ ✓ src/app/api/analytics/comparison/route.test.ts > GET /api/analytics/comparison > Cálculo de comparación > debe calcular estadísticas descriptivas correctamente 3ms
+ ✓ src/app/api/analytics/comparison/route.test.ts > GET /api/analytics/comparison > Casos borde > debe manejar estudiante sin métricas 2ms
+ ✓ src/app/api/analytics/comparison/route.test.ts > GET /api/analytics/comparison > Casos borde > debe manejar métricas con totalPreguntas = 0 1ms
+ ✓ src/app/api/analytics/comparison/route.test.ts > GET /api/analytics/comparison > Casos borde > debe filtrar métricas con menos de 10 preguntas en comparación general 2ms
+ ✓ src/app/api/analytics/comparison/route.test.ts > GET /api/analytics/comparison > Casos borde > debe manejar métricas con valores NaN o Infinity 1ms
+ ✓ src/app/api/analytics/comparison/route.test.ts > GET /api/analytics/comparison > Estructura de respuesta > debe retornar estructura correcta con todos los campos requeridos 6ms
+ ✓ src/app/api/analytics/comparison/route.test.ts > GET /api/analytics/comparison > Estructura de respuesta > debe incluir generatedAt en formato ISO 1ms
+ ✓ src/app/api/analytics/comparison/route.test.ts > GET /api/analytics/comparison > Manejo de errores > debe manejar errores de base de datos correctamente 9ms
+ ✓ src/app/api/analytics/comparison/route.test.ts > GET /api/analytics/comparison > Manejo de errores > debe manejar errores inesperados correctamente 2ms
+ ✓ src/app/api/analytics/comparison/route.test.ts > GET /api/analytics/comparison > Tests de regresión - Funciones helper internas > debe calcular percentil correctamente para valores extremos 2ms
+ ✓ src/app/api/analytics/comparison/route.test.ts > GET /api/analytics/comparison > Tests de regresión - Funciones helper internas > debe calcular estadísticas correctamente con array vacío 1ms
+ ✓ src/app/api/bookmarks/check/route.test.ts > GET /api/bookmarks/check > debe retornar 401 si no está autenticado 75ms
+ ✓ src/app/api/bookmarks/check/route.test.ts > GET /api/bookmarks/check > debe retornar 404 si no hay estudiante 6ms
+ ✓ src/app/api/bookmarks/check/route.test.ts > GET /api/bookmarks/check > debe retornar 400 si questionIds no está presente 2ms
+ ✓ src/app/api/bookmarks/check/route.test.ts > GET /api/bookmarks/check > debe retornar 400 si questionIds está vacío 3ms
+ ✓ src/app/api/bookmarks/check/route.test.ts > GET /api/bookmarks/check > debe verificar un solo questionId como bookmarked 8ms
+ ✓ src/app/api/bookmarks/check/route.test.ts > GET /api/bookmarks/check > debe verificar un solo questionId como no bookmarked 10ms
+ ✓ src/app/api/bookmarks/check/route.test.ts > GET /api/bookmarks/check > debe verificar múltiples questionIds separados por comas 4ms
+ ✓ src/app/api/bookmarks/check/route.test.ts > GET /api/bookmarks/check > debe filtrar IDs vacíos del string separado por comas 5ms
+ ✓ src/app/api/bookmarks/check/route.test.ts > GET /api/bookmarks/check > debe usar el studentId del usuario autenticado 7ms
+ ✓ src/app/api/bookmarks/check/route.test.ts > GET /api/bookmarks/check > debe manejar muchos questionIds correctamente 3ms
+ ✓ src/app/api/bookmarks/check/route.test.ts > GET /api/bookmarks/check > debe retornar array vacío si no hay bookmarks para ningún ID 2ms
+ ✓ src/app/api/bookmarks/check/route.test.ts > GET /api/bookmarks/check > debe manejar errores de base de datos correctamente 15ms
+ ✓ src/app/api/bookmarks/check/route.test.ts > GET /api/bookmarks/check > debe manejar errores no-Error correctamente 3ms
+ ✓ src/app/api/bookmarks/check/route.test.ts > GET /api/bookmarks/check > debe preservar el orden de los questionIds en la respuesta 1ms
+ ✓ src/components/ux/ux.guard.test.tsx > UX Technical Regression Guard > UXBoundary - Estados Obligatorios > nunca renderiza pantalla en blanco 77ms
+ ✓ src/components/ux/ux.guard.test.tsx > UX Technical Regression Guard > UXBoundary - Estados Obligatorios > siempre muestra loading cuando isLoading es true 44ms
+ ✓ src/components/ux/ux.guard.test.tsx > UX Technical Regression Guard > UXBoundary - Estados Obligatorios > siempre muestra error cuando hay error 30ms
+ ✓ src/components/ux/ux.guard.test.tsx > UX Technical Regression Guard > UXBoundary - Estados Obligatorios > siempre muestra empty cuando isEmpty es true 33ms
+ ✓ src/components/ux/ux.guard.test.tsx > UX Technical Regression Guard > UXBoundary - Prioridad de Estados > prioriza loading sobre error 13ms
+ ✓ src/components/ux/ux.guard.test.tsx > UX Technical Regression Guard > UXBoundary - Prioridad de Estados > prioriza error sobre empty 11ms
+ ✓ src/components/ux/ux.guard.test.tsx > UX Technical Regression Guard > UXBoundary - Prioridad de Estados > prioriza empty sobre content 14ms
+ ✓ src/components/ux/ux.guard.test.tsx > UX Technical Regression Guard > LoadingState - Contrato > siempre muestra mensaje 7ms
+ ✓ src/components/ux/ux.guard.test.tsx > UX Technical Regression Guard > LoadingState - Contrato > muestra descripción opcional 12ms
+ ✓ src/components/ux/ux.guard.test.tsx > UX Technical Regression Guard > EmptyState - Contrato > siempre muestra título 16ms
+ ✓ src/components/ux/ux.guard.test.tsx > UX Technical Regression Guard > EmptyState - Contrato > muestra descripción opcional 8ms
+ ✓ src/components/ux/ux.guard.test.tsx > UX Technical Regression Guard > EmptyState - Contrato > muestra acción opcional 13ms
+ ✓ src/components/ux/ux.guard.test.tsx > UX Technical Regression Guard > ErrorState - Contrato > siempre muestra mensaje de error 12ms
+ ✓ src/components/ux/ux.guard.test.tsx > UX Technical Regression Guard > ErrorState - Contrato > muestra acción de retry cuando está disponible 8ms
+ ✓ src/components/ux/ux.guard.test.tsx > UX Technical Regression Guard > ErrorState - Contrato > muestra acción de back cuando está disponible 12ms
+ ✓ src/components/ux/ux.guard.test.tsx > UX Technical Regression Guard > ErrorState - Contrato > nunca muestra stack trace 9ms
+ ✓ src/lib/errors/error-handler.test.ts > Error Handler > handleError > handles ContractError correctly 18ms
+ ✓ src/lib/errors/error-handler.test.ts > Error Handler > handleError > handles DomainError correctly 3ms
+ ✓ src/lib/errors/error-handler.test.ts > Error Handler > handleError > handles SystemError correctly 4ms
+ ✓ src/lib/errors/error-handler.test.ts > Error Handler > handleError > converts standard Error to SystemError 9ms
+ ✓ src/lib/errors/error-handler.test.ts > Error Handler > handleError > converts unknown error to SystemError 2ms
+ ✓ src/lib/errors/error-handler.test.ts > Error Handler > withErrorHandler > returns handler result when no error 2ms
+ ✓ src/lib/errors/error-handler.test.ts > Error Handler > withErrorHandler > handles error in handler 4ms
+ ✓ src/lib/errors/error-handler.test.ts > Error Handler > withErrorHandler > never throws, always returns NextResponse 4ms
+ ✓ src/lib/errors/error-handler.test.ts > Error Handler > error type checks > isContractError returns true for ContractError 1ms
+ ✓ src/lib/errors/error-handler.test.ts > Error Handler > error type checks > isContractError returns false for other errors 2ms
+ ✓ src/lib/errors/error-handler.test.ts > Error Handler > error type checks > isDomainError returns true for DomainError 1ms
+ ✓ src/lib/errors/error-handler.test.ts > Error Handler > error type checks > isSystemError returns true for SystemError 0ms
+ ✓ src/lib/errors/error-handler.test.ts > Error Handler > specific error types > NotFoundError has correct status and code 2ms
+ ✓ src/lib/errors/error-handler.test.ts > Error Handler > specific error types > ConflictError has correct status and code 4ms
+ ✓ src/lib/errors/error-handler.test.ts > Error Handler > specific error types > UnauthorizedError has correct status and code 2ms
+ ✓ src/lib/errors/error-handler.test.ts > Error Handler > specific error types > ForbiddenError has correct status and code 1ms
+ ✓ src/lib/errors/error-handler.test.ts > Error Handler > error observability > ContractError includes zodError in observable 1ms
+ ✓ src/lib/errors/error-handler.test.ts > Error Handler > error observability > SystemError includes originalError in observable 2ms
+ ✓ src/lib/encryption.test.ts > encryption > migrateEncryption > debe lanzar error si el texto legacy no se puede desencriptar 724ms
+ ✓ src/app/api/attempts/[id]/submit/route.test.ts > POST /api/attempts/[id]/submit > debe retornar 400 si el ID no es CUID válido 76ms
+ ✓ src/app/api/attempts/[id]/submit/route.test.ts > POST /api/attempts/[id]/submit > debe retornar 401 si no está autenticado 2ms
+ ✓ src/app/api/attempts/[id]/submit/route.test.ts > POST /api/attempts/[id]/submit > debe retornar 404 si el intento no existe 3ms
+ ✓ src/app/api/attempts/[id]/submit/route.test.ts > POST /api/attempts/[id]/submit > debe retornar 403 si el intento no pertenece al estudiante 3ms
+ ✓ src/app/api/attempts/[id]/submit/route.test.ts > POST /api/attempts/[id]/submit > debe retornar 400 si el intento ya está completado 2ms
+ ✓ src/app/api/attempts/[id]/submit/route.test.ts > POST /api/attempts/[id]/submit > debe completar el intento correctamente 7ms
+ ✓ src/app/api/attempts/[id]/submit/route.test.ts > POST /api/attempts/[id]/submit > debe calcular puntaje PAES si existe ScoreTable 5ms
+ ✓ src/app/api/attempts/[id]/submit/route.test.ts > POST /api/attempts/[id]/submit > debe actualizar métricas de rendimiento por tema 4ms
+ ✓ src/app/api/attempts/[id]/submit/route.test.ts > POST /api/attempts/[id]/submit > debe invalidar caché después de completar 5ms
+ ✓ src/app/api/attempts/[id]/submit/route.test.ts > POST /api/attempts/[id]/submit > debe validar duración máxima (24 horas) 2ms
+ ✓ src/app/api/user/route.test.ts > GET /api/user > debe retornar 401 si no está autenticado 79ms
+ ✓ src/app/api/user/route.test.ts > GET /api/user > debe retornar información del usuario 9ms
+ ✓ src/app/api/user/route.test.ts > GET /api/user > debe retornar 404 si el usuario no existe 2ms
+ ✓ src/app/api/user/route.test.ts > GET /api/user > debe incluir información del estudiante si existe 1ms
+ ✓ src/app/api/user/route.test.ts > PUT /api/user > debe retornar 401 si no está autenticado 5ms
+ ✓ src/app/api/user/route.test.ts > PUT /api/user > debe retornar 400 si el body no es válido 1ms
+ ✓ src/app/api/user/route.test.ts > PUT /api/user > debe actualizar el nombre del usuario 3ms
+ ✓ src/app/api/user/route.test.ts > PUT /api/user > debe actualizar el email del usuario 2ms
+ ✓ src/app/api/user/route.test.ts > PUT /api/user > debe retornar 400 si el email ya está en uso 4ms
+ ✓ src/app/api/user/route.test.ts > PUT /api/user > debe actualizar el nombre del estudiante si existe 3ms
+ ✓ src/app/api/user/route.test.ts > PUT /api/user > debe invalidar caché después de actualizar 5ms
+ ✓ src/app/api/challenges/route.test.ts > GET /api/challenges > debe retornar 401 si no está autenticado 81ms
+ ✓ src/app/api/challenges/route.test.ts > GET /api/challenges > debe retornar todos los desafíos por defecto 8ms
+ ✓ src/app/api/challenges/route.test.ts > GET /api/challenges > debe filtrar por type=sent 10ms
+ ✓ src/app/api/challenges/route.test.ts > GET /api/challenges > debe filtrar por type=received 2ms
+ ✓ src/app/api/challenges/route.test.ts > GET /api/challenges > debe filtrar por type=active 3ms
+ ✓ src/app/api/challenges/route.test.ts > GET /api/challenges > debe filtrar por status específico 3ms
+ ✓ src/app/api/challenges/route.test.ts > GET /api/challenges > debe manejar errores correctamente 8ms
+ ✓ src/app/api/challenges/route.test.ts > POST /api/challenges > debe retornar 401 si no está autenticado 7ms
+ ✓ src/app/api/challenges/route.test.ts > POST /api/challenges > debe retornar 400 si el body no es válido 8ms
+ ✓ src/app/api/challenges/route.test.ts > POST /api/challenges > debe retornar 404 si el examen no existe 4ms
+ ✓ src/app/api/challenges/route.test.ts > POST /api/challenges > debe retornar 400 si hay menos de 2 estudiantes 2ms
+ ✓ src/app/api/challenges/route.test.ts > POST /api/challenges > debe crear un desafío correctamente 4ms
+ ✓ src/app/api/challenges/route.test.ts > POST /api/challenges > debe retornar 409 si ya existe un desafío activo 2ms
+ ✓ src/app/api/challenges/route.test.ts > POST /api/challenges > debe manejar errores correctamente 2ms
+ ✓ src/components/ux/UXBoundary.test.tsx > UXBoundary > debe mostrar loading cuando isLoading es true 98ms
+ ✓ src/components/ux/UXBoundary.test.tsx > UXBoundary > debe mostrar error cuando hay error 18ms
+ ✓ src/components/ux/UXBoundary.test.tsx > UXBoundary > debe mostrar empty cuando isEmpty es true 13ms
+ ✓ src/components/ux/UXBoundary.test.tsx > UXBoundary > debe mostrar children cuando todo está bien 8ms
+ ✓ src/components/ux/UXBoundary.test.tsx > UXBoundary > debe priorizar loading sobre error 13ms
+ ✓ src/components/ux/UXBoundary.test.tsx > UXBoundary > debe priorizar error sobre empty 8ms
+ ✓ src/components/ux/UXBoundary.test.tsx > UXBoundary > debe mostrar mensaje personalizado de loading 5ms
+ ✓ src/components/ux/UXBoundary.test.tsx > UXBoundary > debe mostrar título y descripción personalizados de empty 12ms
+ ✓ src/lib/encryption.test.ts > encryption > migrateEncryption > debe manejar texto ya encriptado con AES 3146ms
+ ✓ src/app/api/analytics/route.test.ts > GET /api/analytics > Autenticación > debe retornar 401 si no está autenticado 74ms
+ ✓ src/app/api/analytics/route.test.ts > GET /api/analytics > Obtención de datos > debe obtener intentos completados del estudiante 13ms
+ ✓ src/app/api/analytics/route.test.ts > GET /api/analytics > Obtención de datos > debe obtener métricas de performance del estudiante 3ms
+ ✓ src/app/api/analytics/route.test.ts > GET /api/analytics > Obtención de datos > debe limitar intentos a 100 para performance 14ms
+ ✓ src/app/api/analytics/route.test.ts > GET /api/analytics > Formateo de datos > debe formatear intentos correctamente 3ms
+ ✓ src/app/api/analytics/route.test.ts > GET /api/analytics > Formateo de datos > debe filtrar intentos sin exam o subject 1ms
+ ✓ src/app/api/analytics/route.test.ts > GET /api/analytics > Formateo de datos > debe formatear métricas correctamente 2ms
+ ✓ src/app/api/analytics/route.test.ts > GET /api/analytics > Formateo de datos > debe filtrar métricas sin topic o subject 3ms
+ ✓ src/app/api/analytics/route.test.ts > GET /api/analytics > Caché > debe usar caché para analytics 4ms
+ ✓ src/app/api/analytics/route.test.ts > GET /api/analytics > Caché > debe ejecutar fetcher si no hay caché 4ms
+ ✓ src/app/api/analytics/route.test.ts > GET /api/analytics > Generación de análisis avanzado > debe llamar a generateAdvancedAnalytics con datos formateados 4ms
+ ✓ src/app/api/analytics/route.test.ts > GET /api/analytics > Casos borde > debe manejar estudiante sin intentos 3ms
+ ✓ src/app/api/analytics/route.test.ts > GET /api/analytics > Casos borde > debe manejar estudiante sin métricas 1ms
+ ✓ src/app/api/analytics/route.test.ts > GET /api/analytics > Casos borde > debe manejar intentos con porcentaje inválido 0ms
+ ✓ src/app/api/analytics/route.test.ts > GET /api/analytics > Casos borde > debe manejar fechas inválidas en intentos 1ms
+ ✓ src/app/api/analytics/route.test.ts > GET /api/analytics > Estructura de respuesta > debe retornar estructura correcta con todos los campos requeridos 3ms
+ ✓ src/app/api/analytics/route.test.ts > GET /api/analytics > Manejo de errores > debe manejar errores de base de datos correctamente 2ms
+ ✓ src/app/api/analytics/route.test.ts > GET /api/analytics > Manejo de errores > debe manejar errores inesperados correctamente 1ms
+ ✓ src/app/api/analytics/route.test.ts > GET /api/analytics > Logging > debe registrar la petición API 1ms
+ ✓ src/components/ui/textarea.test.tsx > Textarea > auto-genera id cuando no se proporciona 80ms
+ ✓ src/components/ui/textarea.test.tsx > Textarea > NO auto-genera name cuando no se proporciona 8ms
+ ✓ src/components/ui/textarea.test.tsx > Textarea > usa id y name cuando se proporcionan 10ms
+ ✓ src/components/ui/textarea.test.tsx > Textarea > puede tener id sin name (casos no-form) 7ms
+ ✓ src/components/ui/textarea.test.tsx > Textarea > no sobreescribe id si se proporciona 12ms
+ ✓ src/components/ui/textarea.test.tsx > Textarea > no sobreescribe name si se proporciona 5ms
+ ✓ src/components/ui/textarea.test.tsx > Textarea > mantiene props estándar (placeholder) 5ms
+ ✓ src/components/ui/textarea.test.tsx > Textarea > forwardea className 7ms
+ ✓ src/lib/encryption.test.ts > encryption > round-trip encryption > debe mantener integridad en múltiples ciclos de encriptación/desencriptación 3038ms
+ ✓ src/app/api/recommendations/route.test.ts > GET /api/recommendations > debe retornar 401 si no está autenticado 72ms
+ ✓ src/app/api/recommendations/route.test.ts > GET /api/recommendations > debe retornar recomendaciones generadas 6ms
+ ✓ src/app/api/recommendations/route.test.ts > GET /api/recommendations > debe usar caché para recomendaciones 7ms
+ ✓ src/app/api/recommendations/route.test.ts > GET /api/recommendations > debe filtrar métricas sin topic o subject 7ms
+ ✓ src/app/api/recommendations/route.test.ts > GET /api/recommendations > debe limitar exámenes a 50 6ms
+ ✓ src/app/api/recommendations/route.test.ts > GET /api/recommendations > debe manejar errores correctamente 2ms
+ ✓ src/app/api/webhooks/route.test.ts > GET /api/webhooks > debe retornar lista de webhooks del estudiante 102ms
+ ✓ src/app/api/webhooks/route.test.ts > GET /api/webhooks > debe filtrar webhooks por noteId si se proporciona 9ms
+ ✓ src/app/api/webhooks/route.test.ts > GET /api/webhooks > debe retornar 401 si no está autenticado 2ms
+ ✓ src/app/api/webhooks/route.test.ts > GET /api/webhooks > debe incluir estadísticas de deliveries recientes 3ms
+ ✓ src/app/api/webhooks/route.test.ts > POST /api/webhooks > debe crear un webhook correctamente 8ms
+ ✓ src/app/api/webhooks/route.test.ts > POST /api/webhooks > debe validar que la URL sea válida 3ms
+ ✓ src/app/api/webhooks/route.test.ts > POST /api/webhooks > debe validar que se proporcione al menos un evento 3ms
+ ✓ src/app/api/webhooks/route.test.ts > POST /api/webhooks > debe validar eventos inválidos 2ms
+ ✓ src/app/api/webhooks/route.test.ts > POST /api/webhooks > debe permitir el evento wildcard "*" 2ms
+ ✓ src/app/api/webhooks/route.test.ts > POST /api/webhooks > debe validar que la nota pertenezca al estudiante si se especifica 3ms
+ ✓ src/app/api/webhooks/route.test.ts > POST /api/webhooks > debe validar longitud máxima de URL 2ms
+ ✓ src/app/api/webhooks/route.test.ts > POST /api/webhooks > debe validar longitud máxima de secret 2ms
+ ✓ src/app/api/webhooks/route.test.ts > POST /api/webhooks > debe validar longitud máxima de descripción 3ms
+ ✓ src/app/api/webhooks/route.test.ts > POST /api/webhooks > debe retornar 401 si no está autenticado 1ms
+ ✓ src/app/api/webhooks/route.test.ts > PATCH /api/webhooks > debe actualizar un webhook correctamente 6ms
+ ✓ src/app/api/webhooks/route.test.ts > PATCH /api/webhooks > debe validar que el webhook pertenezca al estudiante 1ms
+ ✓ src/app/api/webhooks/route.test.ts > PATCH /api/webhooks > debe requerir el ID del webhook 1ms
+ ✓ src/app/api/webhooks/route.test.ts > PATCH /api/webhooks > debe validar eventos al actualizar 2ms
+ ✓ src/app/api/webhooks/route.test.ts > PATCH /api/webhooks > debe permitir desactivar un webhook 2ms
+ ✓ src/app/api/webhooks/route.test.ts > DELETE /api/webhooks > debe eliminar un webhook correctamente 1ms
+ ✓ src/app/api/webhooks/route.test.ts > DELETE /api/webhooks > debe validar que el webhook pertenezca al estudiante 1ms
+ ✓ src/app/api/webhooks/route.test.ts > DELETE /api/webhooks > debe requerir el ID del webhook 1ms
+ ✓ src/app/api/webhooks/route.test.ts > DELETE /api/webhooks > debe retornar 401 si no está autenticado 1ms
+ ✓ src/app/api/notifications/route.test.ts > GET /api/notifications > debe retornar 401 si no está autenticado 63ms
+ ✓ src/app/api/notifications/route.test.ts > GET /api/notifications > debe retornar todas las notificaciones 7ms
+ ✓ src/app/api/notifications/route.test.ts > GET /api/notifications > debe filtrar por unreadOnly=true 8ms
+ ✓ src/app/api/notifications/route.test.ts > GET /api/notifications > debe filtrar por type 2ms
+ ✓ src/app/api/notifications/route.test.ts > GET /api/notifications > debe validar limit entre 1 y 100 2ms
+ ✓ src/app/api/notifications/route.test.ts > GET /api/notifications > debe ordenar por prioridad (urgent > high > normal > low) 2ms
+ ✓ src/app/api/notifications/route.test.ts > GET /api/notifications > debe filtrar notificaciones expiradas 2ms
+ ✓ src/app/api/notifications/route.test.ts > GET /api/notifications > debe manejar errores de base de datos con OR 3ms
+ ✓ src/app/api/notifications/route.test.ts > POST /api/notifications > debe retornar 401 si no está autenticado 3ms
+ ✓ src/app/api/notifications/route.test.ts > POST /api/notifications > debe retornar 400 si el body no es válido 10ms
+ ✓ src/app/api/notifications/route.test.ts > POST /api/notifications > debe crear notificación correctamente 2ms
+ ✓ src/app/api/notifications/route.test.ts > POST /api/notifications > debe crear notificación con expiresAt 2ms
+ ✓ src/app/api/notifications/route.test.ts > POST /api/notifications > debe validar tipos de notificación válidos 2ms
+ ✓ src/app/api/notifications/route.test.ts > POST /api/notifications > debe validar longitud de title y message 2ms
+ ✓ src/app/api/subjects/route.test.ts > GET /api/subjects > debe retornar todas las asignaturas 83ms
+ ✓ src/app/api/subjects/route.test.ts > GET /api/subjects > debe ordenar asignaturas por nombre ascendente 8ms
+ ✓ src/app/api/subjects/route.test.ts > GET /api/subjects > debe retornar array vacío si no hay asignaturas 2ms
+ ✓ src/app/api/subjects/route.test.ts > GET /api/subjects > debe incluir solo campos seleccionados 3ms
+ ✓ src/app/api/subjects/route.test.ts > GET /api/subjects > debe manejar errores correctamente 2ms
+ ✓ src/lib/encryption.test.ts > encryption > round-trip encryption > debe manejar caracteres especiales correctamente 1528ms
+ ✓ src/lib/encryption.test.ts > encryption > round-trip encryption > debe manejar texto largo correctamente 1588ms
+ ✓ src/lib/encryption.test.ts > encryption > round-trip encryption > debe manejar texto multilínea correctamente 1551ms
+ ✓ src/app/api/exams/[id]/route.test.ts > GET /api/exams/[id] > debe retornar 401 si no está autenticado 73ms
+ ✓ src/app/api/exams/[id]/route.test.ts > GET /api/exams/[id] > debe retornar 400 si el ID no tiene formato CUID válido 2ms
+ ✓ src/app/api/exams/[id]/route.test.ts > GET /api/exams/[id] > debe retornar 400 si el ID está vacío 2ms
+ ✓ src/app/api/exams/[id]/route.test.ts > GET /api/exams/[id] > debe retornar 400 si el ID es null 2ms
+ ✓ src/app/api/exams/[id]/route.test.ts > GET /api/exams/[id] > debe retornar 404 si el examen no existe 2ms
+ ✓ src/app/api/exams/[id]/route.test.ts > GET /api/exams/[id] > debe retornar el examen completo con todas sus relaciones 6ms
+ ✓ src/app/api/exams/[id]/route.test.ts > GET /api/exams/[id] > debe incluir subject con todas sus propiedades 2ms
+ ✓ src/app/api/exams/[id]/route.test.ts > GET /api/exams/[id] > debe incluir questions ordenadas por orden ascendente 9ms
+ ✓ src/app/api/exams/[id]/route.test.ts > GET /api/exams/[id] > debe incluir options para cada question 4ms
+ ✓ src/app/api/exams/[id]/route.test.ts > GET /api/exams/[id] > debe usar caché para obtener el examen 4ms
+ ✓ src/app/api/exams/[id]/route.test.ts > GET /api/exams/[id] > debe ejecutar fetcher si no hay caché 2ms
+ ✓ src/app/api/exams/[id]/route.test.ts > GET /api/exams/[id] > debe manejar errores de base de datos correctamente 2ms
+ ✓ src/app/api/exams/[id]/route.test.ts > GET /api/exams/[id] > debe manejar errores de caché correctamente 6ms
+ ✓ src/app/api/exams/[id]/route.test.ts > GET /api/exams/[id] > debe manejar errores al obtener params en catch 1ms
+ ✓ src/app/api/exams/[id]/route.test.ts > GET /api/exams/[id] > debe manejar examen con todas las propiedades opcionales 1ms
+ ✓ src/app/api/exams/[id]/route.test.ts > GET /api/exams/[id] > debe manejar examen sin questions 3ms
+ ✓ src/app/api/exams/[id]/route.test.ts > GET /api/exams/[id] > debe validar formato CUID con regex correcto 3ms
+ ✓ src/app/api/exams/[id]/route.test.ts > GET /api/exams/[id] > debe aceptar formato CUID válido 1ms
+ ✓ src/app/api/attempts/route.test.ts > GET /api/attempts > debe retornar los intentos del estudiante 78ms
+ ✓ src/app/api/attempts/route.test.ts > GET /api/attempts > debe retornar 401 si no está autenticado 7ms
+ ✓ src/app/api/attempts/route.test.ts > GET /api/attempts > debe retornar 404 si no hay estudiante 6ms
+ ✓ src/app/api/attempts/route.test.ts > GET /api/attempts > debe manejar errores correctamente 7ms
+ ✓ src/app/api/attempts/route.test.ts > GET /api/attempts > debe validar performance de respuesta 11ms
+ ✓ src/app/api/attempts/route.test.ts > GET /api/attempts > debe retornar paginación correcta 9ms
+ ✓ src/components/forms/field-input.test.tsx > FieldInput > en development: si falta name, lanza error (runtime guard) 51ms
+ ✓ src/components/forms/field-input.test.tsx > FieldInput > con name: renderiza sin lanzar 40ms
+ ✓ src/app/api/practice/stats/route.test.ts > GET /api/practice/stats > debe retornar 401 si no está autenticado 61ms
+ ✓ src/app/api/practice/stats/route.test.ts > GET /api/practice/stats > debe retornar estadísticas sin filtros 9ms
+ ✓ src/app/api/practice/stats/route.test.ts > GET /api/practice/stats > debe filtrar por topicId 8ms
+ ✓ src/app/api/practice/stats/route.test.ts > GET /api/practice/stats > debe filtrar por subjectId 2ms
+ ✓ src/app/api/practice/stats/route.test.ts > GET /api/practice/stats > debe calcular avgScore correctamente 1ms
+ ✓ src/app/api/practice/stats/route.test.ts > GET /api/practice/stats > debe calcular totalQuestions correctamente 1ms
+ ✓ src/app/api/practice/stats/route.test.ts > GET /api/practice/stats > debe ordenar métricas por porcentaje ascendente 3ms
+ ✓ src/app/api/practice/stats/route.test.ts > GET /api/practice/stats > debe limitar sesiones recientes a 10 3ms
+ ✓ src/app/api/practice/stats/route.test.ts > GET /api/practice/stats > debe incluir información de topic y subject en métricas 2ms
+ ✓ src/app/api/practice/stats/route.test.ts > GET /api/practice/stats > debe manejar métricas sin topic o subject 4ms
+ ✓ src/app/api/practice/stats/route.test.ts > GET /api/practice/stats > debe manejar errores correctamente 7ms
+ ✓ src/app/api/practice/topic-history/route.test.ts > GET /api/practice/topic-history > debe retornar 401 si no está autenticado 68ms
+ ✓ src/app/api/practice/topic-history/route.test.ts > GET /api/practice/topic-history > debe retornar 400 si topicId no está presente 8ms
+ ✓ src/app/api/practice/topic-history/route.test.ts > GET /api/practice/topic-history > debe retornar 404 si el tema no existe 2ms
+ ✓ src/app/api/practice/topic-history/route.test.ts > GET /api/practice/topic-history > debe retornar historial completo con sesiones y intentos 9ms
+ ✓ src/app/api/practice/topic-history/route.test.ts > GET /api/practice/topic-history > debe usar días por defecto (30) si no se especifica 10ms
+ ✓ src/app/api/practice/topic-history/route.test.ts > GET /api/practice/topic-history > debe usar días personalizados 2ms
+ ✓ src/app/api/practice/topic-history/route.test.ts > GET /api/practice/topic-history > debe calcular porcentaje por tema en intentos 3ms
+ ✓ src/app/api/practice/topic-history/route.test.ts > GET /api/practice/topic-history > debe calcular estadísticas agregadas correctamente 2ms
+ ✓ src/app/api/practice/topic-history/route.test.ts > GET /api/practice/topic-history > debe calcular tendencia improving 3ms
+ ✓ src/app/api/practice/topic-history/route.test.ts > GET /api/practice/topic-history > debe calcular tendencia declining 4ms
+ ✓ src/app/api/practice/topic-history/route.test.ts > GET /api/practice/topic-history > debe ordenar scores por fecha ascendente 1ms
+ ✓ src/app/api/practice/topic-history/route.test.ts > GET /api/practice/topic-history > debe incluir información del tema y asignatura 2ms
+ ✓ src/app/api/practice/topic-history/route.test.ts > GET /api/practice/topic-history > debe manejar errores correctamente 12ms
+ ✓ src/components/forms/field-textarea.test.tsx > FieldTextarea > en development: si falta name, lanza error (runtime guard) 45ms
+ ✓ src/components/forms/field-textarea.test.tsx > FieldTextarea > con name: renderiza sin lanzar 39ms
+stderr | src/components/ui/input.test.tsx > Input > id attribute > should auto-generate id when not provided
+You provided a `value` prop to a form field without an `onChange` handler. This will render a read-only field. If the 
+field should be mutable use `defaultValue`. Otherwise, set either `onChange` or `readOnly`.
+
+stderr | src/components/ui/input.test.tsx > Input > id attribute > should use provided id when given
+You provided a `value` prop to a form field without an `onChange` handler. This will render a read-only field. If the 
+field should be mutable use `defaultValue`. Otherwise, set either `onChange` or `readOnly`.
+
+stderr | src/components/ui/input.test.tsx > Input > name attribute > should NOT auto-generate name when not provided
+You provided a `value` prop to a form field without an `onChange` handler. This will render a read-only field. If the 
+field should be mutable use `defaultValue`. Otherwise, set either `onChange` or `readOnly`.
+
+ ✓ src/components/ui/input.test.tsx > Input > id attribute > should auto-generate id when not provided 84ms
+ ✓ src/components/ui/input.test.tsx > Input > id attribute > should use provided id when given 9ms
+stderr | src/components/ui/input.test.tsx > Input > name attribute > should use provided name when given
+You provided a `value` prop to a form field without an `onChange` handler. This will render a read-only field. If the 
+field should be mutable use `defaultValue`. Otherwise, set either `onChange` or `readOnly`.
+
+stderr | src/components/ui/input.test.tsx > Input > name attribute > should allow name to be undefined (for non-form 
+inputs)
+You provided a `value` prop to a form field without an `onChange` handler. This will render a read-only field. If the 
+field should be mutable use `defaultValue`. Otherwise, set either `onChange` or `readOnly`.
+
+stderr | src/components/ui/input.test.tsx > Input > id and name together > should handle id without name (non-form 
+input)
+You provided a `value` prop to a form field without an `onChange` handler. This will render a read-only field. If the 
+field should be mutable use `defaultValue`. Otherwise, set either `onChange` or `readOnly`.
+
+stderr | src/components/ui/input.test.tsx > Input > id and name together > should handle both id and name (form input)
+You provided a `value` prop to a form field without an `onChange` handler. This will render a read-only field. If the 
+field should be mutable use `defaultValue`. Otherwise, set either `onChange` or `readOnly`.
+
+stderr | src/components/ui/input.test.tsx > Input > id and name together > should auto-generate id but not name (form 
+input with explicit name)
+You provided a `value` prop to a form field without an `onChange` handler. This will render a read-only field. If the 
+field should be mutable use `defaultValue`. Otherwise, set either `onChange` or `readOnly`.
+
+ ✓ src/components/ui/input.test.tsx > Input > name attribute > should NOT auto-generate name when not provided 9ms
+ ✓ src/components/ui/input.test.tsx > Input > name attribute > should use provided name when given 7ms
+ ✓ src/components/ui/input.test.tsx > Input > name attribute > should allow name to be undefined (for non-form inputs) 8ms
+ ✓ src/components/ui/input.test.tsx > Input > id and name together > should handle id without name (non-form input) 7ms
+ ✓ src/components/ui/input.test.tsx > Input > id and name together > should handle both id and name (form input) 6ms
+ ✓ src/components/ui/input.test.tsx > Input > id and name together > should auto-generate id but not name (form input with explicit name) 6ms
+ ✓ src/app/api/admin/generate-exam/route.test.ts > POST /api/admin/generate-exam > Autenticación y autorización > debe rechazar sin sesión (401) 56ms
+ ✓ src/app/api/admin/generate-exam/route.test.ts > POST /api/admin/generate-exam > Autenticación y autorización > debe rechazar sin rol admin (403) 3ms
+ ✓ src/app/api/admin/generate-exam/route.test.ts > POST /api/admin/generate-exam > Validación de payload > debe rechazar payload inválido - campos faltantes (400) 3ms
+ ✓ src/app/api/admin/generate-exam/route.test.ts > POST /api/admin/generate-exam > Validación de payload > debe rechazar payload inválido - numQuestions fuera de rango (400) 2ms
+ ✓ src/app/api/admin/generate-exam/route.test.ts > POST /api/admin/generate-exam > Validación de recursos > debe rechazar si la asignatura no existe (404) 1ms
+ ✓ src/app/api/admin/generate-exam/route.test.ts > POST /api/admin/generate-exam > Validación de recursos > debe rechazar si no hay temas disponibles (404) 1ms
+ ✓ src/app/api/admin/generate-exam/route.test.ts > POST /api/admin/generate-exam > Generación exitosa > debe generar examen válido y retornar success con shape correcta (200) 6ms
+ ✓ src/app/api/admin/generate-exam/route.test.ts > POST /api/admin/generate-exam > Determinismo > debe generar examen de forma determinista - misma entrada dos veces retorna resultados consistentes 5ms
+ ✓ src/app/api/challenges/[id]/route.test.ts > GET /api/challenges/[id] > debe retornar 401 si no está autenticado 54ms
+ ✓ src/app/api/challenges/[id]/route.test.ts > GET /api/challenges/[id] > debe retornar 404 si el desafío no existe 5ms
+ ✓ src/app/api/challenges/[id]/route.test.ts > GET /api/challenges/[id] > debe retornar 403 si el usuario no es parte del desafío 2ms
+ ✓ src/app/api/challenges/[id]/route.test.ts > GET /api/challenges/[id] > debe retornar el desafío si el usuario es el desafiador 8ms
+ ✓ src/app/api/challenges/[id]/route.test.ts > GET /api/challenges/[id] > debe retornar el desafío si el usuario es el desafiado 2ms
+ ✓ src/app/api/challenges/[id]/route.test.ts > PATCH /api/challenges/[id] > debe retornar 401 si no está autenticado 7ms
+ ✓ src/app/api/challenges/[id]/route.test.ts > PATCH /api/challenges/[id] > debe retornar 400 si el body no es válido 7ms
+ ✓ src/app/api/challenges/[id]/route.test.ts > PATCH /api/challenges/[id] > Aceptar desafío > debe retornar 403 si no es el desafiado 2ms
+ ✓ src/app/api/challenges/[id]/route.test.ts > PATCH /api/challenges/[id] > Aceptar desafío > debe aceptar el desafío correctamente 4ms
+ ✓ src/app/api/challenges/[id]/route.test.ts > PATCH /api/challenges/[id] > Aceptar desafío > debe retornar 400 si el desafío ya fue procesado 2ms
+ ✓ src/app/api/challenges/[id]/route.test.ts > PATCH /api/challenges/[id] > Rechazar desafío > debe rechazar el desafío correctamente 1ms
+ ✓ src/app/api/challenges/[id]/route.test.ts > PATCH /api/challenges/[id] > Cancelar desafío > debe retornar 403 si no es el desafiador 3ms
+ ✓ src/app/api/challenges/[id]/route.test.ts > PATCH /api/challenges/[id] > Cancelar desafío > debe cancelar el desafío correctamente 2ms
+ ✓ src/app/api/challenges/[id]/route.test.ts > PATCH /api/challenges/[id] > Completar desafío > debe retornar 403 si no es el desafiado 2ms
+ ✓ src/app/api/challenges/[id]/route.test.ts > PATCH /api/challenges/[id] > Completar desafío > debe retornar 400 si el desafío no está aceptado 2ms
+ ✓ src/app/api/challenges/[id]/route.test.ts > PATCH /api/challenges/[id] > Completar desafío > debe completar el desafío correctamente 3ms
+ ✓ src/app/api/webhooks/deliveries/route.test.ts > GET /api/webhooks/deliveries > debe obtener deliveries correctamente 63ms
+ ✓ src/app/api/webhooks/deliveries/route.test.ts > GET /api/webhooks/deliveries > debe retornar 401 si no está autenticado 1ms
+ ✓ src/app/api/webhooks/deliveries/route.test.ts > GET /api/webhooks/deliveries > debe validar que webhookId sea requerido 5ms
+ ✓ src/app/api/webhooks/deliveries/route.test.ts > GET /api/webhooks/deliveries > debe validar que el webhook pertenezca al estudiante 1ms
+ ✓ src/app/api/webhooks/deliveries/route.test.ts > GET /api/webhooks/deliveries > debe filtrar por estado success 11ms
+ ✓ src/app/api/webhooks/deliveries/route.test.ts > GET /api/webhooks/deliveries > debe filtrar por estado failed 3ms
+ ✓ src/app/api/webhooks/deliveries/route.test.ts > GET /api/webhooks/deliveries > debe incluir todos los estados cuando status=all 3ms
+ ✓ src/app/api/webhooks/deliveries/route.test.ts > GET /api/webhooks/deliveries > debe aplicar paginación correctamente 3ms
+ ✓ src/app/api/webhooks/deliveries/route.test.ts > GET /api/webhooks/deliveries > debe usar valores por defecto para limit y offset 1ms
+ ✓ src/app/api/webhooks/deliveries/route.test.ts > GET /api/webhooks/deliveries > debe validar límites de paginación 3ms
+ ✓ src/app/api/webhooks/deliveries/route.test.ts > GET /api/webhooks/deliveries > debe ordenar por fecha de creación descendente 3ms
+ ✓ src/app/api/webhooks/deliveries/route.test.ts > GET /api/webhooks/deliveries > debe incluir información de paginación 2ms
+ ✓ src/app/api/webhooks/deliveries/route.test.ts > GET /api/webhooks/deliveries > debe manejar errores correctamente 2ms
+ ✓ src/app/api/notifications/read-all/route.test.ts > POST /api/notifications/read-all > debe retornar 401 si no está autenticado 62ms
+ ✓ src/app/api/notifications/read-all/route.test.ts > POST /api/notifications/read-all > debe marcar todas las notificaciones no leídas como leídas 12ms
+ ✓ src/app/api/notifications/read-all/route.test.ts > POST /api/notifications/read-all > debe filtrar por tipo si se proporciona 3ms
+ ✓ src/app/api/notifications/read-all/route.test.ts > POST /api/notifications/read-all > debe retornar count 0 si no hay notificaciones no leídas 1ms
+ ✓ src/app/api/notifications/read-all/route.test.ts > POST /api/notifications/read-all > debe manejar errores correctamente 11ms
+ ✓ src/hooks/useAutoSave.test.ts > useAutoSave > debe guardar automáticamente después del delay 51ms
+ ✓ src/hooks/useAutoSave.test.ts > useAutoSave > debe cancelar guardado si los datos cambian antes del delay 11ms
+ ✓ src/hooks/useAutoSave.test.ts > useAutoSave > debe prevenir saves duplicados simultáneos 6ms
+ ✓ src/hooks/useAutoSave.test.ts > useAutoSave > debe guardar al desmontar si hay cambios pendientes 7ms
+ ✓ src/hooks/useAutoSave.test.ts > useAutoSave > debe respetar el flag enabled 7ms
+ ✓ src/hooks/useAutoSave.test.ts > useAutoSave > debe manejar errores de guardado 6ms
+ ✓ src/hooks/useAutoSave.test.ts > useAutoSave > debe usar comparación profunda para detectar cambios 4ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeRound > debe manejar NaN correctamente 5ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeRound > debe manejar Infinity correctamente 1ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeRound > debe manejar valores finitos correctamente 1ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeRound > debe manejar decimales inválidos 0ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeRound > debe manejar valores muy grandes 0ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeRound > debe manejar valores muy pequeños 0ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeAverage > debe manejar array vacío 1ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeAverage > debe manejar array con NaN 1ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeAverage > debe manejar array con Infinity 1ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeAverage > debe manejar array con valores mixtos 1ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeAverage > debe calcular promedio correctamente 1ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeAverage > debe usar fallback cuando no hay valores válidos 0ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeAverage > debe manejar array con un solo elemento 1ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeMathMax > debe manejar array vacío 1ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeMathMax > debe manejar array con NaN 0ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeMathMax > debe manejar array con Infinity 0ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeMathMax > debe encontrar el máximo correctamente 0ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeMathMax > debe usar fallback cuando no hay valores válidos 0ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeMathMax > debe manejar array con un solo elemento 0ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeMathMax > debe usar reduce como fallback si spread falla 27ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeMathMin > debe manejar array vacío 1ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeMathMin > debe manejar array con NaN 1ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeMathMin > debe manejar array con Infinity 0ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeMathMin > debe encontrar el mínimo correctamente 0ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeMathMin > debe usar fallback cuando no hay valores válidos 0ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeMathMin > debe manejar array con un solo elemento 1ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeMathMin > debe usar reduce como fallback si spread falla 24ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeDivide > debe realizar división correctamente 2ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeDivide > debe manejar división por cero 1ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeDivide > debe manejar valores NaN 1ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeDivide > debe manejar valores Infinity 1ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeDivide > debe manejar valores null/undefined 1ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeDivide > debe manejar strings numéricos 0ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeDivide > debe manejar strings no numéricos 0ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeDivide > debe manejar resultados no finitos 0ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeDivide > debe usar fallback cuando el resultado no es finito 0ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeDivide > debe manejar números negativos 0ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeDivide > debe manejar números decimales 1ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeDivide > debe manejar valores muy pequeños 1ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > safeDivide > debe manejar valores muy grandes 0ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > Casos Edge Combinados > debe manejar arrays con todos los tipos de valores inválidos 1ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > Casos Edge Combinados > debe manejar valores en los límites de Number 1ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > Casos Edge Combinados > debe mantener consistencia entre funciones 1ms
+ ✓ src/app/api/notes/versions/validation-utils.regression.test.ts > Validation Utils - Regression Tests > Casos Edge Combinados > debe usar safeDivide con safeAverage para cálculos consistentes 0ms
+ ✓ src/app/api/materials/route.test.ts > GET /api/materials > debe retornar 401 si no está autenticado 56ms
+ ✓ src/app/api/materials/route.test.ts > GET /api/materials > debe retornar 400 si los query params no son válidos 2ms
+ ✓ src/app/api/materials/route.test.ts > GET /api/materials > debe retornar todos los materiales 8ms
+ ✓ src/app/api/materials/route.test.ts > GET /api/materials > debe filtrar por subjectId 6ms
+ ✓ src/app/api/materials/route.test.ts > GET /api/materials > debe filtrar por topicId 2ms
+ ✓ src/app/api/materials/route.test.ts > GET /api/materials > debe filtrar por tipo 1ms
+ ✓ src/app/api/materials/route.test.ts > GET /api/materials > debe aplicar paginación correctamente 2ms
+ ✓ src/app/api/materials/route.test.ts > GET /api/materials > debe usar caché para materiales 2ms
+ ✓ src/app/api/materials/route.test.ts > GET /api/materials > debe ordenar materiales por relevancia (tema primero) 1ms
+ ✓ src/app/api/materials/route.test.ts > GET /api/materials > debe incluir relaciones (subject, topic) 1ms
+ ✓ src/app/api/materials/route.test.ts > GET /api/materials > debe manejar errores correctamente 6ms
+ ✓ src/app/api/health/liveness/route.test.ts > GET /api/health/liveness > retorna 200 con status ok cuando el proceso responde 63ms
+ ✓ src/app/api/health/liveness/route.test.ts > GET /api/health/liveness > siempre retorna 200 incluso si hay error interno 4ms
+ ✓ src/app/api/health/liveness/route.test.ts > GET /api/health/liveness > incluye headers de no-cache 1ms
+ ✓ src/app/api/admin/import-exams/route.test.ts > POST /api/admin/import-exams > debe requerir autenticación 54ms
+ ✓ src/app/api/admin/import-exams/route.test.ts > POST /api/admin/import-exams > debe validar el body con Zod 7ms
+ ✓ src/app/api/admin/import-exams/route.test.ts > POST /api/admin/import-exams > debe validar que la asignatura exista 3ms
+ ✓ src/app/api/admin/import-exams/route.test.ts > POST /api/admin/import-exams > debe procesar múltiples exámenes 4ms
+ ✓ src/app/api/admin/import-exams/route.test.ts > POST /api/admin/import-exams > debe retornar resultados individuales para cada examen 4ms
+ ✓ src/app/api/admin/import-exams/route.test.ts > POST /api/admin/import-exams > debe contar exámenes exitosos y fallidos 3ms
+ ✓ src/app/api/practice/sessions/route.test.ts > POST /api/practice/sessions > debe retornar 401 si no está autenticado 61ms
+ ✓ src/app/api/practice/sessions/route.test.ts > POST /api/practice/sessions > debe retornar 404 si no hay estudiante 4ms
+ ✓ src/app/api/practice/sessions/route.test.ts > POST /api/practice/sessions > debe retornar 400 si el body no es válido 9ms
+ ✓ src/app/api/practice/sessions/route.test.ts > POST /api/practice/sessions > debe retornar 404 si el tema no existe 4ms
+ ✓ src/app/api/practice/sessions/route.test.ts > POST /api/practice/sessions > debe crear sesión de práctica correctamente 16ms
+ ✓ src/app/api/practice/sessions/route.test.ts > POST /api/practice/sessions > debe calcular estadísticas correctamente (correctas, incorrectas, omitidas) 4ms
+ ✓ src/app/api/practice/sessions/route.test.ts > POST /api/practice/sessions > debe calcular duración total correctamente 2ms
+ ✓ src/app/api/practice/sessions/route.test.ts > POST /api/practice/sessions > debe actualizar métricas de rendimiento si existe 2ms
+ ✓ src/app/api/practice/sessions/route.test.ts > POST /api/practice/sessions > debe crear métricas de rendimiento si no existe 2ms
+ ✓ src/app/api/practice/sessions/route.test.ts > POST /api/practice/sessions > debe manejar respuestas sin tiempoSegundos 2ms
+ ✓ src/app/api/practice/sessions/route.test.ts > POST /api/practice/sessions > debe manejar porcentaje 0 cuando totalPreguntas es 0 1ms
+ ✓ src/app/api/topics/route.test.ts > GET /api/topics > debe retornar todos los temas 82ms
+ ✓ src/app/api/topics/route.test.ts > GET /api/topics > debe filtrar por subjectId 9ms
+ ✓ src/app/api/topics/route.test.ts > GET /api/topics > debe ordenar por ejeTematico y nombre 3ms
+ ✓ src/app/api/topics/route.test.ts > GET /api/topics > debe retornar array vacío si no hay temas 2ms
+ ✓ src/app/api/topics/route.test.ts > GET /api/topics > debe incluir solo campos seleccionados 2ms
+ ✓ src/app/api/topics/route.test.ts > GET /api/topics > debe manejar errores correctamente 3ms
+ ✓ src/app/api/exams/route.test.ts > GET /api/exams > debe retornar error 401 si no está autenticado 69ms
+ ✓ src/app/api/exams/route.test.ts > GET /api/exams > debe retornar la lista de exámenes 8ms
+ ✓ src/app/api/exams/route.test.ts > GET /api/exams > debe retornar array vacío si no hay exámenes 3ms
+ ✓ src/app/api/exams/route.test.ts > GET /api/exams > debe manejar errores correctamente 2ms
+ ✓ src/app/api/materials/[id]/route.test.ts > GET /api/materials/[id] > debe retornar 401 si no está autenticado 65ms
+ ✓ src/app/api/materials/[id]/route.test.ts > GET /api/materials/[id] > debe retornar 400 si el ID no es CUID válido 2ms
+ ✓ src/app/api/materials/[id]/route.test.ts > GET /api/materials/[id] > debe retornar 404 si el material no existe 2ms
+ ✓ src/app/api/materials/[id]/route.test.ts > GET /api/materials/[id] > debe retornar el material con todas sus relaciones 5ms
+ ✓ src/app/api/materials/[id]/route.test.ts > GET /api/materials/[id] > debe usar caché para materiales 5ms
+ ✓ src/app/api/materials/[id]/route.test.ts > GET /api/materials/[id] > debe manejar errores correctamente 2ms
+ ✓ src/app/api/challenges/[id]/complete/route.test.ts > POST /api/challenges/[id]/complete > debe retornar 401 si no está autenticado 60ms
+ ✓ src/app/api/challenges/[id]/complete/route.test.ts > POST /api/challenges/[id]/complete > debe retornar 400 si el body no es válido 8ms
+ ✓ src/app/api/challenges/[id]/complete/route.test.ts > POST /api/challenges/[id]/complete > debe retornar 404 si el desafío no existe 2ms
+ ✓ src/app/api/challenges/[id]/complete/route.test.ts > POST /api/challenges/[id]/complete > debe retornar 400 si el desafío no está aceptado 6ms
+ ✓ src/app/api/challenges/[id]/complete/route.test.ts > POST /api/challenges/[id]/complete > Registrar intento del desafiador > debe retornar 403 si no es el desafiador 2ms
+ ✓ src/app/api/challenges/[id]/complete/route.test.ts > POST /api/challenges/[id]/complete > Registrar intento del desafiador > debe registrar el intento del desafiador correctamente 5ms
+ ✓ src/app/api/challenges/[id]/complete/route.test.ts > POST /api/challenges/[id]/complete > Registrar intento del desafiado > debe retornar 403 si no es el desafiado 4ms
+ ✓ src/app/api/challenges/[id]/complete/route.test.ts > POST /api/challenges/[id]/complete > Registrar intento del desafiado > debe registrar el intento del desafiado correctamente 1ms
+ ✓ src/app/api/challenges/[id]/complete/route.test.ts > POST /api/challenges/[id]/complete > Completar desafío cuando ambos han terminado > debe determinar el ganador y completar el desafío 3ms
+ ✓ src/app/api/challenges/[id]/complete/route.test.ts > POST /api/challenges/[id]/complete > debe retornar 400 si el intento no es válido 3ms
+ ✓ src/app/api/admin/import-topics/route.test.ts > POST /api/admin/import-topics > Autenticación > debe rechazar sin sesión (401) 65ms
+ ✓ src/app/api/admin/import-topics/route.test.ts > POST /api/admin/import-topics > Validación de payload > debe rechazar payload inválido - array vacío (400) 16ms
+ ✓ src/app/api/admin/import-topics/route.test.ts > POST /api/admin/import-topics > Validación de payload > debe rechazar payload inválido - campos faltantes (400) 4ms
+ ✓ src/app/api/admin/import-topics/route.test.ts > POST /api/admin/import-topics > Validación de payload > procesa payload con asignatura no mapeada y reporta error en result.errors (200) 4ms
+ ✓ src/app/api/admin/import-topics/route.test.ts > POST /api/admin/import-topics > Importación exitosa > debe importar topics válidos y retornar conteo (200) 7ms
+ ✓ src/app/api/admin/import-topics/route.test.ts > POST /api/admin/import-topics > Idempotencia > debe actualizar topics existentes sin duplicar (idempotencia) 7ms
+ ✓ src/lib/recommendations.test.ts > analyzeTopicRecommendations > debe identificar temas débiles con alta prioridad (<30%) 7ms
+ ✓ src/lib/recommendations.test.ts > analyzeTopicRecommendations > debe identificar temas débiles con prioridad media (30-50%) 2ms
+ ✓ src/lib/recommendations.test.ts > analyzeTopicRecommendations > debe identificar temas medios (50-70%) 2ms
+ ✓ src/lib/recommendations.test.ts > analyzeTopicRecommendations > debe ignorar temas con pocas preguntas (<3) 1ms
+ ✓ src/lib/recommendations.test.ts > analyzeTopicRecommendations > debe ignorar temas fuertes (>=70%) 1ms
+ ✓ src/lib/recommendations.test.ts > analyzeTopicRecommendations > debe ordenar por prioridad y luego por porcentaje 2ms
+ ✓ src/lib/recommendations.test.ts > analyzeTopicRecommendations > debe manejar métricas vacías 1ms
+ ✓ src/lib/recommendations.test.ts > analyzeTopicRecommendations > debe incluir acciones sugeridas para temas débiles 2ms
+ ✓ src/lib/recommendations.test.ts > analyzeTopicRecommendations > debe incluir acciones sugeridas para temas medios 1ms
+ ✓ src/lib/recommendations.test.ts > analyzeTopicRecommendations > debe manejar el límite exacto de 30% 1ms
+ ✓ src/lib/recommendations.test.ts > analyzeTopicRecommendations > debe manejar el límite exacto de 50% 0ms
+ ✓ src/lib/recommendations.test.ts > analyzeTopicRecommendations > debe manejar el límite exacto de 70% 0ms
+ ✓ src/lib/recommendations.test.ts > analyzeExamRecommendations > debe recomendar exámenes que incluyen temas débiles 2ms
+ ✓ src/lib/recommendations.test.ts > analyzeExamRecommendations > debe asignar prioridad alta si hay temas de alta prioridad 1ms
+ ✓ src/lib/recommendations.test.ts > analyzeExamRecommendations > debe asignar prioridad media si solo hay temas de prioridad media 0ms
+ ✓ src/lib/recommendations.test.ts > analyzeExamRecommendations > debe filtrar exámenes por asignatura 1ms
+ ✓ src/lib/recommendations.test.ts > analyzeExamRecommendations > debe manejar exámenes sin temas relevantes 0ms
+ ✓ src/lib/recommendations.test.ts > analyzeExamRecommendations > debe manejar exámenes vacíos 0ms
+ ✓ src/lib/recommendations.test.ts > analyzeExamRecommendations > debe manejar temas débiles vacíos 0ms
+ ✓ src/lib/recommendations.test.ts > analyzeExamRecommendations > debe limitar los nombres de temas en la razón a 3 1ms
+ ✓ src/lib/recommendations.test.ts > analyzeExamRecommendations > debe manejar preguntas con topicId null 1ms
+ ✓ src/lib/recommendations.test.ts > analyzeExamRecommendations > debe ordenar por prioridad 1ms
+ ✓ src/lib/recommendations.test.ts > generateStudyPlan > debe generar plan de estudio con temas de alta prioridad 71ms
+ ✓ src/lib/recommendations.test.ts > generateStudyPlan > debe generar plan de estudio con temas de media prioridad 2ms
+ ✓ src/lib/recommendations.test.ts > generateStudyPlan > debe generar múltiples semanas si hay suficientes temas 3ms
+ ✓ src/lib/recommendations.test.ts > generateStudyPlan > debe calcular fecha de finalización estimada 2ms
+ ✓ src/lib/recommendations.test.ts > generateStudyPlan > debe incluir áreas de enfoque únicas 1ms
+ ✓ src/lib/recommendations.test.ts > generateStudyPlan > debe manejar recomendaciones vacías 3ms
+ ✓ src/lib/recommendations.test.ts > generateStudyPlan > debe limitar temas por semana según el plan 2ms
+ ✓ src/lib/recommendations.test.ts > generateRecommendations > debe generar recomendaciones completas 2ms
+ ✓ src/lib/recommendations.test.ts > generateRecommendations > debe calcular tiempo estimado de estudio correctamente 3ms
+ ✓ src/lib/recommendations.test.ts > generateRecommendations > debe mostrar minutos si el tiempo es menor a 1 hora 2ms
+ ✓ src/lib/recommendations.test.ts > generateRecommendations > debe retornar studyPlan null si no hay recomendaciones de temas 1ms
+ ✓ src/lib/recommendations.test.ts > generateRecommendations > debe contar correctamente las recomendaciones de alta prioridad 1ms
+ ✓ src/lib/recommendations.test.ts > generateRecommendations > debe manejar métricas vacías 1ms
+ ✓ src/lib/recommendations.test.ts > generateRecommendations > debe filtrar solo temas débiles para recomendaciones de exámenes 2ms
+ ✓ src/hooks/useDebounce.test.ts > useDebounce > debe retornar el valor inicial inmediatamente 36ms
+ ✓ src/hooks/useDebounce.test.ts > useDebounce > debe actualizar el valor después del delay 8ms
+ ✓ src/hooks/useDebounce.test.ts > useDebounce > debe cancelar actualización si el valor cambia antes del delay 7ms
+ ✓ src/hooks/useDebounce.test.ts > useDebounce > debe funcionar con diferentes tipos de datos 11ms
+ ✓ src/hooks/useDebounce.test.ts > useDebounce > debe limpiar el timeout al desmontar 4ms
+ ✓ src/hooks/useDebounce.test.ts > useDebounce > debe usar delay personalizado 5ms
+ ✓ src/test/guards/subjects-baseline.test.ts > Subjects Baseline Guard > debe existir la asignatura BIO (Ciencias - Biología) 6ms
+ ✓ src/test/guards/subjects-baseline.test.ts > Subjects Baseline Guard > debe existir la asignatura LECTORA (Competencia Lectora) 2ms
+ ✓ src/test/guards/subjects-baseline.test.ts > Subjects Baseline Guard > debe existir la asignatura M1 (Matemática M1) 1ms
+ ✓ src/test/guards/subjects-baseline.test.ts > Subjects Baseline Guard > debe existir la asignatura M2 (Matemática M2) 1ms
+ ✓ src/test/guards/subjects-baseline.test.ts > Subjects Baseline Guard > debe existir la asignatura HIST (Historia y Ciencias Sociales) 2ms
+ ✓ src/app/api/notifications/[id]/route.test.ts > PATCH /api/notifications/[id] > debe retornar 401 si no está autenticado 58ms
+ ✓ src/app/api/notifications/[id]/route.test.ts > PATCH /api/notifications/[id] > debe retornar 404 si la notificación no existe 2ms
+ ✓ src/app/api/notifications/[id]/route.test.ts > PATCH /api/notifications/[id] > debe retornar 403 si la notificación no pertenece al estudiante 5ms
+ ✓ src/app/api/notifications/[id]/route.test.ts > PATCH /api/notifications/[id] > debe marcar notificación como leída 5ms
+ ✓ src/app/api/notifications/[id]/route.test.ts > PATCH /api/notifications/[id] > debe marcar notificación como no leída 2ms
+ ✓ src/app/api/notifications/[id]/route.test.ts > DELETE /api/notifications/[id] > debe retornar 401 si no está autenticado 2ms
+ ✓ src/app/api/notifications/[id]/route.test.ts > DELETE /api/notifications/[id] > debe retornar 404 si la notificación no existe 3ms
+ ✓ src/app/api/notifications/[id]/route.test.ts > DELETE /api/notifications/[id] > debe retornar 403 si la notificación no pertenece al estudiante 2ms
+ ✓ src/app/api/notifications/[id]/route.test.ts > DELETE /api/notifications/[id] > debe eliminar notificación correctamente 6ms
+ ✓ src/app/api/admin/import-answer-key/route.test.ts > POST /api/admin/import-answer-key > debe retornar error si el usuario no está autenticado 74ms
+ ✓ src/app/api/admin/import-answer-key/route.test.ts > POST /api/admin/import-answer-key > debe retornar error si falta el archivo PDF 2ms
+ ✓ src/app/api/admin/import-answer-key/route.test.ts > POST /api/admin/import-answer-key > debe encontrar el examen y actualizar las respuestas correctas 14ms
+ ✓ src/app/api/admin/import-answer-key/route.test.ts > POST /api/admin/import-answer-key > debe retornar error si no se encuentra el examen 4ms
+ ✓ src/lib/score-calculator.test.ts > calcularPuntajePonderado > debe calcular correctamente el puntaje ponderado básico 5ms
+ ✓ src/lib/score-calculator.test.ts > calcularPuntajePonderado > debe incluir M2 cuando está en ponderaciones 1ms
+ ✓ src/lib/score-calculator.test.ts > calcularPuntajePonderado > debe incluir Ciencias cuando está en ponderaciones 1ms
+ ✓ src/lib/score-calculator.test.ts > calcularPuntajePonderado > debe incluir Historia cuando está en ponderaciones 1ms
+ ✓ src/lib/score-calculator.test.ts > calcularPuntajePonderado > debe incluir todas las pruebas cuando están en ponderaciones 1ms
+ ✓ src/lib/score-calculator.test.ts > calcularPuntajePonderado > debe lanzar error si las ponderaciones no suman 100 3ms
+ ✓ src/lib/score-calculator.test.ts > calcularPuntajePonderado > debe lanzar error si las ponderaciones suman más de 100.01 1ms
+ ✓ src/lib/score-calculator.test.ts > calcularPuntajePonderado > debe aceptar ponderaciones que suman exactamente 100 1ms
+ ✓ src/lib/score-calculator.test.ts > calcularPuntajePonderado > debe lanzar error si NEM es requerido pero no está presente 1ms
+ ✓ src/lib/score-calculator.test.ts > calcularPuntajePonderado > debe lanzar error si NEM es null 1ms
+ ✓ src/lib/score-calculator.test.ts > calcularPuntajePonderado > debe lanzar error si Ranking es requerido pero no está presente 1ms
+ ✓ src/lib/score-calculator.test.ts > calcularPuntajePonderado > debe lanzar error si Competencia Lectora es requerida pero no está presente 1ms
+ ✓ src/lib/score-calculator.test.ts > calcularPuntajePonderado > debe lanzar error si M1 es requerido pero no está presente 1ms
+ ✓ src/lib/score-calculator.test.ts > calcularPuntajePonderado > debe lanzar error si M2 es requerido pero no está presente 1ms
+ ✓ src/lib/score-calculator.test.ts > calcularPuntajePonderado > debe lanzar error si Ciencias es requerido pero no está presente 1ms
+ ✓ src/lib/score-calculator.test.ts > calcularPuntajePonderado > debe lanzar error si Historia es requerido pero no está presente 1ms
+ ✓ src/lib/score-calculator.test.ts > calcularPuntajePonderado > debe manejar valores cero correctamente 0ms
+ ✓ src/lib/score-calculator.test.ts > calcularPuntajePonderado > debe manejar valores muy altos correctamente 0ms
+ ✓ src/lib/score-calculator.test.ts > calcularPuntajePonderado > debe redondear correctamente a 1 decimal 0ms
+ ✓ src/lib/score-calculator.test.ts > calcularPuntajePonderado > debe manejar valores string numéricos 0ms
+ ✓ src/lib/score-calculator.test.ts > obtenerCarreras > debe obtener carreras activas del proceso especificado 5ms
+ ✓ src/lib/score-calculator.test.ts > obtenerCarreras > debe usar proceso por defecto 2026 si no se especifica 1ms
+ ✓ src/lib/score-calculator.test.ts > obtenerCarrera > debe obtener una carrera por ID 1ms
+ ✓ src/lib/score-calculator.test.ts > obtenerCarrera > debe retornar null si la carrera no existe 1ms
+ ✓ src/lib/score-calculator.test.ts > calcularPuntajeParaCarrera > debe calcular el puntaje ponderado para una carrera específica 1ms
+ ✓ src/lib/score-calculator.test.ts > calcularPuntajeParaCarrera > debe lanzar error si la carrera no existe 3ms
+ ✓ src/lib/score-calculator.test.ts > calcularPuntajeParaCarrera > debe manejar ponderaciones opcionales correctamente 1ms
+ ✓ src/lib/score-calculator.test.ts > buscarCarrerasAdecuadas > debe buscar carreras adecuadas para un estudiante 2ms
+ ✓ src/lib/score-calculator.test.ts > buscarCarrerasAdecuadas > debe filtrar carreras que no cumplen el puntaje mínimo 1ms
+ ✓ src/lib/score-calculator.test.ts > buscarCarrerasAdecuadas > debe filtrar por puntaje mínimo adicional si se especifica 1ms
+ ✓ src/lib/score-calculator.test.ts > buscarCarrerasAdecuadas > debe ordenar carreras por puntaje ponderado descendente 1ms
+ ✓ src/lib/score-calculator.test.ts > buscarCarrerasAdecuadas > debe excluir carreras con puntajes faltantes 1ms
+ ✓ src/lib/score-calculator.test.ts > buscarCarrerasAdecuadas > debe usar proceso por defecto 2026 si no se especifica 1ms
+ ✓ src/lib/exam-generator.test.ts > exam-generator > generateExamWithAI > debe generar un examen exitosamente con parámetros válidos 9ms
+ ✓ src/lib/exam-generator.test.ts > exam-generator > generateExamWithAI > debe lanzar error si no hay temas para la asignatura 13ms
+ ✓ src/lib/exam-generator.test.ts > exam-generator > generateExamWithAI > debe lanzar error si no hay configuración de IA 1ms
+ ✓ src/lib/exam-generator.test.ts > exam-generator > generateExamWithAI > debe filtrar temas por topicIds cuando se proporcionan 6ms
+ ✓ src/lib/exam-generator.test.ts > exam-generator > generateExamWithAI > debe manejar respuestas de IA con formato inválido 1ms
+ ✓ src/lib/exam-generator.test.ts > exam-generator > generateExamWithAI > debe corregir opciones sin respuesta correcta 2ms
+ ✓ src/lib/exam-generator.test.ts > exam-generator > generateExamWithAI > debe manejar preguntas de desarrollo (sin opciones) 2ms
+ ✓ src/lib/exam-generator.test.ts > exam-generator > generateExamWithAI > debe asociar temas automáticamente cuando no están especificados 3ms
+ ✓ src/lib/exam-generator.test.ts > exam-generator > generateExamWithAI > debe generar clavijero solo para preguntas objetivas 1ms
+ ✓ src/lib/exam-generator.test.ts > exam-generator > generateExamWithAI > debe manejar exámenes mixtos correctamente 2ms
+ ✓ src/lib/exam-generator.test.ts > exam-generator > generateExamWithAI > debe validar que existe la asignatura (validateTopicContext) 1ms
+ ✓ src/lib/exam-generator.test.ts > exam-generator > generateExamWithAI > debe validar que hay temas disponibles (validateTopicContext) 2ms
+ ✓ src/lib/exam-generator.test.ts > exam-generator > generateExamWithAI > debe validar que existe configuración de IA (validateAndGetAIConfig) 1ms
+ ✓ src/lib/exam-generator.test.ts > exam-generator > generateExamWithAI > debe validar estructura del examen (validateExamStructure) 2ms
+ ✓ src/lib/exam-generator.test.ts > exam-generator > generateExamWithAI > debe validar que el examen tiene array de preguntas (validateExamStructure) 2ms
+ ✓ src/lib/exam-generator.test.ts > exam-generator > generateExamWithAI > debe procesar examen correctamente (processGeneratedExam) 2ms
+ ✓ src/lib/exam-generator.test.ts > exam-generator > generateExamWithAI > debe asociar temas automáticamente en processGeneratedExam 1ms
+ ✓ src/test/jsdom-test.test.tsx > jsdom test > debe tener document disponible 5ms
+ ✓ src/test/jsdom-test.test.tsx > jsdom test > debe tener window disponible 1ms
+ ✓ src/test/jsdom-test.test.tsx > jsdom test > debe poder renderizar un componente simple 53ms
+ ✓ src/lib/admission-calendar.test.ts > admission-calendar.ts > obtenerEventosCalendario > debe retornar todos los eventos del proceso 14ms
+ ✓ src/lib/admission-calendar.test.ts > admission-calendar.ts > obtenerEventosCalendario > debe usar proceso "2026" por defecto 2ms
+ ✓ src/lib/admission-calendar.test.ts > admission-calendar.ts > obtenerEventosCalendario > debe retornar array vacío si no hay eventos 1ms
+ ✓ src/lib/admission-calendar.test.ts > admission-calendar.ts > obtenerEventosCalendario > debe manejar errores de base de datos 4ms
+ ✓ src/lib/admission-calendar.test.ts > admission-calendar.ts > obtenerEventosCalendario > debe ordenar eventos por fecha ascendente 1ms
+ ✓ src/lib/admission-calendar.test.ts > admission-calendar.ts > obtenerProximosEventos > debe retornar solo eventos futuros 4ms
+ ✓ src/lib/admission-calendar.test.ts > admission-calendar.ts > obtenerProximosEventos > debe respetar el límite especificado 3ms
+ ✓ src/lib/admission-calendar.test.ts > admission-calendar.ts > obtenerProximosEventos > debe usar límite 5 por defecto 1ms
+ ✓ src/lib/admission-calendar.test.ts > admission-calendar.ts > obtenerProximosEventos > debe usar proceso "2026" por defecto 1ms
+ ✓ src/lib/admission-calendar.test.ts > admission-calendar.ts > obtenerEventosImportantes > debe retornar solo eventos importantes futuros 2ms
+ ✓ src/lib/admission-calendar.test.ts > admission-calendar.ts > obtenerEventosImportantes > debe usar proceso "2026" por defecto 1ms
+ ✓ src/lib/admission-calendar.test.ts > admission-calendar.ts > obtenerProximoEventoImportante > debe retornar el primer evento importante 1ms
+ ✓ src/lib/admission-calendar.test.ts > admission-calendar.ts > obtenerProximoEventoImportante > debe retornar null si no hay eventos importantes 0ms
+ ✓ src/lib/admission-calendar.test.ts > admission-calendar.ts > diasHastaEvento > debe calcular días correctamente para evento futuro 2ms
+ ✓ src/lib/admission-calendar.test.ts > admission-calendar.ts > diasHastaEvento > debe retornar 0 para evento pasado 1ms
+ ✓ src/lib/admission-calendar.test.ts > admission-calendar.ts > diasHastaEvento > debe retornar 0 para evento hoy 1ms
+ ✓ src/lib/admission-calendar.test.ts > admission-calendar.ts > diasHastaEvento > debe manejar fecha inválida (NaN) 1ms
+ ✓ src/lib/admission-calendar.test.ts > admission-calendar.ts > diasHastaEvento > debe manejar fecha con valor Infinity 1ms
+ ✓ src/lib/admission-calendar.test.ts > admission-calendar.ts > diasHastaEvento > debe resetear horas para comparar solo fechas 0ms
+ ✓ src/lib/admission-calendar.test.ts > admission-calendar.ts > diasHastaEvento > debe retornar 0 si la diferencia no es finita 1ms
+ ✓ src/lib/admission-calendar.test.ts > admission-calendar.ts > Tests de regresión > debe manejar eventos con todos los campos opcionales como null 0ms
+ ✓ src/lib/admission-calendar.test.ts > admission-calendar.ts > Tests de regresión > debe manejar tipos de evento válidos correctamente 1ms
+ ✓ src/lib/contracts/validateRequest.test.ts > validateRequest > valid input > returns validated data for valid input 9ms
+ ✓ src/lib/contracts/validateRequest.test.ts > validateRequest > valid input > preserves type information 1ms
+ ✓ src/lib/contracts/validateRequest.test.ts > validateRequest > invalid input > throws ContractValidationError for invalid input 3ms
+ ✓ src/lib/contracts/validateRequest.test.ts > validateRequest > invalid input > throws with "Invalid request contract" message 3ms
+ ✓ src/lib/contracts/validateRequest.test.ts > validateRequest > invalid input > includes zodError in ContractValidationError 5ms
+ ✓ src/lib/contracts/validateRequest.test.ts > validateRequest > extra fields (strict mode) > throws for extra fields 1ms
+ ✓ src/lib/contracts/validateRequest.test.ts > validateRequest > missing fields > throws for missing required fields 1ms
+ ✓ src/lib/contracts/validateRequest.test.ts > validateRequest > ContractValidationError.toResponse() > converts error to NextResponse with 400 status 8ms
+ ✓ src/lib/contracts/validateRequest.test.ts > validateRequest > ContractValidationError.toResponse() > includes error details in response 7ms
+ ✓ src/lib/contracts/validateRequest.test.ts > validateRequest > complex schema > validates complex valid input 4ms
+ ✓ src/lib/contracts/validateRequest.test.ts > validateRequest > complex schema > rejects complex invalid input 2ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > ensureFiniteNumber > debe retornar el número si es válido 2ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > ensureFiniteNumber > debe parsear strings numéricos 1ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > ensureFiniteNumber > debe usar fallback para valores inválidos 2ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > ensurePositiveNumber > debe retornar el número si es positivo 1ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > ensurePositiveNumber > debe usar fallback para números no positivos 0ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > ensureInteger > debe retornar el número si es entero 1ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > ensureInteger > debe redondear hacia abajo números decimales 0ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > ensureNonEmptyString > debe retornar el string si es válido 0ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > ensureNonEmptyString > debe usar fallback para strings vacíos 1ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > ensureNonEmptyString > debe usar fallback para valores no string 1ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > ensureArray > debe retornar el array si es válido 3ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > ensureArray > debe usar fallback para valores no array 1ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > ensureObject > debe retornar el objeto si es válido 0ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > ensureObject > debe usar fallback para valores no objeto 1ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > ensureValidDate > debe retornar la fecha si es válida 0ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > ensureValidDate > debe parsear strings de fecha 0ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > ensureValidDate > debe usar fallback para fechas inválidas 0ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > safeArrayOperation > debe ejecutar la operación si el array es válido 1ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > safeArrayOperation > debe usar fallback si el array es inválido 1ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > safeArrayOperation > debe usar fallback si la operación falla 1ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > safeStringOperation > debe ejecutar la operación si el string es válido 0ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > safeStringOperation > debe usar fallback si el string es inválido 0ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > safeMathOperation > debe ejecutar la operación si los valores son válidos 1ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > safeMathOperation > debe filtrar valores inválidos 0ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > safeMathOperation > debe usar fallback si no hay valores válidos 0ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > safeToISOString > debe convertir fecha válida a ISO string 1ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > safeToISOString > debe usar fallback para fechas inválidas 0ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > safeToISODate > debe extraer la parte de fecha de un ISO string 0ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > safeToISODate > debe usar fallback si falla 0ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > isPromise > debe identificar promesas válidas 0ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > isPromise > debe rechazar valores que no son promesas 0ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > ensurePromiseArray > debe retornar array de promesas válidas 0ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > ensurePromiseArray > debe filtrar promesas inválidas 0ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > ensureMap > debe retornar el Map si es válido 1ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > ensureMap > debe usar fallback para valores no Map 0ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > ensureSet > debe retornar el Set si es válido 0ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > ensureSet > debe usar fallback para valores no Set 0ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > ensureBuffer > debe retornar el Buffer si es válido 1ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > ensureBuffer > debe usar fallback para valores no Buffer 1ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > withValidationMetrics > debe ejecutar la validación y registrar métricas 1ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > withValidationMetrics > debe manejar errores en validaciones 3ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > getValidationMetrics > debe retornar métricas vacías inicialmente 1ms
+ ✓ src/app/api/notes/versions/validation-utils.test.ts > validation-utils > getValidationMetrics > debe acumular métricas de múltiples validaciones 1ms
+ ✓ src/app/api/admin/fetch-demre-pdfs/route.test.ts > POST /api/admin/fetch-demre-pdfs > debe requerir autenticación 11ms
+ ✓ src/app/api/admin/fetch-demre-pdfs/route.test.ts > POST /api/admin/fetch-demre-pdfs > debe validar que se proporcione una URL 2ms
+ ✓ src/app/api/admin/fetch-demre-pdfs/route.test.ts > POST /api/admin/fetch-demre-pdfs > debe validar que la URL sea válida 2ms
+ ✓ src/app/api/admin/fetch-demre-pdfs/route.test.ts > POST /api/admin/fetch-demre-pdfs > debe validar que la URL sea de DEMRE 1ms
+ ✓ src/app/api/admin/fetch-demre-pdfs/route.test.ts > POST /api/admin/fetch-demre-pdfs > debe extraer PDFs de una página de DEMRE 5ms
+ ✓ src/app/api/admin/fetch-demre-pdfs/route.test.ts > POST /api/admin/fetch-demre-pdfs > debe manejar errores al obtener la página 9ms
+ ✓ src/app/api/admin/fetch-demre-pdfs/route.test.ts > POST /api/admin/fetch-demre-pdfs > debe detectar asignaturas automáticamente 2ms
+ ✓ src/lib/errors/error-types.test.ts > Error Types > ContractError > has correct category and status 5ms
+ ✓ src/lib/errors/error-types.test.ts > Error Types > ContractError > includes zodError in response 14ms
+ ✓ src/lib/errors/error-types.test.ts > Error Types > ContractError > does not leak stack to client 3ms
+ ✓ src/lib/errors/error-types.test.ts > Error Types > DomainError > has correct category 1ms
+ ✓ src/lib/errors/error-types.test.ts > Error Types > DomainError > allows custom status codes 1ms
+ ✓ src/lib/errors/error-types.test.ts > Error Types > DomainError > includes message in response 2ms
+ ✓ src/lib/errors/error-types.test.ts > Error Types > SystemError > has correct category and status 1ms
+ ✓ src/lib/errors/error-types.test.ts > Error Types > SystemError > does not leak details to client 2ms
+ ✓ src/lib/errors/error-types.test.ts > Error Types > SystemError > includes originalError in observable 9ms
+ ✓ src/lib/errors/error-types.test.ts > Error Types > NotFoundError > has correct status and code 1ms
+ ✓ src/lib/errors/error-types.test.ts > Error Types > NotFoundError > includes resource in message 1ms
+ ✓ src/lib/errors/error-types.test.ts > Error Types > ConflictError > has correct status and code 1ms
+ ✓ src/lib/errors/error-types.test.ts > Error Types > UnauthorizedError > has correct status and code 1ms
+ ✓ src/lib/errors/error-types.test.ts > Error Types > ForbiddenError > has correct status and code 1ms
+ ✓ src/lib/errors/error-types.test.ts > Error Types > toObservable > includes all error properties 3ms
+ ✓ src/lib/errors/error-types.test.ts > Error Types > toObservable > includes stack only in development 4ms
+ ✓ src/lib/contracts/schemas/create-note.schema.test.ts > CreateNoteSchema > valid input > accepts valid input with required fields 11ms
+ ✓ src/lib/contracts/schemas/create-note.schema.test.ts > CreateNoteSchema > valid input > accepts valid input with all optional fields 2ms
+ ✓ src/lib/contracts/schemas/create-note.schema.test.ts > CreateNoteSchema > valid input > accepts valid input with partial optional fields 2ms
+ ✓ src/lib/contracts/schemas/create-note.schema.test.ts > CreateNoteSchema > missing fields (Invariante 1) > rejects missing required field: title 3ms
+ ✓ src/lib/contracts/schemas/create-note.schema.test.ts > CreateNoteSchema > missing fields (Invariante 1) > rejects missing required field: content 1ms
+ ✓ src/lib/contracts/schemas/create-note.schema.test.ts > CreateNoteSchema > missing fields (Invariante 1) > rejects empty object 1ms
+ ✓ src/lib/contracts/schemas/create-note.schema.test.ts > CreateNoteSchema > extra fields (Invariante 2) > rejects extra field 2ms
+ ✓ src/lib/contracts/schemas/create-note.schema.test.ts > CreateNoteSchema > extra fields (Invariante 2) > rejects multiple extra fields 1ms
+ ✓ src/lib/contracts/schemas/create-note.schema.test.ts > CreateNoteSchema > extra fields (Invariante 2) > rejects extra field even with valid optional fields 1ms
+ ✓ src/lib/contracts/schemas/create-note.schema.test.ts > CreateNoteSchema > invalid types (Invariante 3) > rejects invalid type: title as number 1ms
+ ✓ src/lib/contracts/schemas/create-note.schema.test.ts > CreateNoteSchema > invalid types (Invariante 3) > rejects invalid type: content as boolean 1ms
+ ✓ src/lib/contracts/schemas/create-note.schema.test.ts > CreateNoteSchema > invalid types (Invariante 3) > rejects invalid type: questionId as number 1ms
+ ✓ src/lib/contracts/schemas/create-note.schema.test.ts > CreateNoteSchema > invalid types (Invariante 3) > rejects invalid type: tags as array 1ms
+ ✓ src/lib/contracts/schemas/create-note.schema.test.ts > CreateNoteSchema > invalid types (Invariante 3) > rejects null for required fields 0ms
+ ✓ src/lib/contracts/schemas/create-note.schema.test.ts > CreateNoteSchema > invalid types (Invariante 3) > rejects undefined for required fields 1ms
+ ✓ src/lib/contracts/schemas/create-note.schema.test.ts > CreateNoteSchema > empty strings (Invariante 1) > rejects empty string for title 1ms
+ ✓ src/lib/contracts/schemas/create-note.schema.test.ts > CreateNoteSchema > empty strings (Invariante 1) > rejects empty string for content 1ms
+ ✓ src/lib/contracts/schemas/create-note.schema.test.ts > CreateNoteSchema > empty strings (Invariante 1) > rejects whitespace-only strings 1ms
+ ✓ src/lib/contracts/schemas/create-note.schema.test.ts > CreateNoteSchema > CUID validation for optional fields > rejects invalid CUID format for questionId 1ms
+ ✓ src/lib/contracts/schemas/create-note.schema.test.ts > CreateNoteSchema > CUID validation for optional fields > rejects invalid CUID format for topicId 1ms
+ ✓ src/lib/contracts/schemas/create-note.schema.test.ts > CreateNoteSchema > CUID validation for optional fields > accepts valid CUID format 0ms
+ ✓ src/lib/security-logger.test.ts > security-logger > logSecurityEvent > debe loguear eventos críticos con nivel error 10ms
+ ✓ src/lib/security-logger.test.ts > security-logger > logSecurityEvent > debe loguear eventos de alta prioridad con nivel warn 2ms
+ ✓ src/lib/security-logger.test.ts > security-logger > logSecurityEvent > debe loguear eventos de prioridad media con nivel warn 2ms
+ ✓ src/lib/security-logger.test.ts > security-logger > logSecurityEvent > debe loguear eventos de baja prioridad con nivel info 1ms
+ ✓ src/lib/security-logger.test.ts > security-logger > logSecurityEvent > debe incluir detalles adicionales en el log 2ms
+ ✓ src/lib/security-logger.test.ts > security-logger > getClientIp > debe extraer IP de x-forwarded-for 5ms
+ ✓ src/lib/security-logger.test.ts > security-logger > getClientIp > debe usar x-real-ip si x-forwarded-for no está presente 1ms
+ ✓ src/lib/security-logger.test.ts > security-logger > getClientIp > debe retornar unknown si no hay headers de IP 0ms
+ ✓ src/lib/security-logger.test.ts > security-logger > getClientIp > debe manejar múltiples IPs en x-forwarded-for 1ms
+ ✓ src/lib/security-logger.test.ts > security-logger > detectSuspiciousActivity > debe detectar intentos de inyección SQL 2ms
+ ✓ src/lib/security-logger.test.ts > security-logger > detectSuspiciousActivity > debe detectar path traversal 0ms
+ ✓ src/lib/security-logger.test.ts > security-logger > detectSuspiciousActivity > debe detectar intentos de XSS 1ms
+ ✓ src/lib/security-logger.test.ts > security-logger > detectSuspiciousActivity > debe detectar event handlers 0ms
+ ✓ src/lib/security-logger.test.ts > security-logger > detectSuspiciousActivity > debe retornar false para actividad normal 0ms
+ ✓ src/lib/score-transformation.test.ts > transformarPuntaje > debe retornar null si no hay transformaciones disponibles 5ms
+ ✓ src/lib/score-transformation.test.ts > transformarPuntaje > debe retornar el valor exacto si coincide con valorOrigen 1ms
+ ✓ src/lib/score-transformation.test.ts > transformarPuntaje > debe usar interpolación lineal entre dos valores 1ms
+ ✓ src/lib/score-transformation.test.ts > transformarPuntaje > debe usar el último valor si el valor es mayor que todos 1ms
+ ✓ src/lib/score-transformation.test.ts > transformarPuntaje > debe usar el primer valor si el valor es menor que todos 1ms
+ ✓ src/lib/score-transformation.test.ts > transformarPuntaje > debe filtrar por tipo correctamente 6ms
+ ✓ src/lib/score-transformation.test.ts > transformarPuntaje > debe filtrar por proceso correctamente 2ms
+ ✓ src/lib/score-transformation.test.ts > transformarPuntaje > debe filtrar por prueba correctamente 2ms
+ ✓ src/lib/score-transformation.test.ts > transformarPuntaje > debe manejar valores duplicados en valorOrigen 1ms
+ ✓ src/lib/score-transformation.test.ts > transformarPuntaje > debe manejar valores negativos correctamente 1ms
+ ✓ src/lib/score-transformation.test.ts > transformarPuntaje > debe retornar null si no hay transformación anterior para interpolación 1ms
+ ✓ src/lib/score-transformation.test.ts > transformarNEM > debe transformar NEM a escala PAES 1ms
+ ✓ src/lib/score-transformation.test.ts > transformarNEM > debe usar proceso por defecto si no se especifica 1ms
+ ✓ src/lib/score-transformation.test.ts > transformarPSUaPAES > debe transformar puntaje PSU a PAES 1ms
+ ✓ src/lib/score-transformation.test.ts > transformarPSUaPAES > debe usar proceso por defecto si no se especifica 1ms
+ ✓ src/lib/score-transformation.test.ts > transformarPDTaPAES > debe transformar puntaje PDT a PAES 1ms
+ ✓ src/lib/score-transformation.test.ts > transformarPDTaPAES > debe usar proceso por defecto si no se especifica 1ms
+ ✓ src/lib/score-transformation.test.ts > obtenerTransformaciones > debe obtener todas las transformaciones activas 2ms
+ ✓ src/lib/score-transformation.test.ts > obtenerTransformaciones > debe filtrar por tipo si se especifica 1ms
+ ✓ src/lib/score-transformation.test.ts > obtenerTransformaciones > debe filtrar por proceso si se especifica 1ms
+ ✓ src/lib/score-transformation.test.ts > obtenerTransformaciones > debe filtrar por tipo y proceso si ambos se especifican 1ms
+ ✓ src/lib/security.test.ts > security > sanitizeString > debe retornar string vacío para null o undefined 4ms
+ ✓ src/lib/security.test.ts > security > sanitizeString > debe sanitizar espacios en blanco 1ms
+ ✓ src/lib/security.test.ts > security > sanitizeString > debe eliminar caracteres de control 0ms
+ ✓ src/lib/security.test.ts > security > sanitizeString > debe preservar caracteres válidos 1ms
+ ✓ src/lib/security.test.ts > security > sanitizeString > debe limitar longitud máxima 1ms
+ ✓ src/lib/security.test.ts > security > sanitizeString > debe sanitizar strings normales correctamente 1ms
+ ✓ src/lib/security.test.ts > security > sanitizeObject > debe sanitizar strings en objeto 1ms
+ ✓ src/lib/security.test.ts > security > sanitizeObject > debe sanitizar objetos anidados 1ms
+ ✓ src/lib/security.test.ts > security > sanitizeObject > debe sanitizar arrays 2ms
+ ✓ src/lib/security.test.ts > security > sanitizeObject > debe preservar tipos no string 1ms
+ ✓ src/lib/security.test.ts > security > containsDangerousPatterns > debe detectar scripts 2ms
+ ✓ src/lib/security.test.ts > security > containsDangerousPatterns > debe detectar event handlers 1ms
+ ✓ src/lib/security.test.ts > security > containsDangerousPatterns > debe detectar javascript URLs 0ms
+ ✓ src/lib/security.test.ts > security > containsDangerousPatterns > debe detectar iframes 0ms
+ ✓ src/lib/security.test.ts > security > containsDangerousPatterns > debe retornar false para strings seguros 2ms
+ ✓ src/lib/security.test.ts > security > containsDangerousPatterns > debe retornar false para null o undefined 0ms
+ ✓ src/lib/security.test.ts > security > isValidCuid > debe validar cuid correctamente 1ms
+ ✓ src/lib/security.test.ts > security > isValidCuid > debe rechazar cuids inválidos 1ms
+ ✓ src/lib/security.test.ts > security > isValidEmail > debe validar emails correctos 1ms
+ ✓ src/lib/security.test.ts > security > isValidEmail > debe rechazar emails inválidos 1ms
+ ✓ src/lib/security.test.ts > security > isValidEmail > debe rechazar emails muy largos 0ms
+ ✓ src/lib/security.test.ts > security > isValidLength > debe validar longitud dentro del rango 0ms
+ ✓ src/lib/security.test.ts > security > isValidLength > debe rechazar strings muy cortos 0ms
+ ✓ src/lib/security.test.ts > security > isValidLength > debe rechazar strings muy largos 0ms
+ ✓ src/lib/security.test.ts > security > isValidLength > debe retornar false para null o undefined 0ms
+ ✓ src/lib/security.test.ts > security > sanitizeAndValidate > debe sanitizar y validar string válido 1ms
+ ✓ src/lib/security.test.ts > security > sanitizeAndValidate > debe rechazar string muy corto 1ms
+ ✓ src/lib/security.test.ts > security > sanitizeAndValidate > debe rechazar string con patrones peligrosos 0ms
+ ✓ src/lib/security.test.ts > security > sanitizeAndValidate > debe permitir string vacío si allowEmpty es true 0ms
+ ✓ src/lib/security.test.ts > security > sanitizeAndValidate > debe rechazar null o undefined si allowEmpty es false 1ms
+ ✓ src/lib/env/env.test.ts > EnvSchema > valid environment > accepts valid minimal environment 10ms
+ ✓ src/lib/env/env.test.ts > EnvSchema > valid environment > accepts valid environment with all optional fields 1ms
+ ✓ src/lib/env/env.test.ts > EnvSchema > missing required fields > rejects missing DATABASE_URL 3ms
+ ✓ src/lib/env/env.test.ts > EnvSchema > missing required fields > rejects missing NEXTAUTH_SECRET 1ms
+ ✓ src/lib/env/env.test.ts > EnvSchema > missing required fields > rejects missing ENCRYPTION_KEY 1ms
+ ✓ src/lib/env/env.test.ts > EnvSchema > invalid types > rejects invalid NODE_ENV 1ms
+ ✓ src/lib/env/env.test.ts > EnvSchema > invalid types > rejects invalid URL format for NEXTAUTH_URL 1ms
+ ✓ src/lib/env/env.test.ts > EnvSchema > invalid types > rejects NEXTAUTH_SECRET too short 1ms
+ ✓ src/lib/env/env.test.ts > EnvSchema > invalid types > rejects ENCRYPTION_KEY too short 1ms
+ ✓ src/lib/env/env.test.ts > EnvSchema > dependencies > requires NEXTAUTH_URL in production 2ms
+ ✓ src/lib/env/env.test.ts > EnvSchema > dependencies > requires UPSTASH_REDIS_REST_TOKEN when URL is provided 1ms
+ ✓ src/lib/env/env.test.ts > EnvSchema > dependencies > requires UPSTASH_REDIS_REST_URL when token is provided 1ms
+ ✓ src/lib/env/env.test.ts > EnvSchema > production safety > rejects ENCRYPTION_KEY with dev- prefix in production 1ms
+ ✓ src/lib/env/env.test.ts > EnvSchema > production safety > rejects ENCRYPTION_KEY with test- prefix in production 1ms
+ ✓ src/lib/env/env.test.ts > EnvSchema > optional fields > accepts environment without NODE_ENV (default applied in loader) 1ms
+ ✓ src/lib/env/env.test.ts > EnvSchema > optional fields > accepts environment without LOG_LEVEL (default applied in loader) 0ms
+ ✓ src/lib/env/env.test.ts > EnvSchema > extra fields (strict mode) > rejects extra environment variables 1ms
+ ✓ src/lib/get-session.test.ts > get-session > getSession > debe retornar la sesión del auth 4ms
+ ✓ src/lib/get-session.test.ts > get-session > getSession > debe retornar null si no hay sesión 1ms
+ ✓ src/lib/get-session.test.ts > get-session > getCurrentUser > debe retornar el usuario de la sesión 1ms
+ ✓ src/lib/get-session.test.ts > get-session > getCurrentUser > debe retornar null si no hay sesión 0ms
+ ✓ src/lib/get-session.test.ts > get-session > getCurrentUser > debe retornar null si la sesión no tiene usuario 1ms
+ ✓ src/lib/get-session.test.ts > get-session > getCurrentStudentId > debe retornar el studentId del usuario 0ms
+ ✓ src/lib/get-session.test.ts > get-session > getCurrentStudentId > debe retornar null si no hay sesión 0ms
+ ✓ src/lib/get-session.test.ts > get-session > getCurrentStudentId > debe retornar null si el usuario no tiene studentId 0ms
+ ✓ src/lib/get-session.test.ts > get-session > getDbUserWithStudent > debe retornar usuario con student cuando existe 5ms
+ ✓ src/lib/get-session.test.ts > get-session > getDbUserWithStudent > debe retornar null si el email es null 1ms
+ ✓ src/lib/get-session.test.ts > get-session > getDbUserWithStudent > debe retornar null si el email es undefined 0ms
+ ✓ src/lib/get-session.test.ts > get-session > getDbUserWithStudent > debe retornar usuario sin student si no tiene asociado 0ms
+ ✓ src/lib/get-session.test.ts > get-session > getDbUserWithStudent > debe retornar null si el usuario no existe 0ms
+ ✓ src/lib/get-session.test.ts > get-session > getAuthenticatedUserWithStudent > debe retornar usuario con student cuando está autenticado 2ms
+ ✓ src/lib/get-session.test.ts > get-session > getAuthenticatedUserWithStudent > debe retornar null si no hay sesión 1ms
+ ✓ src/lib/get-session.test.ts > get-session > getAuthenticatedUserWithStudent > debe retornar null si el usuario no tiene email 1ms
+ ✓ src/lib/get-session.test.ts > get-session > getAuthenticatedUserWithStudent > debe retornar null si el usuario no existe en la BD 1ms
+ ✓ src/lib/get-session.test.ts > get-session > getAuthenticatedUserWithStudent > debe retornar usuario sin student si no tiene asociado 0ms
+ ✓ src/lib/get-session.test.ts > get-session > getAuthenticatedUserWithStudent > nunca debe devolver undefined (contract enforcement) 1ms
+ ✓ src/proxy.test.ts > Proxy > debe redirigir a signin si no hay cookie de sesión en /dashboard 8ms
+ ✓ src/proxy.test.ts > Proxy > debe permitir acceso a /api/student sin cookie (maneja su propia autenticación) 1ms
+ ✓ src/proxy.test.ts > Proxy > debe permitir acceso si hay cookie next-auth.session-token 1ms
+ ✓ src/proxy.test.ts > Proxy > debe permitir acceso si hay cookie __Secure-next-auth.session-token 1ms
+ ✓ src/proxy.test.ts > Proxy > debe proteger /api/metrics 7ms
+ ✓ src/proxy.test.ts > Proxy > debe proteger /api/attempts 2ms
+ ✓ src/proxy.test.ts > Proxy > debe proteger /api/exams 1ms
+ ✓ src/proxy.test.ts > Proxy > no debe proteger rutas públicas 1ms
+ ✓ src/proxy.test.ts > Proxy > no debe proteger /auth/signin 1ms
+ ✓ src/proxy.test.ts > Proxy > debe incluir callbackUrl en la redirección 1ms
+ ✓ src/proxy.test.ts > Proxy > debe proteger subrutas de /dashboard 1ms
+ ✓ src/lib/challenge-timeout.test.ts > challenge-timeout > cancelExpiredChallenges > debería cancelar desafíos pendientes que han expirado (más de 7 días) 10ms
+ ✓ src/lib/challenge-timeout.test.ts > challenge-timeout > cancelExpiredChallenges > debería retornar 0 si no hay desafíos expirados 1ms
+ ✓ src/lib/challenge-timeout.test.ts > challenge-timeout > cancelExpiredChallenges > debería manejar errores correctamente 7ms
+ ✓ src/lib/challenge-timeout.test.ts > challenge-timeout > cancelExpiredChallenges > no debería cancelar desafíos que aún no han expirado 0ms
+ ✓ src/lib/challenge-timeout.test.ts > challenge-timeout > getChallengesExpiringSoon > debería retornar desafíos próximos a expirar (5+ días) 4ms
+ ✓ src/lib/challenge-timeout.test.ts > challenge-timeout > getChallengesExpiringSoon > debería retornar array vacío si no hay desafíos próximos a expirar 1ms
+ ✓ src/lib/challenge-timeout.test.ts > challenge-timeout > getChallengesExpiringSoon > debería manejar errores correctamente 1ms
+ ✓ src/lib/contracts/http/parseJsonBody.test.ts > parseJsonBody > valid JSON > parses valid JSON object 15ms
+ ✓ src/lib/contracts/http/parseJsonBody.test.ts > parseJsonBody > valid JSON > parses valid JSON array 2ms
+ ✓ src/lib/contracts/http/parseJsonBody.test.ts > parseJsonBody > valid JSON > parses valid JSON primitive 3ms
+ ✓ src/lib/contracts/http/parseJsonBody.test.ts > parseJsonBody > empty body > returns empty object for empty body 1ms
+ ✓ src/lib/contracts/http/parseJsonBody.test.ts > parseJsonBody > empty body > returns empty object for whitespace-only body 1ms
+ ✓ src/lib/contracts/http/parseJsonBody.test.ts > parseJsonBody > invalid JSON > throws on invalid JSON syntax 5ms
+ ✓ src/lib/contracts/http/parseJsonBody.test.ts > parseJsonBody > invalid JSON > throws on malformed JSON 1ms
+ ✓ src/lib/contracts/http/parseJsonBody.test.ts > parseJsonBody > invalid JSON > includes original error message 2ms
+ ✓ src/lib/contracts/http/parseFormData.test.ts > parseFormData > valid FormData > parses string values correctly 7ms
+ ✓ src/lib/contracts/http/parseFormData.test.ts > parseFormData > valid FormData > parses empty string values 1ms
+ ✓ src/lib/contracts/http/parseFormData.test.ts > parseFormData > valid FormData > parses multiple values with same key (takes last) 1ms
+ ✓ src/lib/contracts/http/parseFormData.test.ts > parseFormData > valid FormData > parses special characters correctly 1ms
+ ✓ src/lib/contracts/http/parseFormData.test.ts > parseFormData > valid FormData > parses unicode characters correctly 1ms
+ ✓ src/lib/contracts/http/parseFormData.test.ts > parseFormData > non-string values (prohibited) > throws on File object 3ms
+ ✓ src/lib/contracts/http/parseFormData.test.ts > parseFormData > non-string values (prohibited) > throws on Blob object 1ms
+ ✓ src/lib/contracts/http/parseFormData.test.ts > parseFormData > non-string values (prohibited) > throws with descriptive error message 2ms
+ ✓ src/lib/contracts/http/parseFormData.test.ts > parseFormData > non-string values (prohibited) > includes key name in error message 2ms
+ ✓ src/lib/contracts/http/parseFormData.test.ts > parseFormData > empty FormData > returns empty object for empty FormData 1ms
+ ✓ src/lib/contracts/http/parseFormData.test.ts > parseFormData > mixed valid and invalid > throws even if one field is invalid 1ms
+ ✓ src/app/api/notes/versions/performance-monitor.test.ts > performance-monitor > calculateEnhancedMetrics > debe calcular métricas básicas correctamente 7ms
+ ✓ src/app/api/notes/versions/performance-monitor.test.ts > performance-monitor > calculateEnhancedMetrics > debe generar alerta WARNING cuando se excede el umbral de advertencia 4ms
+ ✓ src/app/api/notes/versions/performance-monitor.test.ts > performance-monitor > calculateEnhancedMetrics > debe generar alerta CRITICAL cuando se excede el umbral crítico 1ms
+ ✓ src/app/api/notes/versions/performance-monitor.test.ts > performance-monitor > calculateEnhancedMetrics > debe generar alerta para authDuration cuando excede el umbral 1ms
+ ✓ src/app/api/notes/versions/performance-monitor.test.ts > performance-monitor > calculateEnhancedMetrics > debe generar alerta para queryDuration cuando excede el umbral 1ms
+ ✓ src/app/api/notes/versions/performance-monitor.test.ts > performance-monitor > calculateEnhancedMetrics > debe generar alerta para métricas personalizadas que exceden 1000ms 1ms
+ ✓ src/app/api/notes/versions/performance-monitor.test.ts > performance-monitor > calculateEnhancedMetrics > debe incluir contexto en las alertas 1ms
+ ✓ src/app/api/notes/versions/performance-monitor.test.ts > performance-monitor > calculateEnhancedMetrics > debe incluir timestamp en las alertas 1ms
+ ✓ src/app/api/notes/versions/performance-monitor.test.ts > performance-monitor > sendPerformanceAlertsToMonitoring > debe loguear alertas críticas en producción 2ms
+ ✓ src/app/api/notes/versions/performance-monitor.test.ts > performance-monitor > sendPerformanceAlertsToMonitoring > no debe enviar alertas en desarrollo 1ms
+ ✓ src/app/api/notes/versions/performance-monitor.test.ts > performance-monitor > sendPerformanceAlertsToMonitoring > debe incluir metadata en las alertas 8ms
+ ✓ src/lib/utils/deepEqual.test.ts > deepEqual > Primitivos > debe comparar números correctamente 4ms
+ ✓ src/lib/utils/deepEqual.test.ts > deepEqual > Primitivos > debe comparar strings correctamente 1ms
+ ✓ src/lib/utils/deepEqual.test.ts > deepEqual > Primitivos > debe comparar booleanos correctamente 1ms
+ ✓ src/lib/utils/deepEqual.test.ts > deepEqual > Primitivos > debe comparar null y undefined correctamente 1ms
+ ✓ src/lib/utils/deepEqual.test.ts > deepEqual > Arrays > debe comparar arrays vacíos 1ms
+ ✓ src/lib/utils/deepEqual.test.ts > deepEqual > Arrays > debe comparar arrays con elementos 1ms
+ ✓ src/lib/utils/deepEqual.test.ts > deepEqual > Arrays > debe comparar arrays anidados 0ms
+ ✓ src/lib/utils/deepEqual.test.ts > deepEqual > Objetos > debe comparar objetos vacíos 0ms
+ ✓ src/lib/utils/deepEqual.test.ts > deepEqual > Objetos > debe comparar objetos con propiedades 1ms
+ ✓ src/lib/utils/deepEqual.test.ts > deepEqual > Objetos > debe comparar objetos con propiedades en diferente orden 0ms
+ ✓ src/lib/utils/deepEqual.test.ts > deepEqual > Objetos > debe comparar objetos anidados 0ms
+ ✓ src/lib/utils/deepEqual.test.ts > deepEqual > Casos Edge > debe distinguir entre array y objeto 0ms
+ ✓ src/lib/utils/deepEqual.test.ts > deepEqual > Casos Edge > debe manejar valores mixtos 0ms
+ ✓ src/lib/utils/deepEqual.test.ts > safeDeepEqual > debe funcionar igual que deepEqual para casos normales 0ms
+ ✓ src/lib/utils/deepEqual.test.ts > safeDeepEqual > debe manejar referencias circulares 1ms
+ ✓ src/lib/utils/deepEqual.test.ts > safeDeepEqual > debe usar fallback a JSON.stringify si hay error 0ms
+ ✓ src/lib/utils/deepEqual.test.ts > safeDeepEqual > debe retornar false si JSON.stringify también falla 0ms
+ ✓ src/lib/health/health.test.ts > Health Checks > checkLiveness > siempre retorna status ok si el proceso responde 5ms
+ ✓ src/lib/health/health.test.ts > Health Checks > checkLiveness > retorna timestamp en formato ISO-8601 2ms
+ ✓ src/lib/health/health.test.ts > Health Checks > checkReadiness > retorna ok cuando todos los servicios están disponibles 2ms
+ ✓ src/lib/health/health.test.ts > Health Checks > checkReadiness > retorna degraded cuando la base de datos está down 1ms
+ ✓ src/lib/health/health.test.ts > Health Checks > checkReadiness > retorna degraded cuando Redis está configurado pero down 3ms
+ ✓ src/lib/health/health.test.ts > Health Checks > checkReadiness > retorna ok cuando Redis está configurado y disponible 1ms
+ ✓ src/lib/health/health.test.ts > Health Checks > checkReadiness > retorna skipped para Redis cuando no está configurado 0ms
+ ✓ src/lib/health/health.test.ts > Health Checks > checkReadiness > retorna timestamp en formato ISO-8601 0ms
+ ✓ src/lib/health/health.test.ts > Health Checks > checkReadiness > ejecuta checks en paralelo para mejor performance 0ms
+ ✓ src/lib/auth.test.ts > Auth - authorize function > debe retornar null si no hay email o password 4ms
+ ✓ src/lib/auth.test.ts > Auth - authorize function > debe retornar null si el usuario no existe 5ms
+ ✓ src/lib/auth.test.ts > Auth - authorize function > debe retornar null si el usuario no tiene contraseña 1ms
+ ✓ src/lib/auth.test.ts > Auth - authorize function > debe retornar null si la contraseña es inválida 1ms
+ ✓ src/lib/auth.test.ts > Auth - authorize function > debe retornar usuario si las credenciales son válidas 1ms
+ ✓ src/lib/auth.test.ts > Auth - authorize function > debe retornar usuario sin studentId si no tiene estudiante asociado 0ms
+ ✓ src/lib/auth.test.ts > Auth - authorize function > debe manejar errores y retornar null 1ms
+ ✓ src/lib/ux/ux.test.ts > UX Baseline > UX_RULES > debe tener umbrales definidos 4ms
+ ✓ src/lib/ux/ux.test.ts > UX Baseline > UX_RULES > debe tener umbrales razonables 1ms
+ ✓ src/lib/ux/ux.test.ts > UX Baseline > UX_ANTI_PATTERNS > debe tener anti-patterns definidos 1ms
+ ✓ src/lib/ux/ux.test.ts > UX Baseline > shouldShowLoading > debe retornar false si el tiempo es menor al umbral 1ms
+ ✓ src/lib/ux/ux.test.ts > UX Baseline > shouldShowLoading > debe retornar true si el tiempo excede el umbral 1ms
+ ✓ src/lib/ux/ux.test.ts > UX Baseline > meetsFeedbackBaseline > debe retornar true si el tiempo está dentro del umbral 0ms
+ ✓ src/lib/ux/ux.test.ts > UX Baseline > meetsFeedbackBaseline > debe retornar false si el tiempo excede el umbral 0ms
+ ✓ src/lib/ux/ux.test.ts > UX Baseline > meetsTransitionBaseline > debe retornar true si el tiempo está dentro del umbral 0ms
+ ✓ src/lib/ux/ux.test.ts > UX Baseline > meetsTransitionBaseline > debe retornar false si el tiempo excede el umbral 0ms
+ ✓ prisma/__tests__/schema-validation.test.ts > Schema.prisma Validation > Generator Configuration > debe tener generator client con provider prisma-client-js 3ms
+ ✓ prisma/__tests__/schema-validation.test.ts > Schema.prisma Validation > Generator Configuration > NO debe tener engineType = "client" 2ms
+ ✓ prisma/__tests__/schema-validation.test.ts > Schema.prisma Validation > Generator Configuration > NO debe tener engineType (removido en Prisma 7.2.0+) 1ms
+ ✓ prisma/__tests__/schema-validation.test.ts > Schema.prisma Validation > Generator Configuration > NO debe tener previewFeatures = ["driverAdapters"] 1ms
+ ✓ prisma/__tests__/schema-validation.test.ts > Schema.prisma Validation > Datasource Configuration > debe tener datasource con provider postgresql 1ms
+ ✓ prisma/__tests__/schema-validation.test.ts > Schema.prisma Validation > Datasource Configuration > debe usar DATABASE_URL del entorno (implícito o explícito) 1ms
+ ✓ prisma/__tests__/schema-validation.test.ts > Schema.prisma Validation > No SQLite Configuration > NO debe tener provider sqlite 2ms
+ ✓ src/lib/rate-limit.test.ts > rate-limit > apiRateLimit.general > debe permitir requests dentro del límite 5ms
+ ✓ src/lib/rate-limit.test.ts > rate-limit > apiRateLimit.general > debe retornar límite y reset correctos 1ms
+ ✓ src/lib/rate-limit.test.ts > rate-limit > apiRateLimit.auth > debe tener límite más estricto que general 1ms
+ ✓ src/lib/rate-limit.test.ts > rate-limit > apiRateLimit.auth > debe bloquear después de exceder límite 1ms
+ ✓ src/lib/rate-limit.test.ts > rate-limit > apiRateLimit.read > debe tener límite apropiado para lectura 1ms
+ ✓ src/lib/rate-limit.test.ts > rate-limit > apiRateLimit.write > debe tener límite apropiado para escritura 1ms
+ ✓ src/lib/rate-limit.test.ts > rate-limit > apiRateLimit.sensitive > debe tener límite muy estricto 1ms
+ ✓ src/lib/rate-limit.test.ts > rate-limit > apiRateLimit.sensitive > debe bloquear rápidamente después de pocos intentos 1ms
+ ✓ src/lib/rate-limit.test.ts > rate-limit > diferentes identificadores > debe manejar diferentes IPs independientemente 1ms
+ ✓ src/lib/utils/text-diff.test.ts > text-diff > compareVersions > debe detectar cambios en el título 5ms
+ ✓ src/lib/utils/text-diff.test.ts > text-diff > compareVersions > debe detectar cambios en el contenido 1ms
+ ✓ src/lib/utils/text-diff.test.ts > text-diff > compareVersions > debe detectar cambios en los tags 1ms
+ ✓ src/lib/utils/text-diff.test.ts > text-diff > compareVersions > debe detectar cuando no hay cambios 1ms
+ ✓ src/lib/utils/text-diff.test.ts > text-diff > compareVersions > debe manejar tags nulos o vacíos 1ms
+ ✓ src/lib/utils/text-diff.test.ts > text-diff > compareVersions > debe detectar múltiples cambios simultáneos 1ms
+ ✓ src/lib/performance/baseline.test.ts > Performance Baseline > SERVER_BASELINE > debe tener umbrales definidos 2ms
+ ✓ src/lib/performance/baseline.test.ts > Performance Baseline > SERVER_BASELINE > debe tener umbrales razonables 0ms
+ ✓ src/lib/performance/baseline.test.ts > Performance Baseline > CLIENT_BASELINE > debe tener umbrales definidos 0ms
+ ✓ src/lib/performance/baseline.test.ts > Performance Baseline > CLIENT_BASELINE > debe tener umbrales razonables 0ms
+ ✓ src/lib/performance/baseline.test.ts > Performance Baseline > UX_BASELINE > debe tener umbrales definidos 0ms
+ ✓ src/lib/performance/baseline.test.ts > Performance Baseline > getBaselineThreshold > debe retornar umbral correcto para cada métrica 2ms
+ ✓ src/lib/performance/baseline.test.ts > Performance Baseline > getBaselineThreshold > debe retornar Infinity para métricas desconocidas 1ms
+ ✓ src/lib/performance/baseline.test.ts > Performance Baseline > meetsBaseline > debe retornar true cuando el tiempo está dentro del umbral 1ms
+ ✓ src/lib/performance/baseline.test.ts > Performance Baseline > meetsBaseline > debe retornar false cuando el tiempo excede el umbral 0ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 23 ⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/startup/startup.test.ts [ src/lib/startup/startup.test.ts ]
+ FAIL  src/app/api/health/readiness/route.test.ts [ src/app/api/health/readiness/route.test.ts ]
+ FAIL  src/app/api/notes/versions/helpers.test.ts [ src/app/api/notes/versions/helpers.test.ts ]
+ FAIL  src/app/api/notes/versions/export-diff/route.test.ts [ src/app/api/notes/versions/export-diff/route.test.ts ]
+ FAIL  src/app/api/notes/versions/metrics/route.test.ts [ src/app/api/notes/versions/metrics/route.test.ts ]
+Error: Cannot find module '.prisma/client/default'
+Require stack:
+- C:\Users\arang\OneDrive\Escritorio\PROY. PAES\paes-tutor\paes-tutor\node_modules\@prisma\client\default.js
+ ❯ Object.<anonymous> node_modules/@prisma/client/default.js:2:6
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { code: 'MODULE_NOT_FOUND', requireStack: [ 'C:\Users\arang\OneDrive\Escritorio\PROY. 
+PAES\paes-tutor\paes-tutor\node_modules\@prisma\client\default.js' ] }
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/67]⎯
+
+ FAIL  src/lib/__tests__/prisma.test.ts [ src/lib/__tests__/prisma.test.ts ]
+Error: [vitest] There was an error when mocking a module. If you are using "vi.mock" factory, make sure there are no 
+top level variables inside, since this call is hoisted to top of the file. Read more: 
+https://vitest.dev/api/vi.html#vi-mock
+ ❯ src/lib/__tests__/prisma.test.ts:15:1
+     13| 
+     14| import { describe, it, expect, beforeEach, afterEach, vi } from 'vites…
+     15| import { PrismaClient } from '@prisma/client'
+       | ^
+     16| 
+     17| // Mock de PrismaClient para verificar constructor
+
+Caused by: Error: Cannot find module '.prisma/client/default'
+Require stack:
+- C:\Users\arang\OneDrive\Escritorio\PROY. PAES\paes-tutor\paes-tutor\node_modules\@prisma\client\default.js
+ ❯ Object.<anonymous> node_modules/@prisma/client/default.js:2:6
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { code: 'MODULE_NOT_FOUND', requireStack: [ 'C:\Users\arang\OneDrive\Escritorio\PROY. 
+PAES\paes-tutor\paes-tutor\node_modules\@prisma\client\default.js' ] }
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/67]⎯
+
+ FAIL  src/app/api/admission-calendar/route.test.ts [ src/app/api/admission-calendar/route.test.ts ]
+Error: Transform failed with 1 error:
+C:/Users/arang/OneDrive/Escritorio/PROY. 
+PAES/paes-tutor/paes-tutor/src/app/api/admission-calendar/route.test.ts:69:18: ERROR: Expected ";" but found "."
+  Plugin: vite:esbuild
+  File: C:/Users/arang/OneDrive/Escritorio/PROY. 
+PAES/paes-tutor/paes-tutor/src/app/api/admission-calendar/route.test.ts:69:18
+  
+  Expected ";" but found "."
+  67 |  declare global {
+  68 |    // eslint-disable-next-line no-var
+  69 |    var __globalThis.__mockAuth____: ReturnType<typeof vi.fn> | undefined
+     |                    ^
+  70 |  }
+  71 |  
+  
+ ❯ failureErrorWithLog node_modules/esbuild/lib/main.js:1467:15
+ ❯ node_modules/esbuild/lib/main.js:736:50
+ ❯ responseCallbacks.<computed> node_modules/esbuild/lib/main.js:603:9
+ ❯ handleIncomingPacket node_modules/esbuild/lib/main.js:658:12
+ ❯ Socket.readFromStdout node_modules/esbuild/lib/main.js:581:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/67]⎯
+
+ FAIL  src/app/api/sentry-smoke/route.test.ts [ src/app/api/sentry-smoke/route.test.ts ]
+Error: [vitest] There was an error when mocking a module. If you are using "vi.mock" factory, make sure there are no 
+top level variables inside, since this call is hoisted to top of the file. Read more: 
+https://vitest.dev/api/vi.html#vi-mock
+ ❯ src/app/api/sentry-smoke/route.ts:12:1
+     10| import { NextRequest, NextResponse } from 'next/server'
+     11| import { logger } from '@/lib/logger'
+     12| import * as Sentry from '@sentry/nextjs'
+       | ^
+     13| 
+     14| export const runtime = 'nodejs'
+
+Caused by: ReferenceError: Cannot access 'mockCaptureException' before initialization
+ ❯ src/app/api/sentry-smoke/route.test.ts:29:23
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/67]⎯
+
+ FAIL  src/app/api/student/route.test.ts [ src/app/api/student/route.test.ts ]
+Error: [vitest] There was an error when mocking a module. If you are using "vi.mock" factory, make sure there are no 
+top level variables inside, since this call is hoisted to top of the file. Read more: 
+https://vitest.dev/api/vi.html#vi-mock
+ ❯ src/app/api/student/route.ts:3:1
+      1| import { NextRequest, NextResponse } from 'next/server'
+      2| import { prisma } from '@/lib/prisma'
+      3| import { getSession } from '@/lib/get-session'
+       | ^
+      4| import { handleApiError } from '@/lib/api-helpers'
+      5| import { withRateLimit } from '@/lib/rate-limit-middleware'
+ ❯ src/app/api/student/route.test.ts:50:1
+
+Caused by: Error: [vitest] No "logger" export is defined on the "@/lib/logger" mock. Did you forget to return it from 
+"vi.mock"?
+If you need to partially mock a module, you can use "importOriginal" helper inside:
+
+vi.mock(import("@/lib/logger"), async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    // your mocked methods
+  }
+})
+
+ ❯ src/lib/auth.ts:29:3
+ ❯ src/lib/get-session.ts:1:1
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/67]⎯
+
+ FAIL  src/app/api/analytics/direct-comparison/route.test.ts [ src/app/api/analytics/direct-comparison/route.test.ts ]
+Error: Transform failed with 1 error:
+C:/Users/arang/OneDrive/Escritorio/PROY. 
+PAES/paes-tutor/paes-tutor/src/app/api/analytics/direct-comparison/route.test.ts:73:18: ERROR: Expected ";" but found 
+"."
+  Plugin: vite:esbuild
+  File: C:/Users/arang/OneDrive/Escritorio/PROY. 
+PAES/paes-tutor/paes-tutor/src/app/api/analytics/direct-comparison/route.test.ts:73:18
+  
+  Expected ";" but found "."
+  71 |  declare global {
+  72 |    // eslint-disable-next-line no-var
+  73 |    var __globalThis.__mockGetAuthenticatedUserWithStudent____: ReturnType<typeof vi.fn> | undefined
+     |                    ^
+  74 |  }
+  75 |  
+  
+ ❯ failureErrorWithLog node_modules/esbuild/lib/main.js:1467:15
+ ❯ node_modules/esbuild/lib/main.js:736:50
+ ❯ responseCallbacks.<computed> node_modules/esbuild/lib/main.js:603:9
+ ❯ handleIncomingPacket node_modules/esbuild/lib/main.js:658:12
+ ❯ Socket.readFromStdout node_modules/esbuild/lib/main.js:581:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/67]⎯
+
+ FAIL  src/app/api/analytics/errors/route.test.ts [ src/app/api/analytics/errors/route.test.ts ]
+Error: Transform failed with 1 error:
+C:/Users/arang/OneDrive/Escritorio/PROY. PAES/paes-tutor/paes-tutor/src/app/api/analytics/errors/route.test.ts:74:18: 
+ERROR: Expected ";" but found "."
+  Plugin: vite:esbuild
+  File: C:/Users/arang/OneDrive/Escritorio/PROY. 
+PAES/paes-tutor/paes-tutor/src/app/api/analytics/errors/route.test.ts:74:18
+  
+  Expected ";" but found "."
+  72 |  declare global {
+  73 |    // eslint-disable-next-line no-var
+  74 |    var __globalThis.__mockGetAuthenticatedUserWithStudent____: ReturnType<typeof vi.fn> | undefined
+     |                    ^
+  75 |  }
+  76 |  
+  
+ ❯ failureErrorWithLog node_modules/esbuild/lib/main.js:1467:15
+ ❯ node_modules/esbuild/lib/main.js:736:50
+ ❯ responseCallbacks.<computed> node_modules/esbuild/lib/main.js:603:9
+ ❯ handleIncomingPacket node_modules/esbuild/lib/main.js:658:12
+ ❯ Socket.readFromStdout node_modules/esbuild/lib/main.js:581:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/67]⎯
+
+ FAIL  src/app/api/analytics/joint-progress/route.test.ts [ src/app/api/analytics/joint-progress/route.test.ts ]
+Error: Transform failed with 1 error:
+C:/Users/arang/OneDrive/Escritorio/PROY. 
+PAES/paes-tutor/paes-tutor/src/app/api/analytics/joint-progress/route.test.ts:79:18: ERROR: Expected ";" but found "."
+  Plugin: vite:esbuild
+  File: C:/Users/arang/OneDrive/Escritorio/PROY. 
+PAES/paes-tutor/paes-tutor/src/app/api/analytics/joint-progress/route.test.ts:79:18
+  
+  Expected ";" but found "."
+  77 |  declare global {
+  78 |    // eslint-disable-next-line no-var
+  79 |    var __globalThis.__mockGetAuthenticatedUserWithStudent____: ReturnType<typeof vi.fn> | undefined
+     |                    ^
+  80 |  }
+  81 |  
+  
+ ❯ failureErrorWithLog node_modules/esbuild/lib/main.js:1467:15
+ ❯ node_modules/esbuild/lib/main.js:736:50
+ ❯ responseCallbacks.<computed> node_modules/esbuild/lib/main.js:603:9
+ ❯ handleIncomingPacket node_modules/esbuild/lib/main.js:658:12
+ ❯ Socket.readFromStdout node_modules/esbuild/lib/main.js:581:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/67]⎯
+
+ FAIL  src/app/api/notes/versions/route.test.ts [ src/app/api/notes/versions/route.test.ts ]
+Error: [vitest] There was an error when mocking a module. If you are using "vi.mock" factory, make sure there are no 
+top level variables inside, since this call is hoisted to top of the file. Read more: 
+https://vitest.dev/api/vi.html#vi-mock
+ ❯ src/app/api/notes/versions/handlers/get-handler.ts:30:1
+     28| import { fetchVersions } from '../filters'
+     29| import { processVersions, buildCurrentVersion, buildVersionsResponse }…
+     30| import {
+       | ^
+     31|   withAuthContext,
+     32|   validateResponseData,
+ ❯ src/app/api/notes/versions/route.ts:4:1
+
+Caused by: Error: Cannot find module '.prisma/client/default'
+Require stack:
+- C:\Users\arang\OneDrive\Escritorio\PROY. PAES\paes-tutor\paes-tutor\node_modules\@prisma\client\default.js
+ ❯ Object.<anonymous> node_modules/@prisma/client/default.js:2:6
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { code: 'MODULE_NOT_FOUND', requireStack: [ 'C:\Users\arang\OneDrive\Escritorio\PROY. 
+PAES\paes-tutor\paes-tutor\node_modules\@prisma\client\default.js' ] }
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/67]⎯
+
+ FAIL  src/app/api/notes/versions/compare/route.test.ts [ src/app/api/notes/versions/compare/route.test.ts ]
+Error: [vitest] There was an error when mocking a module. If you are using "vi.mock" factory, make sure there are no 
+top level variables inside, since this call is hoisted to top of the file. Read more: 
+https://vitest.dev/api/vi.html#vi-mock
+ ❯ src/app/api/notes/versions/compare/route.ts:10:1
+      8| import { cuidValidator } from '@/lib/utils/version-validators'
+      9| import { withAuthContext } from '../helpers'
+     10| import { handleEndpointError } from '../error-handlers'
+       | ^
+     11| import { createRequestContext, getOrCreateRequestId } from '../request…
+     12| import { addTracingHeaders, addCorsHeaders } from '../response-helpers'
+ ❯ src/app/api/notes/versions/compare/route.test.ts:57:1
+
+Caused by: Error: Cannot find module '.prisma/client/default'
+Require stack:
+- C:\Users\arang\OneDrive\Escritorio\PROY. PAES\paes-tutor\paes-tutor\node_modules\@prisma\client\default.js
+ ❯ Object.<anonymous> node_modules/@prisma/client/default.js:2:6
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { code: 'MODULE_NOT_FOUND', requireStack: [ 'C:\Users\arang\OneDrive\Escritorio\PROY. 
+PAES\paes-tutor\paes-tutor\node_modules\@prisma\client\default.js' ] }
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/67]⎯
+
+ FAIL  src/app/api/notes/versions/analytics/route.test.ts [ src/app/api/notes/versions/analytics/route.test.ts ]
+Error: [vitest] There was an error when mocking a module. If you are using "vi.mock" factory, make sure there are no 
+top level variables inside, since this call is hoisted to top of the file. Read more: 
+https://vitest.dev/api/vi.html#vi-mock
+ ❯ src/app/api/notes/versions/analytics/route.ts:10:1
+      8| import { cuidValidator } from '@/lib/utils/version-validators'
+      9| import { withAuthContext } from '../helpers'
+     10| import { handleEndpointError } from '../error-handlers'
+       | ^
+     11| import { createRequestContext, getOrCreateRequestId } from '../request…
+     12| import { addTracingHeaders, addCorsHeaders } from '../response-helpers'
+ ❯ src/app/api/notes/versions/analytics/route.test.ts:57:1
+
+Caused by: Error: Cannot find module '.prisma/client/default'
+Require stack:
+- C:\Users\arang\OneDrive\Escritorio\PROY. PAES\paes-tutor\paes-tutor\node_modules\@prisma\client\default.js
+ ❯ Object.<anonymous> node_modules/@prisma/client/default.js:2:6
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { code: 'MODULE_NOT_FOUND', requireStack: [ 'C:\Users\arang\OneDrive\Escritorio\PROY. 
+PAES\paes-tutor\paes-tutor\node_modules\@prisma\client\default.js' ] }
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/67]⎯
+
+ FAIL  src/app/api/notes/versions/compress/route.test.ts [ src/app/api/notes/versions/compress/route.test.ts ]
+Error: [vitest] There was an error when mocking a module. If you are using "vi.mock" factory, make sure there are no 
+top level variables inside, since this call is hoisted to top of the file. Read more: 
+https://vitest.dev/api/vi.html#vi-mock
+ ❯ src/app/api/notes/versions/compress/route.ts:12:1
+     10| import { cuidValidator } from '@/lib/utils/version-validators'
+     11| import { withAuthContext } from '../helpers'
+     12| import { handleEndpointError } from '../error-handlers'
+       | ^
+     13| import { createRequestContext, getOrCreateRequestId } from '../request…
+     14| import { addTracingHeaders, addCorsHeaders } from '../response-helpers'
+ ❯ src/app/api/notes/versions/compress/route.test.ts:57:1
+
+Caused by: Error: Cannot find module '.prisma/client/default'
+Require stack:
+- C:\Users\arang\OneDrive\Escritorio\PROY. PAES\paes-tutor\paes-tutor\node_modules\@prisma\client\default.js
+ ❯ Object.<anonymous> node_modules/@prisma/client/default.js:2:6
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { code: 'MODULE_NOT_FOUND', requireStack: [ 'C:\Users\arang\OneDrive\Escritorio\PROY. 
+PAES\paes-tutor\paes-tutor\node_modules\@prisma\client\default.js' ] }
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/67]⎯
+
+ FAIL  src/app/api/notes/versions/comments/route.test.ts [ src/app/api/notes/versions/comments/route.test.ts ]
+Error: [vitest] There was an error when mocking a module. If you are using "vi.mock" factory, make sure there are no 
+top level variables inside, since this call is hoisted to top of the file. Read more: 
+https://vitest.dev/api/vi.html#vi-mock
+ ❯ src/app/api/notes/versions/comments/route.ts:8:1
+      6| import { cuidValidator } from '@/lib/utils/version-validators'
+      7| import { withAuthContext } from '../helpers'
+      8| import { handleEndpointError } from '../error-handlers'
+       | ^
+      9| import { createRequestContext, getOrCreateRequestId } from '../request…
+     10| import { addTracingHeaders, addCorsHeaders } from '../response-helpers'
+ ❯ src/app/api/notes/versions/comments/route.test.ts:57:1
+
+Caused by: Error: Cannot find module '.prisma/client/default'
+Require stack:
+- C:\Users\arang\OneDrive\Escritorio\PROY. PAES\paes-tutor\paes-tutor\node_modules\@prisma\client\default.js
+ ❯ Object.<anonymous> node_modules/@prisma/client/default.js:2:6
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { code: 'MODULE_NOT_FOUND', requireStack: [ 'C:\Users\arang\OneDrive\Escritorio\PROY. 
+PAES\paes-tutor\paes-tutor\node_modules\@prisma\client\default.js' ] }
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/67]⎯
+
+ FAIL  src/app/api/notes/versions/export/route.test.ts [ src/app/api/notes/versions/export/route.test.ts ]
+Error: [vitest] There was an error when mocking a module. If you are using "vi.mock" factory, make sure there are no 
+top level variables inside, since this call is hoisted to top of the file. Read more: 
+https://vitest.dev/api/vi.html#vi-mock
+ ❯ src/app/api/notes/versions/export/route.ts:11:1
+      9| import { cuidValidator } from '@/lib/utils/version-validators'
+     10| import { withAuthContext } from '../helpers'
+     11| import { handleEndpointError } from '../error-handlers'
+       | ^
+     12| import { createRequestContext, getOrCreateRequestId } from '../request…
+     13| import { addTracingHeaders, addCorsHeaders } from '../response-helpers'
+ ❯ src/app/api/notes/versions/export/route.test.ts:67:1
+
+Caused by: Error: Cannot find module '.prisma/client/default'
+Require stack:
+- C:\Users\arang\OneDrive\Escritorio\PROY. PAES\paes-tutor\paes-tutor\node_modules\@prisma\client\default.js
+ ❯ Object.<anonymous> node_modules/@prisma/client/default.js:2:6
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { code: 'MODULE_NOT_FOUND', requireStack: [ 'C:\Users\arang\OneDrive\Escritorio\PROY. 
+PAES\paes-tutor\paes-tutor\node_modules\@prisma\client\default.js' ] }
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/67]⎯
+
+ FAIL  src/app/api/notes/versions/export-bulk/route.test.ts [ src/app/api/notes/versions/export-bulk/route.test.ts ]
+Error: [vitest] There was an error when mocking a module. If you are using "vi.mock" factory, make sure there are no 
+top level variables inside, since this call is hoisted to top of the file. Read more: 
+https://vitest.dev/api/vi.html#vi-mock
+ ❯ src/app/api/notes/versions/export-bulk/route.ts:11:1
+      9| import { cuidValidator } from '@/lib/utils/version-validators'
+     10| import { withAuthContext } from '../helpers'
+     11| import { handleEndpointError } from '../error-handlers'
+       | ^
+     12| import { createRequestContext, getOrCreateRequestId } from '../request…
+     13| import { addTracingHeaders, addCorsHeaders } from '../response-helpers'
+ ❯ src/app/api/notes/versions/export-bulk/route.test.ts:60:1
+
+Caused by: Error: Cannot find module '.prisma/client/default'
+Require stack:
+- C:\Users\arang\OneDrive\Escritorio\PROY. PAES\paes-tutor\paes-tutor\node_modules\@prisma\client\default.js
+ ❯ Object.<anonymous> node_modules/@prisma/client/default.js:2:6
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { code: 'MODULE_NOT_FOUND', requireStack: [ 'C:\Users\arang\OneDrive\Escritorio\PROY. 
+PAES\paes-tutor\paes-tutor\node_modules\@prisma\client\default.js' ] }
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/67]⎯
+
+ FAIL  src/app/api/notes/versions/merge/route.test.ts [ src/app/api/notes/versions/merge/route.test.ts ]
+Error: [vitest] There was an error when mocking a module. If you are using "vi.mock" factory, make sure there are no 
+top level variables inside, since this call is hoisted to top of the file. Read more: 
+https://vitest.dev/api/vi.html#vi-mock
+ ❯ src/app/api/notes/versions/merge/route.ts:9:1
+      7| import { cuidValidator } from '@/lib/utils/version-validators'
+      8| import { withAuthContext } from '../helpers'
+      9| import { handleEndpointError } from '../error-handlers'
+       | ^
+     10| import { createRequestContext, getOrCreateRequestId } from '../request…
+     11| import { addTracingHeaders, addCorsHeaders } from '../response-helpers'
+ ❯ src/app/api/notes/versions/merge/route.test.ts:58:1
+
+Caused by: Error: Cannot find module '.prisma/client/default'
+Require stack:
+- C:\Users\arang\OneDrive\Escritorio\PROY. PAES\paes-tutor\paes-tutor\node_modules\@prisma\client\default.js
+ ❯ Object.<anonymous> node_modules/@prisma/client/default.js:2:6
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { code: 'MODULE_NOT_FOUND', requireStack: [ 'C:\Users\arang\OneDrive\Escritorio\PROY. 
+PAES\paes-tutor\paes-tutor\node_modules\@prisma\client\default.js' ] }
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/67]⎯
+
+ FAIL  src/app/api/notes/versions/history/route.test.ts [ src/app/api/notes/versions/history/route.test.ts ]
+Error: [vitest] There was an error when mocking a module. If you are using "vi.mock" factory, make sure there are no 
+top level variables inside, since this call is hoisted to top of the file. Read more: 
+https://vitest.dev/api/vi.html#vi-mock
+ ❯ src/app/api/notes/versions/history/route.ts:8:1
+      6| import { cuidValidator } from '@/lib/utils/version-validators'
+      7| import { withAuthContext } from '../helpers'
+      8| import { handleEndpointError } from '../error-handlers'
+       | ^
+      9| import { createRequestContext, getOrCreateRequestId } from '../request…
+     10| import { addTracingHeaders, addCorsHeaders } from '../response-helpers'
+ ❯ src/app/api/notes/versions/history/route.test.ts:57:1
+
+Caused by: Error: Cannot find module '.prisma/client/default'
+Require stack:
+- C:\Users\arang\OneDrive\Escritorio\PROY. PAES\paes-tutor\paes-tutor\node_modules\@prisma\client\default.js
+ ❯ Object.<anonymous> node_modules/@prisma/client/default.js:2:6
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { code: 'MODULE_NOT_FOUND', requireStack: [ 'C:\Users\arang\OneDrive\Escritorio\PROY. 
+PAES\paes-tutor\paes-tutor\node_modules\@prisma\client\default.js' ] }
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/67]⎯
+
+ FAIL  src/app/api/notes/versions/semantic-search/route.test.ts [ 
+src/app/api/notes/versions/semantic-search/route.test.ts ]
+Error: [vitest] There was an error when mocking a module. If you are using "vi.mock" factory, make sure there are no 
+top level variables inside, since this call is hoisted to top of the file. Read more: 
+https://vitest.dev/api/vi.html#vi-mock
+ ❯ src/app/api/notes/versions/semantic-search/route.ts:11:1
+      9| import { generateEmbedding, cosineSimilarity } from '@/lib/utils/embed…
+     10| import { withAuthContext } from '../helpers'
+     11| import { handleEndpointError } from '../error-handlers'
+       | ^
+     12| import { createRequestContext, getOrCreateRequestId } from '../request…
+     13| import { addTracingHeaders, addCorsHeaders } from '../response-helpers'
+ ❯ src/app/api/notes/versions/semantic-search/route.test.ts:58:1
+
+Caused by: Error: Cannot find module '.prisma/client/default'
+Require stack:
+- C:\Users\arang\OneDrive\Escritorio\PROY. PAES\paes-tutor\paes-tutor\node_modules\@prisma\client\default.js
+ ❯ Object.<anonymous> node_modules/@prisma/client/default.js:2:6
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { code: 'MODULE_NOT_FOUND', requireStack: [ 'C:\Users\arang\OneDrive\Escritorio\PROY. 
+PAES\paes-tutor\paes-tutor\node_modules\@prisma\client\default.js' ] }
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/67]⎯
+
+ FAIL  src/app/api/notes/versions/share/route.test.ts [ src/app/api/notes/versions/share/route.test.ts ]
+Error: [vitest] There was an error when mocking a module. If you are using "vi.mock" factory, make sure there are no 
+top level variables inside, since this call is hoisted to top of the file. Read more: 
+https://vitest.dev/api/vi.html#vi-mock
+ ❯ src/app/api/notes/versions/share/route.ts:10:1
+      8| import { cuidValidator } from '@/lib/utils/version-validators'
+      9| import { withAuthContext } from '../helpers'
+     10| import { handleEndpointError } from '../error-handlers'
+       | ^
+     11| import { createRequestContext, getOrCreateRequestId } from '../request…
+     12| import { addTracingHeaders, addCorsHeaders } from '../response-helpers'
+ ❯ src/app/api/notes/versions/share/route.test.ts:58:1
+
+Caused by: Error: Cannot find module '.prisma/client/default'
+Require stack:
+- C:\Users\arang\OneDrive\Escritorio\PROY. PAES\paes-tutor\paes-tutor\node_modules\@prisma\client\default.js
+ ❯ Object.<anonymous> node_modules/@prisma/client/default.js:2:6
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { code: 'MODULE_NOT_FOUND', requireStack: [ 'C:\Users\arang\OneDrive\Escritorio\PROY. 
+PAES\paes-tutor\paes-tutor\node_modules\@prisma\client\default.js' ] }
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/67]⎯
+
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 44 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/app/api/bookmarks/route.test.ts > GET /api/bookmarks > debe manejar errores de base de datos correctamente
+ReferenceError: logger is not defined
+ ❯ src/app/api/bookmarks/route.test.ts:375:22
+    373|     const data = await response.json()
+    374|     expect(data.error).toBe('Error al obtener favoritos')
+    375|     expect(vi.mocked(logger.error)).toHaveBeenCalled()
+       |                      ^
+    376|   })
+    377| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/67]⎯
+
+ FAIL  src/app/api/bookmarks/route.test.ts > POST /api/bookmarks > debe manejar errores de base de datos correctamente
+ReferenceError: logger is not defined
+ ❯ src/app/api/bookmarks/route.test.ts:594:22
+    592|     const data = await response.json()
+    593|     expect(data.error).toBe('Error al crear favorito')
+    594|     expect(vi.mocked(logger.error)).toHaveBeenCalled()
+       |                      ^
+    595|   })
+    596| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[21/67]⎯
+
+ FAIL  src/app/api/bookmarks/route.test.ts > DELETE /api/bookmarks > debe manejar errores de base de datos 
+correctamente
+ReferenceError: logger is not defined
+ ❯ src/app/api/bookmarks/route.test.ts:757:22
+    755|     const data = await response.json()
+    756|     expect(data.error).toBe('Error al eliminar favorito')
+    757|     expect(vi.mocked(logger.error)).toHaveBeenCalled()
+       |                      ^
+    758|   })
+    759| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22/67]⎯
+
+ FAIL  src/app/api/flashcards/route.test.ts > GET /api/flashcards > debe retornar 401 si no está autenticado
+ReferenceError: getAuthenticatedUserWithStudent is not defined
+ ❯ Module.setupUnauthenticatedUser src/app/api/flashcards/__tests__/test-helpers.ts:58:13
+     56| 
+     57| export function setupUnauthenticatedUser(): void {
+     58|   vi.mocked(getAuthenticatedUserWithStudent).mockResolvedValue(null)
+       |             ^
+     59| }
+     60| 
+ ❯ src/app/api/flashcards/route.test.ts:76:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[23/67]⎯
+
+ FAIL  src/app/api/flashcards/route.test.ts > GET /api/flashcards > debe retornar todos los flashcards
+ReferenceError: getAuthenticatedUserWithStudent is not defined
+ ❯ Module.setupAuthenticatedUserWithStudent src/app/api/flashcards/__tests__/test-helpers.ts:54:13
+     52|   user: User & { student: Student | null } | null = createUserWithStud…
+     53| ): void {
+     54|   vi.mocked(getAuthenticatedUserWithStudent).mockResolvedValue(user)
+       |             ^
+     55| }
+     56| 
+ ❯ src/app/api/flashcards/route.test.ts:84:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[24/67]⎯
+
+ FAIL  src/app/api/flashcards/route.test.ts > GET /api/flashcards > debe filtrar por dueOnly=true
+ReferenceError: getAuthenticatedUserWithStudent is not defined
+ ❯ Module.setupAuthenticatedUserWithStudent src/app/api/flashcards/__tests__/test-helpers.ts:54:13
+     52|   user: User & { student: Student | null } | null = createUserWithStud…
+     53| ): void {
+     54|   vi.mocked(getAuthenticatedUserWithStudent).mockResolvedValue(user)
+       |             ^
+     55| }
+     56| 
+ ❯ src/app/api/flashcards/route.test.ts:97:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[25/67]⎯
+
+ FAIL  src/app/api/flashcards/route.test.ts > GET /api/flashcards > debe filtrar por flashcardId
+ReferenceError: getAuthenticatedUserWithStudent is not defined
+ ❯ Module.setupAuthenticatedUserWithStudent src/app/api/flashcards/__tests__/test-helpers.ts:54:13
+     52|   user: User & { student: Student | null } | null = createUserWithStud…
+     53| ): void {
+     54|   vi.mocked(getAuthenticatedUserWithStudent).mockResolvedValue(user)
+       |             ^
+     55| }
+     56| 
+ ❯ src/app/api/flashcards/route.test.ts:116:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[26/67]⎯
+
+ FAIL  src/app/api/flashcards/route.test.ts > GET /api/flashcards > debe limitar resultados con limit
+ReferenceError: getAuthenticatedUserWithStudent is not defined
+ ❯ Module.setupAuthenticatedUserWithStudent src/app/api/flashcards/__tests__/test-helpers.ts:54:13
+     52|   user: User & { student: Student | null } | null = createUserWithStud…
+     53| ): void {
+     54|   vi.mocked(getAuthenticatedUserWithStudent).mockResolvedValue(user)
+       |             ^
+     55| }
+     56| 
+ ❯ src/app/api/flashcards/route.test.ts:134:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[27/67]⎯
+
+ FAIL  src/app/api/flashcards/route.test.ts > POST /api/flashcards > debe retornar 401 si no está autenticado
+ReferenceError: getAuthenticatedUserWithStudent is not defined
+ ❯ Module.setupUnauthenticatedUser src/app/api/flashcards/__tests__/test-helpers.ts:58:13
+     56| 
+     57| export function setupUnauthenticatedUser(): void {
+     58|   vi.mocked(getAuthenticatedUserWithStudent).mockResolvedValue(null)
+       |             ^
+     59| }
+     60| 
+ ❯ src/app/api/flashcards/route.test.ts:151:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[28/67]⎯
+
+ FAIL  src/app/api/flashcards/route.test.ts > POST /api/flashcards > debe retornar 400 si el body no es válido
+ReferenceError: getAuthenticatedUserWithStudent is not defined
+ ❯ Module.setupAuthenticatedUserWithStudent src/app/api/flashcards/__tests__/test-helpers.ts:54:13
+     52|   user: User & { student: Student | null } | null = createUserWithStud…
+     53| ): void {
+     54|   vi.mocked(getAuthenticatedUserWithStudent).mockResolvedValue(user)
+       |             ^
+     55| }
+     56| 
+ ❯ src/app/api/flashcards/route.test.ts:159:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[29/67]⎯
+
+ FAIL  src/app/api/flashcards/route.test.ts > POST /api/flashcards > debe crear flashcard sin questionId
+ReferenceError: getAuthenticatedUserWithStudent is not defined
+ ❯ Module.setupAuthenticatedUserWithStudent src/app/api/flashcards/__tests__/test-helpers.ts:54:13
+     52|   user: User & { student: Student | null } | null = createUserWithStud…
+     53| ): void {
+     54|   vi.mocked(getAuthenticatedUserWithStudent).mockResolvedValue(user)
+       |             ^
+     55| }
+     56| 
+ ❯ src/app/api/flashcards/route.test.ts:167:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[30/67]⎯
+
+ FAIL  src/app/api/flashcards/route.test.ts > POST /api/flashcards > debe crear flashcard con questionId válido
+ReferenceError: getAuthenticatedUserWithStudent is not defined
+ ❯ Module.setupAuthenticatedUserWithStudent src/app/api/flashcards/__tests__/test-helpers.ts:54:13
+     52|   user: User & { student: Student | null } | null = createUserWithStud…
+     53| ): void {
+     54|   vi.mocked(getAuthenticatedUserWithStudent).mockResolvedValue(user)
+       |             ^
+     55| }
+     56| 
+ ❯ src/app/api/flashcards/route.test.ts:179:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[31/67]⎯
+
+ FAIL  src/app/api/flashcards/route.test.ts > POST /api/flashcards > debe retornar 404 si questionId no existe
+ReferenceError: getAuthenticatedUserWithStudent is not defined
+ ❯ Module.setupAuthenticatedUserWithStudent src/app/api/flashcards/__tests__/test-helpers.ts:54:13
+     52|   user: User & { student: Student | null } | null = createUserWithStud…
+     53| ): void {
+     54|   vi.mocked(getAuthenticatedUserWithStudent).mockResolvedValue(user)
+       |             ^
+     55| }
+     56| 
+ ❯ src/app/api/flashcards/route.test.ts:194:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[32/67]⎯
+
+ FAIL  src/app/api/flashcards/route.test.ts > PUT /api/flashcards > debe retornar 401 si no está autenticado
+ReferenceError: getAuthenticatedUserWithStudent is not defined
+ ❯ Module.setupUnauthenticatedUser src/app/api/flashcards/__tests__/test-helpers.ts:58:13
+     56| 
+     57| export function setupUnauthenticatedUser(): void {
+     58|   vi.mocked(getAuthenticatedUserWithStudent).mockResolvedValue(null)
+       |             ^
+     59| }
+     60| 
+ ❯ src/app/api/flashcards/route.test.ts:211:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[33/67]⎯
+
+ FAIL  src/app/api/flashcards/route.test.ts > PUT /api/flashcards > debe retornar 400 si el body no es válido
+ReferenceError: getAuthenticatedUserWithStudent is not defined
+ ❯ Module.setupAuthenticatedUserWithStudent src/app/api/flashcards/__tests__/test-helpers.ts:54:13
+     52|   user: User & { student: Student | null } | null = createUserWithStud…
+     53| ): void {
+     54|   vi.mocked(getAuthenticatedUserWithStudent).mockResolvedValue(user)
+       |             ^
+     55| }
+     56| 
+ ❯ src/app/api/flashcards/route.test.ts:222:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[34/67]⎯
+
+ FAIL  src/app/api/flashcards/route.test.ts > PUT /api/flashcards > debe retornar 404 si el flashcard no existe
+ReferenceError: getAuthenticatedUserWithStudent is not defined
+ ❯ Module.setupAuthenticatedUserWithStudent src/app/api/flashcards/__tests__/test-helpers.ts:54:13
+     52|   user: User & { student: Student | null } | null = createUserWithStud…
+     53| ): void {
+     54|   vi.mocked(getAuthenticatedUserWithStudent).mockResolvedValue(user)
+       |             ^
+     55| }
+     56| 
+ ❯ src/app/api/flashcards/route.test.ts:230:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[35/67]⎯
+
+ FAIL  src/app/api/flashcards/route.test.ts > PUT /api/flashcards > debe actualizar flashcard con algoritmo SM-2
+ReferenceError: getAuthenticatedUserWithStudent is not defined
+ ❯ Module.setupAuthenticatedUserWithStudent src/app/api/flashcards/__tests__/test-helpers.ts:54:13
+     52|   user: User & { student: Student | null } | null = createUserWithStud…
+     53| ): void {
+     54|   vi.mocked(getAuthenticatedUserWithStudent).mockResolvedValue(user)
+       |             ^
+     55| }
+     56| 
+ ❯ src/app/api/flashcards/route.test.ts:242:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[36/67]⎯
+
+ FAIL  src/app/api/flashcards/route.test.ts > DELETE /api/flashcards > debe retornar 401 si no está autenticado
+ReferenceError: getAuthenticatedUserWithStudent is not defined
+ ❯ Module.setupUnauthenticatedUser src/app/api/flashcards/__tests__/test-helpers.ts:58:13
+     56| 
+     57| export function setupUnauthenticatedUser(): void {
+     58|   vi.mocked(getAuthenticatedUserWithStudent).mockResolvedValue(null)
+       |             ^
+     59| }
+     60| 
+ ❯ src/app/api/flashcards/route.test.ts:271:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[37/67]⎯
+
+ FAIL  src/app/api/flashcards/route.test.ts > DELETE /api/flashcards > debe retornar 400 si flashcardId no está 
+presente
+ReferenceError: getAuthenticatedUserWithStudent is not defined
+ ❯ Module.setupAuthenticatedUserWithStudent src/app/api/flashcards/__tests__/test-helpers.ts:54:13
+     52|   user: User & { student: Student | null } | null = createUserWithStud…
+     53| ): void {
+     54|   vi.mocked(getAuthenticatedUserWithStudent).mockResolvedValue(user)
+       |             ^
+     55| }
+     56| 
+ ❯ src/app/api/flashcards/route.test.ts:279:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[38/67]⎯
+
+ FAIL  src/app/api/flashcards/route.test.ts > DELETE /api/flashcards > debe retornar 404 si el flashcard no existe
+ReferenceError: getAuthenticatedUserWithStudent is not defined
+ ❯ Module.setupAuthenticatedUserWithStudent src/app/api/flashcards/__tests__/test-helpers.ts:54:13
+     52|   user: User & { student: Student | null } | null = createUserWithStud…
+     53| ): void {
+     54|   vi.mocked(getAuthenticatedUserWithStudent).mockResolvedValue(user)
+       |             ^
+     55| }
+     56| 
+ ❯ src/app/api/flashcards/route.test.ts:287:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[39/67]⎯
+
+ FAIL  src/app/api/flashcards/route.test.ts > DELETE /api/flashcards > debe eliminar flashcard correctamente
+ReferenceError: getAuthenticatedUserWithStudent is not defined
+ ❯ Module.setupAuthenticatedUserWithStudent src/app/api/flashcards/__tests__/test-helpers.ts:54:13
+     52|   user: User & { student: Student | null } | null = createUserWithStud…
+     53| ): void {
+     54|   vi.mocked(getAuthenticatedUserWithStudent).mockResolvedValue(user)
+       |             ^
+     55| }
+     56| 
+ ❯ src/app/api/flashcards/route.test.ts:296:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[40/67]⎯
+
+ FAIL  src/app/api/metrics/route.test.ts > GET /api/metrics > debe retornar métricas agrupadas por asignatura
+TypeError: Body is unusable: Body has already been read
+ ❯ src/app/api/metrics/route.test.ts:170:33
+    168|     })
+    169| 
+    170|     const data = await response.json()
+       |                                 ^
+    171|     const lectora = data.find((m: any) => m.codigo === 'LECTORA')
+    172|     expect(lectora).toBeDefined()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[41/67]⎯
+
+ FAIL  src/app/api/metrics/route.test.ts > GET /api/metrics > debe calcular correctamente el porcentaje por asignatura
+TypeError: Body is unusable: Body has already been read
+ ❯ src/app/api/metrics/route.test.ts:222:33
+    220| 
+    221|     await assertSuccessResponse(response, 200)
+    222|     const data = await response.json()
+       |                                 ^
+    223|     const lectora = data.find((m: any) => m.codigo === 'LECTORA')
+    224|     expect(lectora.porcentaje).toBe(80)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[42/67]⎯
+
+ FAIL  src/app/api/metrics/route.test.ts > GET /api/metrics > debe agrupar múltiples métricas de la misma asignatura
+TypeError: Body is unusable: Body has already been read
+ ❯ src/app/api/metrics/route.test.ts:286:33
+    284| 
+    285|     await assertSuccessResponse(response, 200)
+    286|     const data = await response.json()
+       |                                 ^
+    287|     const lectora = data.find((m: any) => m.codigo === 'LECTORA')
+    288|     expect(lectora).toBeDefined()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[43/67]⎯
+
+ FAIL  src/app/api/search/route.test.ts > GET /api/search > debe manejar errores correctamente
+ReferenceError: logger is not defined
+ ❯ src/app/api/search/route.test.ts:218:22
+    216|     const response = await GET(request)
+    217|     expect(response.status).toBe(500)
+    218|     expect(vi.mocked(logger.error)).toHaveBeenCalled()
+       |                      ^
+    219|   })
+    220| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[44/67]⎯
+
+ FAIL  src/app/api/admin/cleanup-test-data/route.test.ts > POST /api/admin/cleanup-test-data > debe retornar error si 
+el usuario no está autenticado
+ FAIL  src/app/api/admin/cleanup-test-data/route.test.ts > POST /api/admin/cleanup-test-data > debe manejar errores en 
+la transacción
+Error: [vitest] No "NextResponse" export is defined on the "next/server" mock. Did you forget to return it from 
+"vi.mock"?
+If you need to partially mock a module, you can use "importOriginal" helper inside:
+
+vi.mock(import("next/server"), async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    // your mocked methods
+  }
+})
+
+ ❯ src/app/api/admin/cleanup-test-data/route.ts:379:16
+    377|         })
+    378|       } catch (error) {
+    379|         return NextResponse.json(
+       |                ^
+    380|           {
+    381|             error: 'Error al limpiar datos',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[45/67]⎯
+
+ FAIL  src/app/api/admin/cleanup-test-data/route.test.ts > POST /api/admin/cleanup-test-data > debe validar el schema 
+correctamente
+Error: [vitest] No "NextResponse" export is defined on the "next/server" mock. Did you forget to return it from 
+"vi.mock"?
+If you need to partially mock a module, you can use "importOriginal" helper inside:
+
+vi.mock(import("next/server"), async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    // your mocked methods
+  }
+})
+
+ ❯ src/app/api/admin/cleanup-test-data/route.ts:379:16
+    377|         })
+    378|       } catch (error) {
+    379|         return NextResponse.json(
+       |                ^
+    380|           {
+    381|             error: 'Error al limpiar datos',
+ ❯ src/app/api/admin/cleanup-test-data/route.test.ts:115:22
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[46/67]⎯
+
+ FAIL  src/app/api/admin/cleanup-test-data/route.test.ts > POST /api/admin/cleanup-test-data > debe eliminar exámenes 
+de prueba cuando deleteExams es true
+Error: [vitest] No "NextResponse" export is defined on the "next/server" mock. Did you forget to return it from 
+"vi.mock"?
+If you need to partially mock a module, you can use "importOriginal" helper inside:
+
+vi.mock(import("next/server"), async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    // your mocked methods
+  }
+})
+
+ ❯ src/app/api/admin/cleanup-test-data/route.ts:379:16
+    377|         })
+    378|       } catch (error) {
+    379|         return NextResponse.json(
+       |                ^
+    380|           {
+    381|             error: 'Error al limpiar datos',
+ ❯ src/app/api/admin/cleanup-test-data/route.test.ts:173:22
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[47/67]⎯
+
+ FAIL  src/app/api/admin/cleanup-test-data/route.test.ts > POST /api/admin/cleanup-test-data > debe filtrar por año 
+cuando se proporciona yearFilter
+Error: [vitest] No "NextResponse" export is defined on the "next/server" mock. Did you forget to return it from 
+"vi.mock"?
+If you need to partially mock a module, you can use "importOriginal" helper inside:
+
+vi.mock(import("next/server"), async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    // your mocked methods
+  }
+})
+
+ ❯ src/app/api/admin/cleanup-test-data/route.ts:379:16
+    377|         })
+    378|       } catch (error) {
+    379|         return NextResponse.json(
+       |                ^
+    380|           {
+    381|             error: 'Error al limpiar datos',
+ ❯ src/app/api/admin/cleanup-test-data/route.test.ts:225:22
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[48/67]⎯
+
+ FAIL  src/app/api/admin/cleanup-test-data/route.test.ts > POST /api/admin/cleanup-test-data > debe eliminar todos los 
+datos cuando onlyTestData es false
+Error: [vitest] No "NextResponse" export is defined on the "next/server" mock. Did you forget to return it from 
+"vi.mock"?
+If you need to partially mock a module, you can use "importOriginal" helper inside:
+
+vi.mock(import("next/server"), async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    // your mocked methods
+  }
+})
+
+ ❯ src/app/api/admin/cleanup-test-data/route.ts:379:16
+    377|         })
+    378|       } catch (error) {
+    379|         return NextResponse.json(
+       |                ^
+    380|           {
+    381|             error: 'Error al limpiar datos',
+ ❯ src/app/api/admin/cleanup-test-data/route.test.ts:279:22
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[49/67]⎯
+
+ FAIL  src/app/api/practice/questions/route.test.ts > GET /api/practice/questions > debe retornar 401 si no está 
+autenticado
+TypeError: Cannot read properties of undefined (reading 'TOPIC')
+ ❯ src/app/api/practice/questions/route.test.ts:64:97
+     62|   it('debe retornar 401 si no está autenticado', async () => {
+     63|     setupUnauthenticatedUser()
+     64|     const request = new NextRequest(`http://localhost/api/practice/que…
+       |                                                                                                 ^
+     65|     const response = await GET(request)
+     66|     await assertErrorResponse(response, 401, 'No autorizado')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[50/67]⎯
+
+ FAIL  src/app/api/practice/questions/route.test.ts > GET /api/practice/questions > debe retornar 400 si topicId no 
+está presente
+TypeError: __vi_import_3__.assertErrorResponse is not a function
+ ❯ src/app/api/practice/questions/route.test.ts:73:11
+     71|     const request = new NextRequest('http://localhost/api/practice/que…
+     72|     const response = await GET(request)
+     73|     await assertErrorResponse(response, 400, 'Parámetros inválidos')
+       |           ^
+     74|   })
+     75| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[51/67]⎯
+
+ FAIL  src/app/api/practice/questions/route.test.ts > GET /api/practice/questions > debe retornar 404 si el tema no 
+existe
+TypeError: Cannot read properties of undefined (reading 'TOPIC')
+ ❯ src/app/api/practice/questions/route.test.ts:79:97
+     77|     setupAuthenticatedUser()
+     78|     setupTopicMock(null)
+     79|     const request = new NextRequest(`http://localhost/api/practice/que…
+       |                                                                                                 ^
+     80|     const response = await GET(request)
+     81|     await assertErrorResponse(response, 404, 'Tema no encontrado')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[52/67]⎯
+
+ FAIL  src/app/api/practice/questions/route.test.ts > GET /api/practice/questions > debe retornar preguntas del tema
+TypeError: Cannot read properties of undefined (reading 'TOPIC')
+ ❯ src/app/api/practice/questions/route.test.ts:86:35
+     84|   it('debe retornar preguntas del tema', async () => {
+     85|     setupAuthenticatedUser()
+     86|     setupTopicMock({ id: TEST_IDS.TOPIC, nombre: 'Test Topic', subject…
+       |                                   ^
+     87|     const questions = [
+     88|       createQuestionWithOptions({ id: TEST_IDS.QUESTION }),
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[53/67]⎯
+
+ FAIL  src/app/api/practice/questions/route.test.ts > GET /api/practice/questions > debe filtrar por dificultad easy 
+(1-2)
+TypeError: Cannot read properties of undefined (reading 'TOPIC')
+ ❯ src/app/api/practice/questions/route.test.ts:103:35
+
+    101|   it('debe filtrar por dificultad easy (1-2)', async () => {
+    102|     setupAuthenticatedUser()
+    103|     setupTopicMock({ id: TEST_IDS.TOPIC, nombre: 'Test Topic', subject…
+       |                                   ^
+    104|     const questions = [createQuestionWithOptions({ dificultad: 1 }), c…
+    105|     setupQuestionsMock(questions)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[54/67]⎯
+
+ FAIL  src/app/api/practice/questions/route.test.ts > GET /api/practice/questions > debe filtrar por dificultad medium 
+(3-4)
+TypeError: Cannot read properties of undefined (reading 'TOPIC')
+ ❯ src/app/api/practice/questions/route.test.ts:119:35
+    117|   it('debe filtrar por dificultad medium (3-4)', async () => {
+    118|     setupAuthenticatedUser()
+    119|     setupTopicMock({ id: TEST_IDS.TOPIC, nombre: 'Test Topic', subject…
+       |                                   ^
+    120|     const questions = [createQuestionWithOptions({ dificultad: 3 }), c…
+    121|     setupQuestionsMock(questions)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[55/67]⎯
+
+ FAIL  src/app/api/practice/questions/route.test.ts > GET /api/practice/questions > debe filtrar por dificultad hard 
+(5)
+TypeError: Cannot read properties of undefined (reading 'TOPIC')
+ ❯ src/app/api/practice/questions/route.test.ts:135:35
+    133|   it('debe filtrar por dificultad hard (5)', async () => {
+    134|     setupAuthenticatedUser()
+    135|     setupTopicMock({ id: TEST_IDS.TOPIC, nombre: 'Test Topic', subject…
+       |                                   ^
+    136|     const questions = [createQuestionWithOptions({ dificultad: 5 })]
+ Test Files  29 failed | 82 passed (111)
+      Tests  44 failed | 1077 passed (1121)
+   Start at  11:00:22
+   Duration  81.57s (transform 13.76s, setup 146.43s, import 25.46s, tests 50.75s, environment 168.51s)
+
+    137|     setupQuestionsMock(questions)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[56/67]⎯
+
+ FAIL  src/app/api/practice/questions/route.test.ts > GET /api/practice/questions > debe usar mode como alias de 
+difficulty
+TypeError: Cannot read properties of undefined (reading 'TOPIC')
+ ❯ src/app/api/practice/questions/route.test.ts:151:35
+    149|   it('debe usar mode como alias de difficulty', async () => {
+    150|     setupAuthenticatedUser()
+    151|     setupTopicMock({ id: TEST_IDS.TOPIC, nombre: 'Test Topic', subject…
+       |                                   ^
+    152|     const questions = [createQuestionWithOptions({ dificultad: 1 })]
+    153|     setupQuestionsMock(questions)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[57/67]⎯
+
+ FAIL  src/app/api/practice/questions/route.test.ts > GET /api/practice/questions > debe aplicar límite de preguntas
+TypeError: Cannot read properties of undefined (reading 'TOPIC')
+ ❯ src/app/api/practice/questions/route.test.ts:167:35
+    165|   it('debe aplicar límite de preguntas', async () => {
+    166|     setupAuthenticatedUser()
+    167|     setupTopicMock({ id: TEST_IDS.TOPIC, nombre: 'Test Topic', subject…
+       |                                   ^
+    168|     const questions = Array.from({ length: 10 }, (_, i) => createQuest…
+    169|     setupQuestionsMock(questions)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[58/67]⎯
+
+ FAIL  src/app/api/practice/questions/route.test.ts > GET /api/practice/questions > debe obtener todas las 
+dificultades si no hay suficientes con filtro
+TypeError: Cannot read properties of undefined (reading 'TOPIC')
+ ❯ src/app/api/practice/questions/route.test.ts:181:35
+    179|   it('debe obtener todas las dificultades si no hay suficientes con fi…
+    180|     setupAuthenticatedUser()
+    181|     setupTopicMock({ id: TEST_IDS.TOPIC, nombre: 'Test Topic', subject…
+       |                                   ^
+    182|     const filteredQuestions = [createQuestionWithOptions({ dificultad:…
+    183|     const allQuestions = [
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[59/67]⎯
+
+ FAIL  src/app/api/practice/questions/route.test.ts > GET /api/practice/questions > debe incluir relaciones (options, 
+subject, topic)
+TypeError: Cannot read properties of undefined (reading 'TOPIC')
+ ❯ src/app/api/practice/questions/route.test.ts:199:35
+    197|   it('debe incluir relaciones (options, subject, topic)', async () => {
+    198|     setupAuthenticatedUser()
+    199|     setupTopicMock({ id: TEST_IDS.TOPIC, nombre: 'Test Topic', subject…
+       |                                   ^
+    200|     const questions = [createQuestionWithOptions()]
+    201|     setupQuestionsMock(questions)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[60/67]⎯
+
+ FAIL  src/app/api/practice/questions/route.test.ts > GET /api/practice/questions > debe aleatorizar el orden de las 
+preguntas
+TypeError: Cannot read properties of undefined (reading 'TOPIC')
+ ❯ src/app/api/practice/questions/route.test.ts:212:35
+    210|   it('debe aleatorizar el orden de las preguntas', async () => {
+    211|     setupAuthenticatedUser()
+    212|     setupTopicMock({ id: TEST_IDS.TOPIC, nombre: 'Test Topic', subject…
+       |                                   ^
+    213|     const questions = Array.from({ length: 5 }, (_, i) => createQuesti…
+    214|     setupQuestionsMock(questions)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[61/67]⎯
+
+ FAIL  src/app/api/practice/questions/route.test.ts > GET /api/practice/questions > debe manejar errores correctamente
+TypeError: Cannot read properties of undefined (reading 'TOPIC')
+ ❯ src/app/api/practice/questions/route.test.ts:225:35
+    223|   it('debe manejar errores correctamente', async () => {
+    224|     setupAuthenticatedUser()
+    225|     setupTopicMock({ id: TEST_IDS.TOPIC, nombre: 'Test Topic', subject…
+       |                                   ^
+    226|     vi.mocked(prisma.question.findMany).mockRejectedValue(new Error('D…
+    227|     const request = new NextRequest(`http://localhost/api/practice/que…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[62/67]⎯
+

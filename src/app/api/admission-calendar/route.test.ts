@@ -64,11 +64,18 @@ vi.mock('@/lib/prisma', () => ({
 }))
 
 // Mock de auth que retorna la sesión mockeada
-const mockAuth = vi.fn()
-vi.mock('@/lib/auth', () => ({
-  authOptions: {},
-  auth: mockAuth,
-}))
+declare global {
+  // eslint-disable-next-line no-var
+  var __mockAuth__: ReturnType<typeof vi.fn> | undefined
+}
+
+vi.mock('@/lib/auth', () => {
+  globalThis.__mockAuth__ ??= vi.fn()
+  return {
+    authOptions: {},
+    auth: globalThis.__mockAuth__,
+  }
+})
 
 // Mock de logger
 vi.mock('@/lib/logger', () => ({
@@ -82,12 +89,12 @@ vi.mock('@/lib/logger', () => ({
 describe('GET /api/admission-calendar', () => {
   beforeEach(() => {
     vitest.clearAllMocks()
-    mockAuth.mockResolvedValue({ user: { email: 'test@example.com' } })
+    globalThis.__mockAuth__.mockResolvedValue({ user: { email: 'test@example.com' } })
   })
 
   describe('Autenticación', () => {
     it('debe retornar 401 si no está autenticado', async () => {
-      mockAuth.mockResolvedValue(null)
+      globalThis.__mockAuth__.mockResolvedValue(null)
 
       const request = createTestRequest()
       const response = await GET(request)
@@ -96,7 +103,7 @@ describe('GET /api/admission-calendar', () => {
     })
 
     it('debe permitir acceso si está autenticado', async () => {
-      mockAuth.mockResolvedValue({ user: { email: 'test@example.com' } })
+      globalThis.__mockAuth__.mockResolvedValue({ user: { email: 'test@example.com' } })
       setupAdmissionCalendarMocks([createAdmissionCalendarPrisma()])
 
       const request = createTestRequest()
