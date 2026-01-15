@@ -39,7 +39,7 @@ vi.mock('next/server', () => {
   }
 })
 
-import { describe, it, expect, beforeEach, vi as vitest } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { GET } from './route'
 import { prisma } from '@/lib/prisma'
 import {
@@ -80,11 +80,8 @@ vi.mock('@/lib/rate-limit-middleware', () => ({
 
 // Mock de cache
 declare global {
-  // eslint-disable-next-line no-var
   var __mockGetCached__: ReturnType<typeof vi.fn> | undefined
-  // eslint-disable-next-line no-var
   var __mockGenerateAdvancedAnalytics__: ReturnType<typeof vi.fn> | undefined
-  // eslint-disable-next-line no-var
   var __mockLogApiRequest__: ReturnType<typeof vi.fn> | undefined
 }
 
@@ -141,7 +138,6 @@ vi.mock('@/app/api/notes/versions/circuit-breaker', () => ({
 
 // Mock de logger
 declare global {
-  // eslint-disable-next-line no-var
   var __mockLogApiRequest__: ReturnType<typeof vi.fn> | undefined
 }
 
@@ -721,7 +717,7 @@ describe('GET /api/analytics', () => {
       })
 
       const request = createTestRequest()
-      const response = await GET(request)
+      await GET(request)
 
       // Asegurar que se drenó la cola de promises/microtasks
       await Promise.resolve()

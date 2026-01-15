@@ -11,7 +11,6 @@ import { getCached, cacheKeys } from '@/lib/cache'
 import { TIME_CONSTANTS } from '@/lib/constants'
 import { handleApiError } from '@/lib/api-helpers'
 import { generateRecommendations } from '@/lib/recommendations'
-import { getCurrentStudentId } from '@/lib/get-session'
 import {
   TEST_IDS,
   createPerformanceMetricForRecommendations,

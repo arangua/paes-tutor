@@ -30,7 +30,6 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { GET } from './route'
 import { prisma } from '@/lib/prisma'
 import {
-  assertSuccessResponse,
   clearAllMocks,
 } from '@/test/enterprise/shared-test-helpers'
 

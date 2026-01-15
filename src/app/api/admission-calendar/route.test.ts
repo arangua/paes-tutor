@@ -65,7 +65,6 @@ vi.mock('@/lib/prisma', () => ({
 
 // Mock de auth que retorna la sesión mockeada
 declare global {
-  // eslint-disable-next-line no-var
   var __mockAuth__: ReturnType<typeof vi.fn> | undefined
 }
 

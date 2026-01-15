@@ -71,7 +71,7 @@ export async function getAuthenticatedUserWithStudent(): Promise<
 
     // Si existe usuario aunque student sea null, retorna el usuario
     return user
-  } catch (err) {
+  } catch {
     return null
   }
 }

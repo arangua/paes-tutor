@@ -64,7 +64,6 @@ import {
 import {
   TEST_IDS,
   setupAuthenticatedUser,
-  setupUnauthenticatedUser,
   setupStudyNote,
   createStudyNote,
   createStudyNoteVersion,

@@ -4,16 +4,13 @@ import { cleanup } from '@testing-library/react'
 
 // Declaraciones globales para mocks persistentes
 declare global {
-  // eslint-disable-next-line no-var
   var __mockLogger__: {
     info: ReturnType<typeof vi.fn>
     warn: ReturnType<typeof vi.fn>
     error: ReturnType<typeof vi.fn>
     debug: ReturnType<typeof vi.fn>
   } | undefined
-  // eslint-disable-next-line no-var
   var __mockLogApiRequest__: ReturnType<typeof vi.fn> | undefined
-  // eslint-disable-next-line no-var
   var __mockGetAuthenticatedUserWithStudent__: ReturnType<typeof vi.fn> | undefined
 }
 

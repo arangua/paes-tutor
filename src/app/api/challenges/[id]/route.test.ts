@@ -21,7 +21,6 @@ import {
   createChallengeWithRelations,
   createAttempt,
   setupAuthenticatedUserWithStudent,
-  setupUnauthenticatedUser,
   setupChallengeMock,
   setupChallengeUpdateMock,
   setupAttemptMock,
