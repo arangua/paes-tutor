@@ -47,6 +47,7 @@ jobs:
         fail_ci_if_error: false
 
   e2e:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
 
     steps:
@@ -93,7 +94,7 @@ jobs:
   mutation:
     runs-on: ubuntu-latest
     # Ejecutar solo en push a main/develop o en PRs (opcional: puede ser manual)
-    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    if: github.event_name == 'push'
 
     steps:
     - uses: actions/checkout@v4
