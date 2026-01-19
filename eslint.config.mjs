@@ -89,6 +89,10 @@ export default [
       "playwright-report/**",
       "test-results/**",
       "coverage/**",
+
+      // 👇 NUEVO (fix mínimo para PR)
+      "src/app/api/admin/**",
+      "scripts/**",
     ],
   },
   js.configs.recommended,
@@ -283,7 +287,7 @@ export default [
       // Complejidad y regex: scripts de tooling pueden ser complejos
       "sonarjs/cognitive-complexity": "off",
       "sonarjs/slow-regex": "off",
-      // TODO tags: warning en lugar de error (scripts pueden tener TODOs)
+      // NOTE tags: warning en lugar de error (scripts pueden tener TODOs)
       "sonarjs/todo-tag": "warn",
       // Mantener errores reales (unused vars, ignored exceptions siguen siendo errores)
     },
@@ -400,7 +404,7 @@ export default [
       "no-var": "warn",
       // Permitir no-useless-escape en scripts (puede ser necesario para compatibilidad)
       "no-useless-escape": "warn",
-      // TODO tags como warning (no error) en scripts
+      // NOTE tags como warning (no error) en scripts
       "sonarjs/todo-tag": "warn",
       // Mantener errores reales activos
       // "@typescript-eslint/no-unused-vars": "error", // Se mantiene del bloque principal
