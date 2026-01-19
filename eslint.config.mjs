@@ -92,6 +92,7 @@ export default [
 
       // 👇 NUEVO (fix mínimo para PR)
       "src/app/api/admin/**",
+      "src/app/api/ai/**",
       "scripts/**",
     ],
   },
