@@ -20,12 +20,85 @@ import {
 } from 'docx'
 import { safeRound, safeToISODate, safeDivide, ensureFiniteNumber } from '@/app/api/notes/versions/validation-utils'
 
+type ProgressCallback = (progress: number, current: number, total: number, message: string) => void
+
 /**
  * Helper para obtener la posición Y después de una tabla autoTable
  */
 function getTableFinalY(doc: jsPDF, currentY: number, spacing: number = 15): number {
   const finalY = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY
   return finalY ? finalY + spacing : currentY + 30
+}
+
+function createProgressUpdater(totalSteps: number, onProgress?: ProgressCallback) {
+  let currentStep = 0
+  return (message: string) => {
+    currentStep++
+    if (onProgress) {
+      const safeCurrent = ensureFiniteNumber(currentStep, 0)
+      const safeTotal = ensureFiniteNumber(totalSteps, 1)
+      const progress = safeRound(safeDivide(safeCurrent, safeTotal, 0) * 100, 0)
+      onProgress(progress, currentStep, totalSteps, message)
+    }
+  }
+}
+
+type AnswerStatusKind = 'correct' | 'omitted' | 'incorrect'
+
+function getAnswerStatusKind(answer: { isCorrect: boolean; isOmitted: boolean }): AnswerStatusKind {
+  if (answer.isCorrect) return 'correct'
+  if (answer.isOmitted) return 'omitted'
+  return 'incorrect'
+}
+
+function getPdfAnswerStatus(kind: AnswerStatusKind): { label: string; color: [number, number, number] } {
+  switch (kind) {
+    case 'correct':
+      return { label: '✓ Correcta', color: [34, 197, 94] }
+    case 'omitted':
+      return { label: '○ Omitida', color: [234, 179, 8] }
+    default:
+      return { label: '✗ Incorrecta', color: [239, 68, 68] }
+  }
+}
+
+function getExcelAnswerStatusLabel(kind: AnswerStatusKind): string {
+  switch (kind) {
+    case 'correct':
+      return 'Correcta'
+    case 'omitted':
+      return 'Omitida'
+    default:
+      return 'Incorrecta'
+  }
+}
+
+function getWordAnswerStatus(kind: AnswerStatusKind): { label: string; color: string } {
+  switch (kind) {
+    case 'correct':
+      return { label: '✓ Correcta', color: '00C853' }
+    case 'omitted':
+      return { label: '○ Omitida', color: 'FFB300' }
+    default:
+      return { label: '✗ Incorrecta', color: 'EF4444' }
+  }
+}
+
+function getOptionPrefix(option: { esCorrecta: boolean; letra: string }, selectedOption?: string) {
+  if (option.esCorrecta) return '✓ '
+  if (option.letra === selectedOption) return '→ '
+  return '  '
+}
+
+function getTrendLabel(trend: AnalyticsData['subjectBreakdown'][number]['trend']) {
+  switch (trend) {
+    case 'improving':
+      return 'Mejorando'
+    case 'declining':
+      return 'En declive'
+    default:
+      return 'Estable'
+  }
 }
 
 // Tipos para exportación
@@ -82,22 +155,11 @@ export interface AnalyticsData {
  */
 export async function exportExamResultsToPDF(
   data: ExamResultData,
-  onProgress?: (progress: number, current: number, total: number, message: string) => void
+  onProgress?: ProgressCallback
 ): Promise<void> {
   const doc = new jsPDF()
   const totalSteps = 3 + data.answers.length // Configuración + Resumen + Título sección + cada pregunta
-  let currentStep = 0
-
-  // ✅ Enterprise: Calcular progreso usando funciones seguras
-  const updateProgress = (message: string) => {
-    currentStep++
-    if (onProgress) {
-      const safeCurrent = ensureFiniteNumber(currentStep, 0)
-      const safeTotal = ensureFiniteNumber(totalSteps, 1)
-      const progress = safeRound(safeDivide(safeCurrent, safeTotal, 0) * 100, 0)
-      onProgress(progress, currentStep, totalSteps, message)
-    }
-  }
+  const updateProgress = createProgressUpdater(totalSteps, onProgress)
 
   // Configuración
   updateProgress('Configurando documento PDF...')
@@ -165,12 +227,10 @@ export async function exportExamResultsToPDF(
     }
 
     // Estado de la pregunta
-    const status = answer.isCorrect ? '✓ Correcta' : answer.isOmitted ? '○ Omitida' : '✗ Incorrecta'
-    const statusColor = answer.isCorrect
-      ? [34, 197, 94]
-      : answer.isOmitted
-        ? [234, 179, 8]
-        : [239, 68, 68]
+    const statusKind = getAnswerStatusKind(answer)
+    const pdfStatus = getPdfAnswerStatus(statusKind)
+    const status = pdfStatus.label
+    const statusColor = pdfStatus.color
 
     doc.setFontSize(11)
     doc.setFont('helvetica', 'bold')
@@ -192,7 +252,7 @@ export async function exportExamResultsToPDF(
 
     // Opciones
     answer.options.forEach(option => {
-      const prefix = option.esCorrecta ? '✓ ' : option.letra === answer.selectedOption ? '→ ' : '  '
+      const prefix = getOptionPrefix(option, answer.selectedOption)
       const text = `${prefix}${option.letra}. ${option.texto}`
       const lines = doc.splitTextToSize(text, pageWidth - 2 * margin - 10)
       lines.forEach((line: string) => {
@@ -248,22 +308,11 @@ export async function exportExamResultsToPDF(
  */
 export async function exportExamResultsToExcel(
   data: ExamResultData,
-  onProgress?: (progress: number, current: number, total: number, message: string) => void
+  onProgress?: ProgressCallback
 ): Promise<void> {
   const workbook = new ExcelJS.Workbook()
   const totalSteps = 4 // Resumen + Respuestas + Ajustes + Guardar
-  let currentStep = 0
-
-  // ✅ Enterprise: Calcular progreso usando funciones seguras
-  const updateProgress = (message: string) => {
-    currentStep++
-    if (onProgress) {
-      const safeCurrent = ensureFiniteNumber(currentStep, 0)
-      const safeTotal = ensureFiniteNumber(totalSteps, 1)
-      const progress = safeRound(safeDivide(safeCurrent, safeTotal, 0) * 100, 0)
-      onProgress(progress, currentStep, totalSteps, message)
-    }
-  }
+  const updateProgress = createProgressUpdater(totalSteps, onProgress)
 
   // Hoja 1: Resumen
   updateProgress('Generando hoja de resumen...')
@@ -289,12 +338,13 @@ export async function exportExamResultsToExcel(
   answersSheet.addRow(['#', 'Pregunta', 'Tu Respuesta', 'Respuesta Correcta', 'Estado', 'Explicación'])
   
   data.answers.forEach(answer => {
+    const statusKind = getAnswerStatusKind(answer)
     answersSheet.addRow([
       answer.questionNumber,
       answer.enunciado,
       answer.selectedOption || 'Omitida',
       answer.options.find(o => o.esCorrecta)?.letra || 'N/A',
-      answer.isCorrect ? 'Correcta' : answer.isOmitted ? 'Omitida' : 'Incorrecta',
+      getExcelAnswerStatusLabel(statusKind),
       answer.explicacion || '',
     ])
   })
@@ -470,7 +520,7 @@ export async function exportAnalyticsToPDF(
       s.subject,
       `${s.average.toFixed(1)}%`,
       s.attempts.toString(),
-      s.trend === 'improving' ? 'Mejorando' : s.trend === 'declining' ? 'En declive' : 'Estable',
+      getTrendLabel(s.trend),
     ])
 
     autoTable(doc, {
@@ -572,7 +622,7 @@ export async function exportAnalyticsToExcel(
         s.subject,
         s.average,
         s.attempts,
-        s.trend === 'improving' ? 'Mejorando' : s.trend === 'declining' ? 'En declive' : 'Estable',
+        getTrendLabel(s.trend),
       ])
     })
     subjectSheet.columns = [{ width: 30 }, { width: 12 }, { width: 10 }, { width: 12 }]
@@ -591,22 +641,11 @@ export async function exportAnalyticsToExcel(
  */
 export async function exportExamResultsToWord(
   data: ExamResultData,
-  onProgress?: (progress: number, current: number, total: number, message: string) => void
+  onProgress?: ProgressCallback
 ): Promise<void> {
   const children: (Paragraph | Table)[] = []
   const totalSteps = 3 + data.answers.length // Título + Resumen + Título sección + cada pregunta
-  let currentStep = 0
-
-  // ✅ Enterprise: Calcular progreso usando funciones seguras
-  const updateProgress = (message: string) => {
-    currentStep++
-    if (onProgress) {
-      const safeCurrent = ensureFiniteNumber(currentStep, 0)
-      const safeTotal = ensureFiniteNumber(totalSteps, 1)
-      const progress = safeRound(safeDivide(safeCurrent, safeTotal, 0) * 100, 0)
-      onProgress(progress, currentStep, totalSteps, message)
-    }
-  }
+  const updateProgress = createProgressUpdater(totalSteps, onProgress)
 
   // Título
   updateProgress('Configurando documento Word...')
@@ -699,8 +738,10 @@ export async function exportExamResultsToWord(
 
   data.answers.forEach((answer, index) => {
     updateProgress(`Procesando pregunta ${index + 1} de ${data.answers.length}...`)
-    const status = answer.isCorrect ? '✓ Correcta' : answer.isOmitted ? '○ Omitida' : '✗ Incorrecta'
-    const statusColor = answer.isCorrect ? '00C853' : answer.isOmitted ? 'FFB300' : 'EF4444'
+    const statusKind = getAnswerStatusKind(answer)
+    const wordStatus = getWordAnswerStatus(statusKind)
+    const status = wordStatus.label
+    const statusColor = wordStatus.color
 
     children.push(
       new Paragraph({
@@ -721,7 +762,7 @@ export async function exportExamResultsToWord(
     )
 
     answer.options.forEach(option => {
-      const prefix = option.esCorrecta ? '✓ ' : option.letra === answer.selectedOption ? '→ ' : '  '
+      const prefix = getOptionPrefix(option, answer.selectedOption)
       children.push(
         new Paragraph({
           text: `${prefix}${option.letra}. ${option.texto}`,
@@ -789,17 +830,7 @@ export async function exportExamsListToExcel(
   onProgress?: (progress: number, current: number, total: number, message: string) => void
 ): Promise<void> {
   const totalSteps = 3
-  let currentStep = 0
-
-  const updateProgress = (message: string) => {
-    currentStep++
-    if (onProgress) {
-      const safeCurrent = ensureFiniteNumber(currentStep, 0)
-      const safeTotal = ensureFiniteNumber(totalSteps, 1)
-      const progress = safeRound(safeDivide(safeCurrent, safeTotal, 0) * 100, 0)
-      onProgress(progress, currentStep, totalSteps, message)
-    }
-  }
+  const updateProgress = createProgressUpdater(totalSteps, onProgress)
 
   updateProgress('Generando lista de exámenes...')
   const workbook = new ExcelJS.Workbook()
