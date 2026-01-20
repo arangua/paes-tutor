@@ -55,30 +55,64 @@ interface PendingRemindersProps {
   pendingReviews?: number
 }
 
-/**
- * Componente para mostrar recordatorios visuales de tareas pendientes
- * Basado en Nielsen Heuristic #1: Visibility of system status
- */
-export function PendingReminders({
-  pendingAttempts = [],
-  pendingFlashcards = 0,
-  pendingChallenges = 0,
-  pendingReviews = 0,
-}: PendingRemindersProps) {
-  // Calcular fecha actual de forma pura usando useState
-  const [currentTime] = useState(() => Date.now())
+const PRIORITY_ORDER: Record<PendingReminder['priority'], number> = { high: 0, medium: 1, low: 2 }
 
+function getReminderIcon(type: PendingReminder['type']) {
+  switch (type) {
+    case 'exam':
+      return PlayCircle
+    case 'flashcard':
+      return BookOpen
+    case 'challenge':
+      return Trophy
+    case 'review':
+      return FileText
+    default:
+      return AlertCircle
+  }
+}
+
+function getPriorityColor(priority: PendingReminder['priority']) {
+  switch (priority) {
+    case 'high':
+      return 'bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800'
+    case 'medium':
+      return 'bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800'
+    case 'low':
+      return 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800'
+    default:
+      return 'bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-300'
+  }
+}
+
+function getPriorityLabel(priority: PendingReminder['priority']) {
+  switch (priority) {
+    case 'high':
+      return 'Alta'
+    case 'medium':
+      return 'Media'
+    case 'low':
+      return 'Baja'
+    default:
+      return 'Normal'
+  }
+}
+
+function getExamReminders(pendingAttempts: PendingAttempt[], currentTime: number): PendingReminder[] {
   const reminders: PendingReminder[] = []
 
-  // ✅ Enterprise: Agregar exámenes en progreso usando funciones seguras
   pendingAttempts.forEach(attempt => {
     const daysSinceStart = calculateDaysSince(attempt.startedAt, currentTime)
+    let priority: PendingReminder['priority'] = 'low'
+    if (daysSinceStart >= 3) priority = 'high'
+    else if (daysSinceStart >= 1) priority = 'medium'
+
     reminders.push({
       id: `attempt-${attempt.id}`,
       type: 'exam',
       title: attempt.exam.titulo,
       description: `Examen en progreso desde hace ${daysSinceStart} ${daysSinceStart === 1 ? 'día' : 'días'}`,
-      priority: daysSinceStart >= 3 ? 'high' : daysSinceStart >= 1 ? 'medium' : 'low',
+      priority,
       actionUrl: attempt.exam.id
         ? `/exams/${attempt.exam.id}/take?attemptId=${attempt.id}`
         : `/exams?attemptId=${attempt.id}`,
@@ -89,50 +123,106 @@ export function PendingReminders({
     })
   })
 
-  // Agregar flashcards pendientes
-  if (pendingFlashcards > 0) {
-    reminders.push({
-      id: 'flashcards-pending',
-      type: 'flashcard',
-      title: 'Flashcards pendientes',
-      description: `${pendingFlashcards} ${pendingFlashcards === 1 ? 'flashcard' : 'flashcards'} ${pendingFlashcards === 1 ? 'está' : 'están'} lista${pendingFlashcards === 1 ? '' : 's'} para repasar`,
-      priority: pendingFlashcards >= 10 ? 'high' : pendingFlashcards >= 5 ? 'medium' : 'low',
-      actionUrl: '/flashcards',
-      metadata: {
-        count: pendingFlashcards,
-      },
-    })
-  }
+  return reminders
+}
 
-  // Agregar desafíos pendientes
-  if (pendingChallenges > 0) {
-    reminders.push({
-      id: 'challenges-pending',
-      type: 'challenge',
-      title: 'Desafíos pendientes',
-      description: `Tienes ${pendingChallenges} ${pendingChallenges === 1 ? 'desafío' : 'desafíos'} ${pendingChallenges === 1 ? 'pendiente' : 'pendientes'}`,
-      priority: 'medium',
-      actionUrl: '/challenges',
-      metadata: {
-        count: pendingChallenges,
-      },
-    })
-  }
+function getFlashcardsReminder(pendingFlashcards: number): PendingReminder | null {
+  if (pendingFlashcards <= 0) return null
 
-  // Agregar repasos pendientes
-  if (pendingReviews > 0) {
-    reminders.push({
-      id: 'reviews-pending',
-      type: 'review',
-      title: 'Repasos pendientes',
-      description: `${pendingReviews} ${pendingReviews === 1 ? 'pregunta' : 'preguntas'} ${pendingReviews === 1 ? 'requiere' : 'requieren'} repaso`,
-      priority: pendingReviews >= 20 ? 'high' : pendingReviews >= 10 ? 'medium' : 'low',
-      actionUrl: '/review/quick',
-      metadata: {
-        count: pendingReviews,
-      },
-    })
+  let priority: PendingReminder['priority'] = 'low'
+  if (pendingFlashcards >= 10) priority = 'high'
+  else if (pendingFlashcards >= 5) priority = 'medium'
+
+  return {
+    id: 'flashcards-pending',
+    type: 'flashcard',
+    title: 'Flashcards pendientes',
+    description: `${pendingFlashcards} ${pendingFlashcards === 1 ? 'flashcard' : 'flashcards'} ${pendingFlashcards === 1 ? 'está' : 'están'} lista${pendingFlashcards === 1 ? '' : 's'} para repasar`,
+    priority,
+    actionUrl: '/flashcards',
+    metadata: {
+      count: pendingFlashcards,
+    },
   }
+}
+
+function getChallengesReminder(pendingChallenges: number): PendingReminder | null {
+  if (pendingChallenges <= 0) return null
+
+  return {
+    id: 'challenges-pending',
+    type: 'challenge',
+    title: 'Desafíos pendientes',
+    description: `Tienes ${pendingChallenges} ${pendingChallenges === 1 ? 'desafío' : 'desafíos'} ${pendingChallenges === 1 ? 'pendiente' : 'pendientes'}`,
+    priority: 'medium',
+    actionUrl: '/challenges',
+    metadata: {
+      count: pendingChallenges,
+    },
+  }
+}
+
+function getReviewsReminder(pendingReviews: number): PendingReminder | null {
+  if (pendingReviews <= 0) return null
+
+  let priority: PendingReminder['priority'] = 'low'
+  if (pendingReviews >= 20) priority = 'high'
+  else if (pendingReviews >= 10) priority = 'medium'
+
+  return {
+    id: 'reviews-pending',
+    type: 'review',
+    title: 'Repasos pendientes',
+    description: `${pendingReviews} ${pendingReviews === 1 ? 'pregunta' : 'preguntas'} ${pendingReviews === 1 ? 'requiere' : 'requieren'} repaso`,
+    priority,
+    actionUrl: '/review/quick',
+    metadata: {
+      count: pendingReviews,
+    },
+  }
+}
+
+function compactReminders(reminders: Array<PendingReminder | null>): PendingReminder[] {
+  return reminders.filter((r): r is PendingReminder => Boolean(r))
+}
+
+function buildPendingReminders(params: {
+  pendingAttempts: PendingAttempt[]
+  pendingFlashcards: number
+  pendingChallenges: number
+  pendingReviews: number
+  currentTime: number
+}): PendingReminder[] {
+  return [
+    ...getExamReminders(params.pendingAttempts, params.currentTime),
+    ...compactReminders([
+      getFlashcardsReminder(params.pendingFlashcards),
+      getChallengesReminder(params.pendingChallenges),
+      getReviewsReminder(params.pendingReviews),
+    ]),
+  ]
+}
+
+/**
+ * Componente para mostrar recordatorios visuales de tareas pendientes
+ * Basado en Nielsen Heuristic #1: Visibility of system status
+ */
+export function PendingReminders({
+  pendingAttempts = [],
+  pendingFlashcards = 0,
+  pendingChallenges = 0,
+  pendingReviews = 0,
+}: Readonly<PendingRemindersProps>) {
+  // Calcular fecha actual de forma pura usando useState
+  const [currentTime] = useState(() => Date.now())
+
+  const reminders = buildPendingReminders({
+    pendingAttempts,
+    pendingFlashcards,
+    pendingChallenges,
+    pendingReviews,
+    currentTime,
+  })
 
   if (reminders.length === 0) {
     return (
@@ -171,51 +261,7 @@ export function PendingReminders({
   }
 
   // Ordenar por prioridad
-  const priorityOrder = { high: 0, medium: 1, low: 2 }
-  const sortedReminders = [...reminders].sort(
-    (a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]
-  )
-
-  const getReminderIcon = (type: string) => {
-    switch (type) {
-      case 'exam':
-        return PlayCircle
-      case 'flashcard':
-        return BookOpen
-      case 'challenge':
-        return Trophy
-      case 'review':
-        return FileText
-      default:
-        return AlertCircle
-    }
-  }
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return 'bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800'
-      case 'medium':
-        return 'bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800'
-      case 'low':
-        return 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800'
-      default:
-        return 'bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-300'
-    }
-  }
-
-  const getPriorityLabel = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return 'Alta'
-      case 'medium':
-        return 'Media'
-      case 'low':
-        return 'Baja'
-      default:
-        return 'Normal'
-    }
-  }
+  const sortedReminders = [...reminders].sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority])
 
   return (
     <Card>
