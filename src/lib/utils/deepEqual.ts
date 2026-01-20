@@ -17,7 +17,8 @@ export function deepEqual(a: unknown, b: unknown): boolean {
     if (a.length !== b.length) return false
 
     for (let i = 0; i < a.length; i++) {
-      if (!deepEqual(a[i], b[i])) return false
+      // eslint-disable-next-line security/detect-object-injection
+      if (!deepEqual(a[i], b[i])) return false // index controlled by loop bounds
     }
 
     return true
@@ -35,8 +36,10 @@ export function deepEqual(a: unknown, b: unknown): boolean {
   for (const key of keysA) {
     if (!keysB.includes(key)) return false
 
-    const valueA = (a as Record<string, unknown>)[key]
-    const valueB = (b as Record<string, unknown>)[key]
+    // eslint-disable-next-line security/detect-object-injection
+    const valueA = (a as Record<string, unknown>)[key] // key validated via Object.keys + includes
+    // eslint-disable-next-line security/detect-object-injection
+    const valueB = (b as Record<string, unknown>)[key] // key validated via Object.keys + includes
 
     if (!deepEqual(valueA, valueB)) return false
   }

@@ -150,7 +150,8 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   const handleSelect = useCallback((index: number) => {
     if (index < results.length) {
       // Seleccionar resultado
-      const result = results[index]
+      // eslint-disable-next-line security/detect-object-injection
+      const result = results[index] // index controlled by bounds check
       addToHistory(query, result.type)
       onOpenChange(false)
       router.push(result.url)
@@ -162,7 +163,8 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
     } else {
       // Seleccionar sugerencia del historial
       const historyIndex = index - results.length - suggestions.length
-      const historyItem = historySuggestions[historyIndex]
+      // eslint-disable-next-line security/detect-object-injection
+      const historyItem = historySuggestions[historyIndex] // index controlled by computed bounds
       if (historyItem) {
         setQuery(historyItem.query)
         addToHistory(historyItem.query, historyItem.type)

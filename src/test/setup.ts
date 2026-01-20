@@ -184,18 +184,22 @@ beforeAll(() => {
   const localStorageMock = (() => {
     let store: Record<string, string> = {}
     return {
-      getItem: (key: string) => store[key] || null,
+      // eslint-disable-next-line security/detect-object-injection
+      getItem: (key: string) => store[key] || null, // key controlled by Web Storage API contract (tests)
       setItem: (key: string, value: string) => {
-        store[key] = value.toString()
+        // eslint-disable-next-line security/detect-object-injection
+        store[key] = value.toString() // key controlled by Web Storage API contract (tests)
       },
       removeItem: (key: string) => {
-        delete store[key]
+        // eslint-disable-next-line security/detect-object-injection
+        delete store[key] // key controlled by Web Storage API contract (tests)
       },
       clear: () => {
         store = {}
       },
       length: 0,
-      key: (index: number) => Object.keys(store)[index] || null,
+      // eslint-disable-next-line security/detect-object-injection
+      key: (index: number) => Object.keys(store)[index] || null, // index controlled by loop bounds in tests
     }
   })()
 

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { setRecordValue } from '@/lib/safe-record'
 
 /**
  * Validador de route parameters
@@ -18,9 +19,9 @@ export function validateRouteParams<T>(
   const normalizedParams: Record<string, string | undefined> = {}
   for (const [key, value] of Object.entries(params)) {
     if (Array.isArray(value)) {
-      normalizedParams[key] = value[0]
+      setRecordValue(normalizedParams, key, value[0])
     } else {
-      normalizedParams[key] = value
+      setRecordValue(normalizedParams, key, value)
     }
   }
 

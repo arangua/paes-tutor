@@ -129,7 +129,8 @@ export function InteractiveTutorial({
     }
   }, [currentStep, completedSteps, storageKey])
 
-  const currentStepData = steps[currentStep]
+  // eslint-disable-next-line security/detect-object-injection
+  const currentStepData = steps[currentStep] // index controlled by step bounds
   const isLastStep = currentStep === steps.length - 1
   const progress = ((currentStep + 1) / steps.length) * 100
 
@@ -542,17 +543,27 @@ export function InteractiveTutorial({
     return null
   }
 
+  let overlayBackground = 'rgba(0, 0, 0, 0.3)'
+  if (disableSpotlight) {
+    overlayBackground = 'transparent'
+  } else if (highlightedElement) {
+    const rect = highlightedElement.getBoundingClientRect()
+    const centerX = rect.left + rect.width / 2
+    const centerY = rect.top + rect.height / 2
+    const maxDimension = Math.max(rect.width, rect.height)
+    const innerRadius = maxDimension / 2 + 10
+    const outerRadius = maxDimension / 2 + 20
+
+    overlayBackground = `radial-gradient(circle at ${centerX}px ${centerY}px, transparent 0px, transparent ${innerRadius}px, rgba(0, 0, 0, 0.3) ${outerRadius}px)`
+  }
+
   return (
     <div
       ref={overlayRef}
       className="fixed inset-0 z-[9999] pointer-events-none"
       style={{
         // Overlay más sutil con agujero para el elemento destacado (solo si spotlight está activo)
-        background: disableSpotlight
-          ? 'transparent'
-          : highlightedElement
-            ? `radial-gradient(circle at ${highlightedElement.getBoundingClientRect().left + highlightedElement.getBoundingClientRect().width / 2}px ${highlightedElement.getBoundingClientRect().top + highlightedElement.getBoundingClientRect().height / 2}px, transparent 0px, transparent ${Math.max(highlightedElement.getBoundingClientRect().width, highlightedElement.getBoundingClientRect().height) / 2 + 10}px, rgba(0, 0, 0, 0.3) ${Math.max(highlightedElement.getBoundingClientRect().width, highlightedElement.getBoundingClientRect().height) / 2 + 20}px)`
-            : 'rgba(0, 0, 0, 0.3)',
+        background: overlayBackground,
         backdropFilter: disableSpotlight ? 'none' : 'blur(1px)',
       }}
     >
@@ -623,17 +634,19 @@ export function InteractiveTutorial({
               {steps.map((step, idx) => {
                 const isCompleted = completedSteps.has(step.id) || idx < currentStep
                 const isCurrent = idx === currentStep
+                let indicatorVariantClass = 'bg-muted'
+                if (isCompleted) {
+                  indicatorVariantClass = 'bg-green-500'
+                } else if (isCurrent) {
+                  indicatorVariantClass = 'bg-primary w-8'
+                }
 
                 return (
                   <div
                     key={step.id}
                     className={cn(
                       'h-2 w-2 rounded-full transition-all',
-                      isCompleted
-                        ? 'bg-green-500'
-                        : isCurrent
-                          ? 'bg-primary w-8'
-                          : 'bg-muted'
+                      indicatorVariantClass
                     )}
                   />
                 )

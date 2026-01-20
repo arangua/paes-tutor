@@ -231,7 +231,8 @@ export function useSmartAutocomplete(options: UseSmartAutocompleteOptions = {}) 
         case 'Enter':
           e.preventDefault()
           if (selectedIndex >= 0 && selectedIndex < suggestions.length) {
-            selectSuggestion(suggestions[selectedIndex])
+            // eslint-disable-next-line security/detect-object-injection
+            selectSuggestion(suggestions[selectedIndex]) // index validated via bounds check
           }
           break
         case 'Escape':

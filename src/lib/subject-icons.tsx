@@ -28,6 +28,7 @@ import {
   ListChecks,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { getRecordValue } from '@/lib/safe-record'
 
 export interface SubjectIconConfig {
   icon: LucideIcon
@@ -222,7 +223,8 @@ export const EXAM_TYPE_ICONS: Record<string, SubjectIconConfig> = {
  * Obtiene el icono para un tipo de pregunta
  */
 export function getQuestionTypeIcon(tipo: string): SubjectIconConfig {
-  return QUESTION_TYPE_ICONS[tipo] || QUESTION_TYPE_ICONS.default || {
+  const icon = getRecordValue(QUESTION_TYPE_ICONS, tipo) as SubjectIconConfig | undefined
+  return icon || QUESTION_TYPE_ICONS.default || {
     icon: FileQuestion,
     color: 'text-gray-600 dark:text-gray-400',
     description: 'Pregunta',
@@ -233,7 +235,8 @@ export function getQuestionTypeIcon(tipo: string): SubjectIconConfig {
  * Obtiene el icono para un tipo de examen
  */
 export function getExamTypeIcon(tipo: string): SubjectIconConfig {
-  return EXAM_TYPE_ICONS[tipo] || EXAM_TYPE_ICONS.default || {
+  const icon = getRecordValue(EXAM_TYPE_ICONS, tipo) as SubjectIconConfig | undefined
+  return icon || EXAM_TYPE_ICONS.default || {
     icon: FileText,
     color: 'text-gray-600 dark:text-gray-400',
     description: 'Examen',
@@ -247,14 +250,16 @@ export function getSubjectIcon(
   codigo: string
 ): SubjectIconConfig | { icon: LucideIcon; color: string; description: string } {
   // Buscar coincidencia exacta
-  if (SUBJECT_ICONS[codigo]) {
-    return SUBJECT_ICONS[codigo]
+  const exact = getRecordValue(SUBJECT_ICONS, codigo) as SubjectIconConfig | undefined
+  if (exact) {
+    return exact
   }
 
   // Buscar por prefijo
   const prefix = codigo.split('-')[0]
-  if (prefix && SUBJECT_ICONS[prefix]) {
-    return SUBJECT_ICONS[prefix]
+  if (prefix) {
+    const byPrefix = getRecordValue(SUBJECT_ICONS, prefix) as SubjectIconConfig | undefined
+    if (byPrefix) return byPrefix
   }
 
   // Icono por defecto

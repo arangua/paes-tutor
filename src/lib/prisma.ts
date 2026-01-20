@@ -76,6 +76,7 @@ export const prisma = new Proxy({} as PrismaClient, {
         globalForPrisma.prisma = prismaInstance
       }
     }
-    return (prismaInstance as unknown as Record<string | symbol, unknown>)[prop]
+    // eslint-disable-next-line security/detect-object-injection
+    return (prismaInstance as unknown as Record<string | symbol, unknown>)[prop] // prop controlled by PrismaClient API
   },
 })

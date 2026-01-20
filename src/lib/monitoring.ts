@@ -98,7 +98,8 @@ export class ErrorTracker {
 
     // Log estructurado según severidad
     const logLevel = error.severity === 'critical' || error.severity === 'high' ? 'error' : 'warn'
-    logger[logLevel](
+    // eslint-disable-next-line security/detect-object-injection
+    logger[logLevel]( // key validated via union ('error' | 'warn')
       {
         type: 'error',
         error: {

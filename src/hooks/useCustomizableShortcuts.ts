@@ -81,8 +81,9 @@ export function useCustomizableShortcuts(availableActions: ShortcutAction[]) {
     (actionId: string, shortcut: Partial<CustomShortcut>) => {
       const updated = {
         ...customShortcuts,
-        [actionId]: {
-          ...customShortcuts[actionId],
+        [actionId]: { // key validated via availableActions ids
+          // eslint-disable-next-line security/detect-object-injection
+          ...customShortcuts[actionId], // key validated via availableActions ids
           ...shortcut,
         },
       }

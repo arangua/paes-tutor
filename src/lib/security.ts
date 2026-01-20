@@ -51,19 +51,29 @@ export function sanitizeObject<T extends Record<string, unknown>>(obj: T): T {
   const sanitized = { ...obj }
 
   for (const key in sanitized) {
-    if (typeof sanitized[key] === 'string') {
-      sanitized[key] = sanitizeString(sanitized[key] as string) as T[Extract<keyof T, string>]
+    // eslint-disable-next-line security/detect-object-injection
+    if (typeof sanitized[key] === 'string') { // key controlled by iterating over object properties
+      // eslint-disable-next-line security/detect-object-injection
+      sanitized[key] = sanitizeString(sanitized[key] as string) as T[Extract<keyof T, string>] // key controlled by loop
     } else if (
-      typeof sanitized[key] === 'object' &&
-      sanitized[key] !== null &&
-      !Array.isArray(sanitized[key])
+      // eslint-disable-next-line security/detect-object-injection
+      typeof sanitized[key] === 'object' && // key controlled by loop
+      // eslint-disable-next-line security/detect-object-injection
+      sanitized[key] !== null && // key controlled by loop
+      // eslint-disable-next-line security/detect-object-injection
+      !Array.isArray(sanitized[key]) // key controlled by loop
     ) {
+      // eslint-disable-next-line security/detect-object-injection
       sanitized[key] = sanitizeObject(sanitized[key] as Record<string, unknown>) as T[Extract<
         keyof T,
         string
-      >]
-    } else if (Array.isArray(sanitized[key])) {
-      sanitized[key] = (sanitized[key] as unknown[]).map(item => {
+      >] // key controlled by loop
+    } else if (
+      // eslint-disable-next-line security/detect-object-injection
+      Array.isArray(sanitized[key]) // key controlled by loop
+    ) {
+      // eslint-disable-next-line security/detect-object-injection
+      sanitized[key] = (sanitized[key] as unknown[]).map(item => { // key controlled by loop
         if (typeof item === 'string') {
           return sanitizeString(item)
         } else if (typeof item === 'object' && item !== null) {

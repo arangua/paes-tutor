@@ -148,8 +148,10 @@ function generateSimpleDiff(oldText: string, newText: string): DiffResult[] {
   while (oldIdx < oldLines.length || newIdx < newLines.length) {
     // Si hay más líneas en old que no están en LCS
     if (oldIdx < oldLines.length && 
-        (lcsIdx >= lcs.length || (oldLines[oldIdx] !== undefined && oldLines[oldIdx] !== lcs[lcsIdx]))) {
-      const line = oldLines[oldIdx]
+        // eslint-disable-next-line security/detect-object-injection
+        (lcsIdx >= lcs.length || (oldLines[oldIdx] !== undefined && oldLines[oldIdx] !== lcs[lcsIdx]))) { // indices controlled by loop bounds
+      // eslint-disable-next-line security/detect-object-injection
+      const line = oldLines[oldIdx] // index controlled by loop bounds
       if (line !== undefined) {
         result.push({ type: 'removed', text: line })
       }
@@ -157,8 +159,10 @@ function generateSimpleDiff(oldText: string, newText: string): DiffResult[] {
     }
     // Si hay más líneas en new que no están en LCS
     else if (newIdx < newLines.length && 
-             (lcsIdx >= lcs.length || (newLines[newIdx] !== undefined && newLines[newIdx] !== lcs[lcsIdx]))) {
-      const line = newLines[newIdx]
+             // eslint-disable-next-line security/detect-object-injection
+             (lcsIdx >= lcs.length || (newLines[newIdx] !== undefined && newLines[newIdx] !== lcs[lcsIdx]))) { // indices controlled by loop bounds
+      // eslint-disable-next-line security/detect-object-injection
+      const line = newLines[newIdx] // index controlled by loop bounds
       if (line !== undefined) {
         result.push({ type: 'added', text: line })
       }
@@ -166,7 +170,8 @@ function generateSimpleDiff(oldText: string, newText: string): DiffResult[] {
     }
     // Línea común (igual en ambas)
     else {
-      const oldLine = oldLines[oldIdx]
+      // eslint-disable-next-line security/detect-object-injection
+      const oldLine = oldLines[oldIdx] // index controlled by loop bounds
       if (oldLine !== undefined) {
         result.push({ type: 'equal', text: oldLine })
       }
@@ -191,12 +196,16 @@ function computeLCS(arr1: string[], arr2: string[]): string[] {
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
       if (arr1[i - 1] === arr2[j - 1]) {
-        const prev = dp[i - 1]?.[j - 1] ?? 0
-        dp[i][j] = prev + 1
+        const prev = dp[i - 1]?.[j - 1] ?? 0 // indices controlled by loop bounds
+        // eslint-disable-next-line security/detect-object-injection
+        dp[i][j] = prev + 1 // indices controlled by loop bounds
       } else {
-        const up = dp[i - 1]?.[j] ?? 0
-        const left = dp[i]?.[j - 1] ?? 0
-        dp[i][j] = Math.max(up, left)
+        // eslint-disable-next-line security/detect-object-injection
+        const up = dp[i - 1]?.[j] ?? 0 // indices controlled by loop bounds
+        // eslint-disable-next-line security/detect-object-injection
+        const left = dp[i]?.[j - 1] ?? 0 // indices controlled by loop bounds
+        // eslint-disable-next-line security/detect-object-injection
+        dp[i][j] = Math.max(up, left) // indices controlled by loop bounds
       }
     }
   }
@@ -214,8 +223,10 @@ function computeLCS(arr1: string[], arr2: string[]): string[] {
       i--
       j--
     } else {
-      const up = dp[i - 1]?.[j] ?? 0
-      const left = dp[i]?.[j - 1] ?? 0
+      // eslint-disable-next-line security/detect-object-injection
+      const up = dp[i - 1]?.[j] ?? 0 // indices controlled by loop bounds
+      // eslint-disable-next-line security/detect-object-injection
+      const left = dp[i]?.[j - 1] ?? 0 // indices controlled by loop bounds
       if (up > left) {
         i--
       } else {

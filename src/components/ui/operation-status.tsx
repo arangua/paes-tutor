@@ -82,7 +82,8 @@ export function OperationStatus({
   showIcon = true,
   variant = 'default',
 }: OperationStatusProps) {
-  const config = statusConfig[status]
+  // eslint-disable-next-line security/detect-object-injection
+  const config = statusConfig[status] // key validated via OperationStatusProps union
   const Icon = config.icon
   const isAnimated = status === 'processing' || status === 'saving' || status === 'syncing'
 

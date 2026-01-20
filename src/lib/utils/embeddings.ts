@@ -96,8 +96,10 @@ export function cosineSimilarity(vec1: number[], vec2: number[]): number {
   let norm2 = 0
 
   for (let i = 0; i < vec1.length; i++) {
-    const v1 = vec1[i] ?? 0
-    const v2 = vec2[i] ?? 0
+    // eslint-disable-next-line security/detect-object-injection
+    const v1 = vec1[i] ?? 0 // index controlled by loop bounds
+    // eslint-disable-next-line security/detect-object-injection
+    const v2 = vec2[i] ?? 0 // index controlled by loop bounds
     dotProduct += v1 * v2
     norm1 += v1 * v1
     norm2 += v2 * v2

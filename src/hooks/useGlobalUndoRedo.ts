@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { useState, useCallback, useEffect, createContext, useContext } from 'react'
-import { captureError } from '@/lib/monitoring'
+import { trackError } from '@/lib/monitoring'
 
 export interface GlobalAction {
   id: string
@@ -59,13 +59,14 @@ function useGlobalUndoRedoInternal() {
 
     setIsUndoing(true)
     try {
-      const action = history[currentIndex]
+      // eslint-disable-next-line security/detect-object-injection
+      const action = history[currentIndex] // index controlled by canUndo/currentIndex bounds
       if (action) {
         await action.undo()
         setCurrentIndex(prev => prev - 1)
       }
     } catch (error) {
-      captureError(
+      trackError(
         error instanceof Error ? error : new Error(String(error)),
         {
           type: 'undo_redo_error',
@@ -86,13 +87,14 @@ function useGlobalUndoRedoInternal() {
     setIsRedoing(true)
     try {
       const nextIndex = currentIndex + 1
-      const action = history[nextIndex]
+      // eslint-disable-next-line security/detect-object-injection
+      const action = history[nextIndex] // index controlled by canRedo/currentIndex bounds
       if (action) {
         await action.redo()
         setCurrentIndex(nextIndex)
       }
     } catch (error) {
-      captureError(
+      trackError(
         error instanceof Error ? error : new Error(String(error)),
         {
           type: 'undo_redo_error',

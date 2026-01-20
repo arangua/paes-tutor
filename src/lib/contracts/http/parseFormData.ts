@@ -9,12 +9,14 @@
  * 
  * @throws Error si encuentra valores no string (ej: File objects)
  */
+import { setRecordValue } from '@/lib/safe-record'
+
 export function parseFormData(formData: FormData): Record<string, unknown> {
   const result: Record<string, unknown> = {}
 
   for (const [key, value] of formData.entries()) {
     if (typeof value === 'string') {
-      result[key] = value
+      setRecordValue(result, key, value)
     } else {
       // ⛔ Prohibido: valores no string (File objects, etc.)
       throw new Error(

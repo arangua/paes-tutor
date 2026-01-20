@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { setRecordValue } from '@/lib/safe-record'
 
 /**
  * Validador de query parameters
@@ -23,7 +24,7 @@ export function validateQueryParams<T>(
   const queryParams: Record<string, string> = {}
 
   for (const [key, value] of searchParams.entries()) {
-    queryParams[key] = value
+    setRecordValue(queryParams, key, value)
   }
 
   const result = schema.safeParse(queryParams)
