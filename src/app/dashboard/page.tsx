@@ -34,6 +34,8 @@ import { CollapsibleSection } from '@/components/ui/collapsible-section'
 import { getErrorMessage, extractErrorInfo, ERROR_CODES } from '@/lib/error-messages'
 import { ErrorMessageComponent } from '@/components/ui/error-message'
 import { SubjectIcon } from '@/lib/subject-icons'
+import { trackError } from '@/lib/monitoring'
+import { getRecordValue } from '@/lib/safe-record'
 import { DashboardTutorial } from '@/components/tutorial/dashboard-tutorial'
 import { ActionHistory } from '@/components/dashboard/action-history'
 import { PendingReminders } from '@/components/dashboard/pending-reminders'
@@ -82,6 +84,97 @@ interface Metric {
     porcentaje: number
     nivel: string | null
   }>
+}
+
+function getDashboardPath(): string {
+  if (typeof globalThis !== 'undefined' && globalThis.window) {
+    return globalThis.window.location.pathname
+  }
+  return '/dashboard'
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function getErrorFromPayload(payload: unknown): string | null {
+  if (!isRecord(payload)) return null
+  const error = payload.error
+  return typeof error === 'string' && error.trim().length > 0 ? error : null
+}
+
+function getErrorFromFirstArrayItem(payload: unknown): string | null {
+  if (!Array.isArray(payload) || payload.length === 0) return null
+  const first = payload[0]
+  if (!isRecord(first)) return null
+  const error = first.error
+  return typeof error === 'string' && error.trim().length > 0 ? error : null
+}
+
+async function safeJsonError(res: Response, operation: string): Promise<string | null> {
+  const { safeJsonParse } = await import('@/lib/api-helpers')
+  const data = await safeJsonParse<{ error?: string }>(res, {
+    path: getDashboardPath(),
+    operation,
+  })
+  return typeof data.error === 'string' && data.error.trim().length > 0 ? data.error : null
+}
+
+async function parseStudentOrThrow(studentRes: Response): Promise<Student> {
+  if (!studentRes.ok) {
+    const parsedError = await safeJsonError(studentRes, 'obtener datos del estudiante')
+    throw new Error(
+      parsedError || `Error ${studentRes.status}: Error al obtener datos del estudiante`
+    )
+  }
+
+  const studentData = (await studentRes.json()) as unknown
+  const payloadError = getErrorFromPayload(studentData)
+  if (payloadError) throw new Error(payloadError)
+  return studentData as Student
+}
+
+async function parseMetricsOrDefault(metricsRes: Response): Promise<Metric[]> {
+  if (metricsRes.ok) {
+    const metricsData = (await metricsRes.json()) as unknown
+    const payloadError = getErrorFromPayload(metricsData) ?? getErrorFromFirstArrayItem(metricsData)
+    if (payloadError) throw new Error(payloadError)
+    return Array.isArray(metricsData) ? (metricsData as Metric[]) : []
+  }
+
+  if (metricsRes.status === 404) {
+    const parsedError = await safeJsonError(metricsRes, 'obtener métricas')
+    if (parsedError?.includes('Estudiante no encontrado')) {
+      throw new Error(parsedError)
+    }
+    return []
+  }
+
+  const parsedError = await safeJsonError(metricsRes, 'obtener métricas')
+  if (metricsRes.status === 401 || metricsRes.status >= 500) {
+    throw new Error(parsedError || `Error ${metricsRes.status}: Error al obtener métricas`)
+  }
+  return []
+}
+
+async function trySetPendingCountFromArrayKey(
+  res: unknown,
+  arrayKey: string,
+  setter: (value: number) => void
+): Promise<void> {
+  try {
+    if (!isRecord(res) || res.ok !== true) return
+    const jsonFn = res.json
+    if (typeof jsonFn !== 'function') return
+    const data = (await jsonFn.call(res)) as unknown
+    if (!isRecord(data)) return
+    const value = getRecordValue(data, arrayKey)
+    if (Array.isArray(value)) {
+      setter(value.length)
+    }
+  } catch {
+    // Ignorar errores de endpoints opcionales
+  }
 }
 
 export default function DashboardPage() {
@@ -193,21 +286,11 @@ export default function DashboardPage() {
       })
 
       // Log del error para debugging
-      if (typeof globalThis !== 'undefined') {
-        const globalWithCapture = globalThis as {
-          captureError?: (error: Error, context?: Record<string, unknown>) => void
-        }
-        if (globalWithCapture.captureError) {
-          globalWithCapture.captureError(
-            error instanceof Error ? error : new Error(String(error)),
-            {
-              type: 'export_error',
-              action: 'export_dashboard',
-              context: { studentId: student.id },
-            }
-          )
-        }
-      }
+      trackError(error instanceof Error ? error : new Error(String(error)), {
+        type: 'export_error',
+        action: 'export_dashboard',
+        context: { studentId: student.id },
+      })
     }
   }, [student, totalAttempts, completedAttempts, avgScore, metrics])
 
@@ -263,93 +346,20 @@ export default function DashboardPage() {
           return
         }
 
-        if (!studentRes.ok) {
-          const { safeJsonParse } = await import('@/lib/api-helpers')
-          const errorData = await safeJsonParse<{ error?: string }>(studentRes, {
-            path: typeof window !== 'undefined' ? window.location.pathname : '/dashboard',
-            operation: 'obtener datos del estudiante',
-          })
-          throw new Error(
-            errorData.error || `Error ${studentRes.status}: Error al obtener datos del estudiante`
-          )
-        }
-
-        const studentData = await studentRes.json()
-
-        // Manejar métricas: si falla pero el estudiante existe, usar array vacío
-        let metricsData: any[] = []
-        if (metricsRes.ok) {
-          metricsData = await metricsRes.json()
-        } else if (metricsRes.status === 404) {
-          // Si es 404, verificar si es por estudiante no encontrado o simplemente sin métricas
-          const { safeJsonParse } = await import('@/lib/api-helpers')
-          const errorData = await safeJsonParse<{ error?: string }>(metricsRes, {
-            path: typeof window !== 'undefined' ? window.location.pathname : '/dashboard',
-            operation: 'obtener métricas',
-          })
-          // Si el error es "Estudiante no encontrado", lanzar error
-          // Si es otro error 404, asumir que simplemente no hay métricas aún
-          if (errorData.error?.includes('Estudiante no encontrado')) {
-            throw new Error(errorData.error)
-          }
-          // Si no, simplemente usar array vacío (estudiante nuevo sin métricas)
-          metricsData = []
-        } else {
-          // Para otros errores, intentar parsear y lanzar
-          const { safeJsonParse } = await import('@/lib/api-helpers')
-          const errorData = await safeJsonParse<{ error?: string }>(metricsRes, {
-            path: typeof window !== 'undefined' ? window.location.pathname : '/dashboard',
-            operation: 'obtener métricas',
-          })
-          // Solo lanzar error si es crítico (401, 500, etc.)
-          if (metricsRes.status === 401 || metricsRes.status >= 500) {
-            throw new Error(
-              errorData.error || `Error ${metricsRes.status}: Error al obtener métricas`
-            )
-          }
-          // Para otros errores, usar array vacío
-          metricsData = []
-        }
-
-        // Validar que no haya errores en la respuesta
-        if (studentData.error) {
-          throw new Error(studentData.error)
-        }
-
-        if (Array.isArray(metricsData) && metricsData.length > 0 && metricsData[0].error) {
-          throw new Error(metricsData[0].error)
-        }
+        const [studentData, metricsData] = await Promise.all([
+          parseStudentOrThrow(studentRes),
+          parseMetricsOrDefault(metricsRes),
+        ])
 
         setStudent(studentData)
-        setMetrics(Array.isArray(metricsData) ? metricsData : [])
+        setMetrics(metricsData)
 
         // Procesar datos de recordatorios (sin bloquear si fallan)
-        try {
-          if (flashcardsRes.ok) {
-            const flashcardsData = await flashcardsRes.json()
-            setPendingFlashcards(flashcardsData.flashcards?.length || 0)
-          }
-        } catch {
-          // Ignorar errores de flashcards
-        }
-
-        try {
-          if (challengesRes.ok) {
-            const challengesData = await challengesRes.json()
-            setPendingChallenges(challengesData.challenges?.length || 0)
-          }
-        } catch {
-          // Ignorar errores de challenges
-        }
-
-        try {
-          if (reviewsRes.ok) {
-            const reviewsData = await reviewsRes.json()
-            setPendingReviews(reviewsData.questions?.length || 0)
-          }
-        } catch {
-          // Ignorar errores de reviews
-        }
+        await Promise.all([
+          trySetPendingCountFromArrayKey(flashcardsRes, 'flashcards', setPendingFlashcards),
+          trySetPendingCountFromArrayKey(challengesRes, 'challenges', setPendingChallenges),
+          trySetPendingCountFromArrayKey(reviewsRes, 'questions', setPendingReviews),
+        ])
       } catch (error) {
         // Manejar errores con sistema estructurado
         const errorInfo = extractErrorInfo(error)
