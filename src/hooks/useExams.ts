@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { captureError } from '@/lib/monitoring'
+import { trackError } from '@/lib/monitoring'
 import { examResponseSchema } from '@/lib/validations'
 import { validateResponse } from '@/lib/api-helpers'
 
@@ -49,6 +49,7 @@ export function useExams(options: UseExamsOptions = {}) {
 
   // Cargar exámenes
   useEffect(() => {
+    // eslint-disable-next-line sonarjs/cognitive-complexity
     async function loadExams() {
       try {
         setIsLoading(true)
@@ -68,7 +69,8 @@ export function useExams(options: UseExamsOptions = {}) {
           params.append('offset', options.offset.toString())
         }
 
-        const url = `/api/exams${params.toString() ? `?${params.toString()}` : ''}`
+        const queryString = params.toString()
+        const url = queryString ? `/api/exams?${queryString}` : '/api/exams'
         const res = await fetch(url)
 
         if (!res.ok) {
@@ -77,12 +79,12 @@ export function useExams(options: UseExamsOptions = {}) {
             path: typeof window !== 'undefined' ? window.location.pathname : '/exams',
             operation: 'cargar exámenes',
           })
-          const statusText =
-            res.status === 401
-              ? 'No autorizado. Por favor, inicia sesión.'
-              : res.status === 404
-                ? 'Exámenes no encontrados'
-                : errorData.error || `Error ${res.status}: Error al cargar exámenes`
+          let statusText = errorData.error || `Error ${res.status}: Error al cargar exámenes`
+          if (res.status === 401) {
+            statusText = 'No autorizado. Por favor, inicia sesión.'
+          } else if (res.status === 404) {
+            statusText = 'Exámenes no encontrados'
+          }
           throw new Error(statusText)
         }
 
@@ -93,7 +95,7 @@ export function useExams(options: UseExamsOptions = {}) {
         })
 
         if (!validation.success) {
-          captureError(new Error(validation.error), {
+          trackError(new Error(validation.error), {
             type: 'exams_validation_error',
             path: typeof window !== 'undefined' ? window.location.pathname : undefined,
           })
@@ -151,7 +153,7 @@ export function useExams(options: UseExamsOptions = {}) {
         uniqueTipos.add(exam.tipo)
       }
     })
-    return Array.from(uniqueTipos).sort()
+    return Array.from(uniqueTipos).sort((a, b) => a.localeCompare(b))
   }, [exams])
 
   return {
