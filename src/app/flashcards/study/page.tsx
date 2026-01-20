@@ -137,11 +137,13 @@ export default function StudyFlashcardsPage() {
             description: `Repasaste ${newSession.reviewed} flashcards`,
           })
         } else {
+          const nextFlashcard = session.flashcards.at(nextIndex)
+          if (!nextFlashcard) return
           setSession({
             ...newSession,
             currentIndex: nextIndex,
           })
-          setCurrentFlashcard(session.flashcards[nextIndex])
+          setCurrentFlashcard(nextFlashcard)
           setIsFlipped(false)
         }
       } catch {
@@ -225,6 +227,11 @@ export default function StudyFlashcardsPage() {
   if (showStats) {
     const elapsedTime = Date.now() - session.startTime
     const accuracy = getAccuracy()
+    const accuracyClassName = (() => {
+      if (accuracy >= 70) return 'text-green-600'
+      if (accuracy >= 50) return 'text-yellow-600'
+      return 'text-red-600'
+    })()
 
     return (
       <div className="container mx-auto py-6 px-4 max-w-4xl">
@@ -265,7 +272,7 @@ export default function StudyFlashcardsPage() {
                 </CardHeader>
                 <CardContent>
                   <div
-                    className={`text-3xl font-bold ${accuracy >= 70 ? 'text-green-600' : accuracy >= 50 ? 'text-yellow-600' : 'text-red-600'}`}
+                    className={`text-3xl font-bold ${accuracyClassName}`}
                   >
                     {accuracy}%
                   </div>
