@@ -71,6 +71,54 @@ interface Answer {
 
 type PracticeMode = 'easy' | 'medium' | 'hard' | 'mixed'
 
+type QuestionOption = Question['options'][number]
+
+function getOptionButtonVariantClassName(args: {
+  isSelected: boolean
+  showCorrect: boolean
+  showIncorrect: boolean
+}): string {
+  if (!args.isSelected) return 'border-border hover:border-primary/50'
+  if (args.showCorrect) return 'border-green-500 bg-green-50 dark:bg-green-950/20'
+  if (args.showIncorrect) return 'border-red-500 bg-red-50 dark:bg-red-950/20'
+  return 'border-primary bg-primary/5'
+}
+
+function getOptionLetterBubbleClassName(args: {
+  isSelected: boolean
+  showCorrect: boolean
+  showIncorrect: boolean
+}): string {
+  if (!args.isSelected) return 'bg-muted text-muted-foreground'
+  if (args.showCorrect) return 'bg-green-500 text-white'
+  if (args.showIncorrect) return 'bg-red-500 text-white'
+  return 'bg-primary text-primary-foreground'
+}
+
+function getCorrectExplanationContainerClassName(): string {
+  return 'border-green-500 bg-green-50 dark:bg-green-950/20'
+}
+
+function getIncorrectExplanationContainerClassName(): string {
+  return 'border-orange-500 bg-orange-50 dark:bg-orange-950/20'
+}
+
+function getCorrectFeedbackTitle(): string {
+  return '¡Correcto! 🎉'
+}
+
+function getIncorrectFeedbackTitle(): string {
+  return 'Incorrecto'
+}
+
+function getSelectedOptionText(
+  selectedOptionId: string | undefined,
+  options: QuestionOption[]
+): string | undefined {
+  if (!selectedOptionId) return undefined
+  return options.find(opt => opt.id === selectedOptionId)?.texto
+}
+
 export default function PracticeTopicPage() {
   const params = useParams()
   const router = useRouter()
@@ -161,7 +209,8 @@ export default function PracticeTopicPage() {
   const handleAnswerSelect = (optionId: string) => {
     if (showExplanation) return // No permitir cambiar respuesta después de ver explicación
 
-    const currentQ = questions[currentQuestion]
+    const currentQ = questions.at(currentQuestion)
+    if (!currentQ) return
     const selectedOption = currentQ.options.find(opt => opt.id === optionId)
     const isCorrect = selectedOption?.esCorrecta || false
     const tiempoSegundos = Math.floor((Date.now() - questionStartTimeRef.current) / 1000)
@@ -382,7 +431,10 @@ export default function PracticeTopicPage() {
     )
   }
 
-  const currentQ = questions[currentQuestion]
+  const currentQ = questions.at(currentQuestion)
+  if (!currentQ) {
+    return null
+  }
   const currentAnswer = answers.get(currentQ.id)
   const isAnswered = !!currentAnswer
   const isCorrect = currentAnswer?.isCorrect || false
@@ -550,6 +602,23 @@ export default function PracticeTopicPage() {
               const isSelected = currentAnswer?.optionSelectedId === option.id
               const showCorrect = showExplanation && option.esCorrecta
               const showIncorrect = showExplanation && isSelected && !option.esCorrecta
+              const optionButtonVariantClassName = getOptionButtonVariantClassName({
+                isSelected,
+                showCorrect,
+                showIncorrect,
+              })
+              const optionLetterBubbleClassName = getOptionLetterBubbleClassName({
+                isSelected,
+                showCorrect,
+                showIncorrect,
+              })
+
+              let optionLetterContent: JSX.Element | string = option.letra
+              if (showCorrect) {
+                optionLetterContent = <CheckCircle2 className="h-5 w-5" />
+              } else if (showIncorrect) {
+                optionLetterContent = <XCircle className="h-5 w-5" />
+              }
 
               return (
                 <button
@@ -559,13 +628,7 @@ export default function PracticeTopicPage() {
                   className={`
                     w-full p-4 text-left rounded-lg border-2 transition-all
                     ${
-                      isSelected
-                        ? showCorrect
-                          ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
-                          : showIncorrect
-                            ? 'border-red-500 bg-red-50 dark:bg-red-950/20'
-                            : 'border-primary bg-primary/5'
-                        : 'border-border hover:border-primary/50'
+                      optionButtonVariantClassName
                     }
                     ${showExplanation ? 'cursor-default' : 'cursor-pointer hover:bg-accent'}
                   `}
@@ -575,23 +638,11 @@ export default function PracticeTopicPage() {
                       className={`
                       flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-semibold
                       ${
-                        isSelected
-                          ? showCorrect
-                            ? 'bg-green-500 text-white'
-                            : showIncorrect
-                              ? 'bg-red-500 text-white'
-                              : 'bg-primary text-primary-foreground'
-                          : 'bg-muted text-muted-foreground'
+                        optionLetterBubbleClassName
                       }
                     `}
                     >
-                      {showCorrect ? (
-                        <CheckCircle2 className="h-5 w-5" />
-                      ) : showIncorrect ? (
-                        <XCircle className="h-5 w-5" />
-                      ) : (
-                        option.letra
-                      )}
+                      {optionLetterContent}
                     </div>
                     <span className="flex-1">{option.texto}</span>
                     {showCorrect && (
@@ -612,8 +663,8 @@ export default function PracticeTopicPage() {
               mt-4 p-4 rounded-lg border-2
               ${
                 isCorrect
-                  ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
-                  : 'border-orange-500 bg-orange-50 dark:bg-orange-950/20'
+                  ? getCorrectExplanationContainerClassName()
+                  : getIncorrectExplanationContainerClassName()
               }
             `}
             >
@@ -625,17 +676,15 @@ export default function PracticeTopicPage() {
                 )}
                 <div className="flex-1">
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <p className="font-semibold">{isCorrect ? '¡Correcto! 🎉' : 'Incorrecto'}</p>
+                    <p className="font-semibold">
+                      {isCorrect ? getCorrectFeedbackTitle() : getIncorrectFeedbackTitle()}
+                    </p>
                     <StepByStepExplanationButton
                       question={currentQ.enunciado}
                       correctAnswer={
                         currentQ.options.find(opt => opt.esCorrecta)?.texto || 'Respuesta correcta'
                       }
-                      studentAnswer={
-                        selectedOption
-                          ? currentQ.options.find(opt => opt.id === selectedOption)?.texto
-                          : undefined
-                      }
+                      studentAnswer={getSelectedOptionText(selectedOption, currentQ.options)}
                       topic={currentQ.topic?.nombre}
                       subject={currentQ.subject.nombre}
                       variant="outline"
