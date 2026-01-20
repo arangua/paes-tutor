@@ -17,22 +17,41 @@ interface AchievementAnimationProps {
   duration?: number
 }
 
+function getCryptoRandom01() {
+  const bytes = new Uint32Array(1)
+  crypto.getRandomValues(bytes)
+  return bytes[0] / 2 ** 32
+}
+
+function getConfettiColorClass(index: number) {
+  switch (index % 4) {
+    case 0:
+      return 'bg-yellow-300'
+    case 1:
+      return 'bg-orange-300'
+    case 2:
+      return 'bg-red-300'
+    default:
+      return 'bg-pink-300'
+  }
+}
+
 export function AchievementAnimation({
   achievement,
   onClose,
   autoClose = true,
   duration = 5000,
-}: AchievementAnimationProps) {
+}: Readonly<AchievementAnimationProps>) {
   const [isVisible, setIsVisible] = useState(true)
   const [isAnimating, setIsAnimating] = useState(true)
   const Icon = achievement.icon || Award
   // Generar valores aleatorios una vez usando useState para evitar impureza en render
   const [confettiPositions] = useState(() => 
     Array.from({ length: 20 }, () => ({
-      left: Math.random() * 100,
-      top: Math.random() * 100,
-      animationDuration: 1 + Math.random() * 2,
-      animationDelay: Math.random() * 0.5,
+      left: getCryptoRandom01() * 100,
+      top: getCryptoRandom01() * 100,
+      animationDuration: 1 + getCryptoRandom01() * 2,
+      animationDelay: getCryptoRandom01() * 0.5,
     }))
   )
 
@@ -78,13 +97,7 @@ export function AchievementAnimation({
               key={i}
               className={cn(
                 'absolute w-2 h-2 rounded-full',
-                i % 4 === 0
-                  ? 'bg-yellow-300'
-                  : i % 4 === 1
-                    ? 'bg-orange-300'
-                    : i % 4 === 2
-                      ? 'bg-red-300'
-                      : 'bg-pink-300'
+                getConfettiColorClass(i)
               )}
               style={{
                 left: `${pos.left}%`,
