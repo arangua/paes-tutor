@@ -10,9 +10,13 @@ import { logger } from './logger'
 import type { Prisma } from '@prisma/client'
 import { LIMIT_CONSTANTS, EXAM_CONSTANTS } from './constants'
 
+function setRecordValue(target: Record<number, string>, key: number, value: string) {
+  Object.defineProperty(target, key, { value, enumerable: true, configurable: true, writable: true })
+}
+
 export interface ExamGenerationParams {
   subjectId: string
-  topicIds?: string[] // Si no se especifica, usa todos los temas del subject
+  topicIds?: string[] // Si no se especifica, usa la lista completa de temas del subject
   numQuestions: number // Número de preguntas a generar
   difficulty?: 'baja' | 'media' | 'alta' | 'mixta'
   tipo?: 'objetiva' | 'desarrollo' | 'mixta'
@@ -46,7 +50,7 @@ export interface GeneratedExam {
  * Obtiene información del temario para el contexto de generación
  * 
  * @param subjectId - ID de la asignatura
- * @param topicIds - IDs opcionales de temas específicos. Si no se proporciona, obtiene todos los temas de la asignatura
+ * @param topicIds - IDs opcionales de temas específicos. Si no se proporciona, obtiene la lista completa de temas de la asignatura
  * @returns Contexto con información de la asignatura, temas y materiales de estudio
  * @throws Error si la asignatura no existe o no tiene temas
  */
@@ -113,15 +117,83 @@ function buildPromptForExamGeneration(
   }
 
   const topicsText = topics
-    .map(t => `- ${t.nombre} (Eje: ${t.ejeTematico})${t.descripcion ? `: ${t.descripcion}` : ''}`)
+    .map(t => {
+      const descriptionSuffix = t.descripcion ? `: ${t.descripcion}` : ''
+      return `- ${t.nombre} (Eje: ${t.ejeTematico})${descriptionSuffix}`
+    })
     .join('\n')
 
   const materialsText = materials
     .map(
-      m =>
-        `- ${m.titulo}${m.topic?.ejeTematico ? ` (Eje: ${m.topic.ejeTematico})` : ''}: ${m.contenido.substring(0, 200)}...`
+      m => {
+        const ejeSuffix = m.topic?.ejeTematico ? ` (Eje: ${m.topic.ejeTematico})` : ''
+        return `- ${m.titulo}${ejeSuffix}: ${m.contenido.substring(0, 200)}...`
+      }
     )
     .join('\n')
+
+  const materialsSection =
+    materials.length > 0 ? `\nMATERIALES DE ESTUDIO DE REFERENCIA:\n${materialsText}` : ''
+
+  let examTypeText = 'Mixto (objetivas y desarrollo)'
+  if (tipo === 'objetiva') {
+    examTypeText = 'Preguntas de opción múltiple (4 opciones A, B, C, D)'
+  } else if (tipo === 'desarrollo') {
+    examTypeText = 'Preguntas de desarrollo (sin opciones múltiples)'
+  }
+
+  let difficultyText = 'Mixta (distribución equilibrada)'
+  if (difficulty === 'baja') difficultyText = 'Baja (nivel básico)'
+  else if (difficulty === 'media') difficultyText = 'Media (nivel intermedio)'
+  else if (difficulty === 'alta') difficultyText = 'Alta (nivel avanzado)'
+
+  const optionsRequirement =
+    tipo === 'objetiva' || tipo === 'mixta'
+      ? '* 4 opciones (A, B, C, D) si es objetiva\n  * Una opción correcta claramente identificada'
+      : '* NO debe incluir opciones múltiples (es pregunta de desarrollo)'
+
+  const questionExampleObjetiva = `{
+      "enunciado": "Texto de la pregunta",
+      "opciones": [
+        {"letra": "A", "texto": "Opción A", "esCorrecta": false},
+        {"letra": "B", "texto": "Opción B", "esCorrecta": true},
+        {"letra": "C", "texto": "Opción C", "esCorrecta": false},
+        {"letra": "D", "texto": "Opción D", "esCorrecta": false}
+      ],
+      "explicacion": "Explicación detallada",
+      "dificultad": 3,
+      "ejeTematico": "Nombre del eje temático"
+    }`
+
+  const questionExampleDesarrollo = `{
+      "enunciado": "Texto de la pregunta de desarrollo",
+      "opciones": [],
+      "explicacion": "Explicación de la respuesta esperada",
+      "dificultad": 3,
+      "ejeTematico": "Nombre del eje temático"
+    }`
+
+  const questionExampleMixta = `{
+      "enunciado": "Texto de la pregunta",
+      "opciones": [opciones solo si es objetiva, vacío [] si es desarrollo],
+      "explicacion": "Explicación detallada",
+      "dificultad": 3,
+      "ejeTematico": "Nombre del eje temático"
+    }`
+
+  let questionExample = questionExampleMixta
+  if (tipo === 'objetiva') questionExample = questionExampleObjetiva
+  else if (tipo === 'desarrollo') questionExample = questionExampleDesarrollo
+
+  let tipoSpecificRules =
+    '- Las preguntas objetivas deben tener 4 opciones (A, B, C, D)\n- Las preguntas de desarrollo NO deben tener opciones\n- Solo una opción debe ser correcta por pregunta objetiva'
+  if (tipo === 'objetiva') {
+    tipoSpecificRules =
+      '- Cada pregunta debe tener exactamente 4 opciones (A, B, C, D)\n- Solo una opción debe ser correcta por pregunta'
+  } else if (tipo === 'desarrollo') {
+    tipoSpecificRules =
+      '- Las preguntas de desarrollo NO deben tener opciones múltiples\n- Deben requerir respuestas escritas o desarrolladas'
+  }
 
   const systemPrompt = `Eres un experto en educación chilena especializado en la Prueba de Acceso a la Educación Superior (PAES) y la malla curricular establecida por el Ministerio de Educación de Chile (MINEDUC).
 
@@ -139,14 +211,14 @@ IMPORTANTE: Las preguntas deben ser apropiadas para estudiantes de 4° medio y e
 TEMAS Y EJES TEMÁTICOS A CUBRIR:
 ${topicsText}
 
-${materials.length > 0 ? `\nMATERIALES DE ESTUDIO DE REFERENCIA:\n${materialsText}` : ''}
+${materialsSection}
 
 REQUISITOS:
-- Tipo de examen: ${tipo === 'objetiva' ? 'Preguntas de opción múltiple (4 opciones A, B, C, D)' : tipo === 'desarrollo' ? 'Preguntas de desarrollo (sin opciones múltiples)' : 'Mixto (objetivas y desarrollo)'}
-- Dificultad: ${difficulty === 'baja' ? 'Baja (nivel básico)' : difficulty === 'media' ? 'Media (nivel intermedio)' : difficulty === 'alta' ? 'Alta (nivel avanzado)' : 'Mixta (distribución equilibrada)'}
+- Tipo de examen: ${examTypeText}
+- Dificultad: ${difficultyText}
 - Cada pregunta debe tener:
   * Un enunciado claro y conciso
-  ${tipo === 'objetiva' || tipo === 'mixta' ? '* 4 opciones (A, B, C, D) si es objetiva\n  * Una opción correcta claramente identificada' : '* NO debe incluir opciones múltiples (es pregunta de desarrollo)'}
+  ${optionsRequirement}
   * Una explicación educativa de por qué la respuesta es correcta
   * Nivel de dificultad (1-5)
   * Asociación a un tema específico del temario
@@ -156,36 +228,7 @@ FORMATO DE RESPUESTA (JSON):
   "titulo": "Título del examen",
   "descripcion": "Descripción breve del examen",
   "questions": [
-    ${
-      tipo === 'objetiva' || tipo === 'mixta'
-        ? `{
-      "enunciado": "Texto de la pregunta",
-      "opciones": [
-        {"letra": "A", "texto": "Opción A", "esCorrecta": false},
-        {"letra": "B", "texto": "Opción B", "esCorrecta": true},
-        {"letra": "C", "texto": "Opción C", "esCorrecta": false},
-        {"letra": "D", "texto": "Opción D", "esCorrecta": false}
-      ],
-      "explicacion": "Explicación detallada",
-      "dificultad": 3,
-      "ejeTematico": "Nombre del eje temático"
-    }`
-        : tipo === 'desarrollo'
-          ? `{
-      "enunciado": "Texto de la pregunta de desarrollo",
-      "opciones": [],
-      "explicacion": "Explicación de la respuesta esperada",
-      "dificultad": 3,
-      "ejeTematico": "Nombre del eje temático"
-    }`
-          : `{
-      "enunciado": "Texto de la pregunta",
-      "opciones": [opciones solo si es objetiva, vacío [] si es desarrollo],
-      "explicacion": "Explicación detallada",
-      "dificultad": 3,
-      "ejeTematico": "Nombre del eje temático"
-    }`
-    }
+    ${questionExample}
   ]
 }
 
@@ -193,7 +236,7 @@ IMPORTANTE:
 - Las preguntas deben estar alineadas con la malla curricular chilena
 - Deben ser apropiadas para estudiantes de 4° medio
 - Debe haber exactamente ${numQuestions} preguntas
-${tipo === 'objetiva' ? '- Cada pregunta debe tener exactamente 4 opciones (A, B, C, D)\n- Solo una opción debe ser correcta por pregunta' : tipo === 'desarrollo' ? '- Las preguntas de desarrollo NO deben tener opciones múltiples\n- Deben requerir respuestas escritas o desarrolladas' : '- Las preguntas objetivas deben tener 4 opciones (A, B, C, D)\n- Las preguntas de desarrollo NO deben tener opciones\n- Solo una opción debe ser correcta por pregunta objetiva'}
+${tipoSpecificRules}
 - Las explicaciones deben ser educativas y claras`
 
   return [
@@ -212,12 +255,11 @@ function parseAIResponse(response: {
 }): GeneratedExam {
   try {
     // Intentar extraer JSON de la respuesta
-    const jsonMatch = response.content.match(/\{[\s\S]*\}/)
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0])
-    } else {
-      throw new Error('No se encontró JSON en la respuesta')
-    }
+    const start = response.content.indexOf('{')
+    const end = response.content.lastIndexOf('}')
+    if (start < 0 || end < 0 || end <= start) throw new Error('No se encontró JSON en la respuesta')
+    const jsonText = response.content.slice(start, end + 1)
+    return JSON.parse(jsonText)
   } catch (parseError) {
     logger.error(
       {
@@ -254,6 +296,7 @@ function validateAndFixQuestions(
     )
   }
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   return questions.map((q, index) => {
     // Para tipo mixta, algunas preguntas pueden ser de desarrollo (sin opciones)
     // Para tipo objetiva, todas deben tener opciones
@@ -279,7 +322,7 @@ function validateAndFixQuestions(
       // Asegurar que las letras sean A, B, C, D
       q.opciones = q.opciones.map((opt, i) => ({
         ...opt,
-        letra: EXAM_CONSTANTS.OPTION_LETTERS[i],
+        letra: EXAM_CONSTANTS.OPTION_LETTERS.at(i) ?? 'A',
       }))
     } else if (tipo === 'mixta') {
       // Para tipo mixta, validar si tiene opciones (es objetiva) o no (es desarrollo)
@@ -307,7 +350,7 @@ function validateAndFixQuestions(
         // Asegurar que las letras sean A, B, C, D
         q.opciones = q.opciones.map((opt, i) => ({
           ...opt,
-          letra: EXAM_CONSTANTS.OPTION_LETTERS[i],
+          letra: EXAM_CONSTANTS.OPTION_LETTERS.at(i) ?? 'A',
         }))
       } else {
         // Es pregunta de desarrollo, no requiere opciones
@@ -371,7 +414,7 @@ function generateAnswerKey(questions: GeneratedQuestion[]): Record<number, strin
     if (q.opciones && q.opciones.length > 0) {
       const correctOption = q.opciones.find(o => o.esCorrecta)
       if (correctOption) {
-        answerKey[index] = correctOption.letra
+        setRecordValue(answerKey, index, correctOption.letra)
       }
     }
     // Las preguntas de desarrollo no se incluyen en el clavijero
@@ -453,7 +496,7 @@ function processGeneratedExam(
 /**
  * Genera un examen usando IA basado en temarios
  *
- * Esta función orquesta todo el proceso de generación:
+ * Esta función orquesta el proceso completo de generación:
  * 1. Obtiene y valida el contexto del temario
  * 2. Obtiene y valida la configuración de IA
  * 3. Construye el prompt y genera el examen con IA
