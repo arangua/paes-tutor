@@ -125,7 +125,7 @@ export default function ImportExamsPage() {
 
   const updateExam = (index: number, field: keyof ExamToImport, value: string) => {
     const updated = [...exams]
-    const currentExam = updated[index]
+    const currentExam = updated.at(index)
     // Asegurar que todos los campos siempre tengan valores definidos
     const updatedExam: ExamToImport = {
       pdfUrl: field === 'pdfUrl' ? value || '' : currentExam?.pdfUrl || '',
@@ -136,7 +136,7 @@ export default function ImportExamsPage() {
       examType: field === 'examType' ? value || 'oficial' : currentExam?.examType || 'oficial',
       year: field === 'year' ? value || '' : currentExam?.year || '',
     }
-    updated[index] = updatedExam
+    updated.splice(index, 1, updatedExam)
 
     // Auto-generar título si está vacío
     if (field === 'subjectName' || field === 'year' || field === 'examType') {
@@ -145,7 +145,7 @@ export default function ImportExamsPage() {
           EXAM_TYPES.find(t => t.value === updatedExam.examType)?.label || 'Examen'
         updatedExam.examTitle =
           `PAES ${updatedExam.year} - ${updatedExam.subjectName} (${typeLabel})`
-        updated[index] = updatedExam
+        updated.splice(index, 1, updatedExam)
       }
     }
 
@@ -399,8 +399,8 @@ export default function ImportExamsPage() {
 
   const handleFileChange = (index: number, file: File | null) => {
     const updated = [...exams]
-    const currentExam = updated[index]
-    updated[index] = {
+    const currentExam = updated.at(index)
+    updated.splice(index, 1, {
       pdfFile: file,
       pdfUrl: '', // Limpiar URL si se selecciona archivo
       inputType: 'file',
@@ -409,14 +409,14 @@ export default function ImportExamsPage() {
       examTitle: currentExam?.examTitle || '',
       examType: currentExam?.examType || 'oficial',
       year: currentExam?.year || '',
-    }
+    })
     setExams(updated)
   }
 
   const handleInputTypeChange = (index: number, type: 'url' | 'file') => {
     const updated = [...exams]
-    const currentExam = updated[index]
-    updated[index] = {
+    const currentExam = updated.at(index)
+    updated.splice(index, 1, {
       inputType: type,
       pdfUrl: type === 'url' ? currentExam?.pdfUrl || '' : '',
       pdfFile: type === 'file' ? currentExam?.pdfFile || null : null,
@@ -425,7 +425,7 @@ export default function ImportExamsPage() {
       examTitle: currentExam?.examTitle || '',
       examType: currentExam?.examType || 'oficial',
       year: currentExam?.year || '',
-    }
+    })
     setExams(updated)
   }
 
