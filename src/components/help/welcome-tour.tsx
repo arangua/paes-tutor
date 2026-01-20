@@ -64,11 +64,25 @@ const TOUR_STEPS = [
   },
 ]
 
-export function WelcomeTour({ onComplete, onSkip }: WelcomeTourProps) {
+function getStepIndicatorColorClass(params: {
+  isCompleted: boolean
+  isCurrent: boolean
+  stepColor: string
+}) {
+  if (params.isCompleted) {
+    return 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+  }
+  if (params.isCurrent) {
+    return `bg-primary/10 ${params.stepColor}`
+  }
+  return 'bg-muted text-muted-foreground'
+}
+
+export function WelcomeTour({ onComplete, onSkip }: Readonly<WelcomeTourProps>) {
   const [currentStep, setCurrentStep] = useState(0)
   const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set())
 
-  const currentStepData = TOUR_STEPS[currentStep]
+  const currentStepData = TOUR_STEPS.at(currentStep) ?? TOUR_STEPS[0]
   const Icon = currentStepData.icon
   const isLastStep = currentStep === TOUR_STEPS.length - 1
 
@@ -135,6 +149,11 @@ export function WelcomeTour({ onComplete, onSkip }: WelcomeTourProps) {
               const StepIcon = step.icon
               const isCompleted = completedSteps.has(step.id) || idx < currentStep
               const isCurrent = idx === currentStep
+              const stepIndicatorColorClass = getStepIndicatorColorClass({
+                isCompleted,
+                isCurrent,
+                stepColor: step.color,
+              })
 
               return (
                 <div
@@ -144,13 +163,7 @@ export function WelcomeTour({ onComplete, onSkip }: WelcomeTourProps) {
                   } transition-transform`}
                 >
                   <div
-                    className={`p-2 rounded-lg ${
-                      isCompleted
-                        ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
-                        : isCurrent
-                          ? `bg-primary/10 ${step.color}`
-                          : 'bg-muted text-muted-foreground'
-                    }`}
+                    className={`p-2 rounded-lg ${stepIndicatorColorClass}`}
                   >
                     {isCompleted ? (
                       <CheckCircle2 className="h-4 w-4" />
