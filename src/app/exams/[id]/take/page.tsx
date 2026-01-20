@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { HelpIcon } from '@/components/help/help-icon'
-import { captureError } from '@/lib/monitoring'
+import { trackError } from '@/lib/monitoring'
 import { validateIdParam } from '@/lib/validation-helpers'
 import { useKeyboardShortcuts, examShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { getErrorMessage, extractErrorInfo } from '@/lib/error-messages'
@@ -64,6 +64,68 @@ interface Answer {
   questionId: string
   optionSelectedId?: string
   omitida?: boolean
+}
+
+function getSaveAnswersValidationError(
+  answers: Map<string, Answer>,
+  totalQuestions: number
+): string | null {
+  if (answers.size > totalQuestions) {
+    return `No puedes tener más de ${totalQuestions} respuestas`
+  }
+
+  // VALIDACIÓN FRONTEND: Verificar que no haya respuestas duplicadas (defensivo)
+  const questionIds = new Set<string>()
+  for (const answer of answers.values()) {
+    if (questionIds.has(answer.questionId)) {
+      return 'Hay respuestas duplicadas. Por favor, revisa tus respuestas.'
+    }
+    questionIds.add(answer.questionId)
+  }
+
+  return null
+}
+
+function getExamTakePath(): string {
+  if (typeof window !== 'undefined') return window.location.pathname
+  return '/exams/[id]/take'
+}
+
+function formatSaveProgressMessage(savedCount: number, totalQuestions: number): string {
+  const plural = savedCount !== 1 ? 's' : ''
+  return `Guardando ${savedCount} de ${totalQuestions} respuesta${plural}...`
+}
+
+function formatSaveSuccessMessage(savedCount: number): string {
+  const plural = savedCount !== 1 ? 's' : ''
+  return `Guardado: ${savedCount} respuesta${plural} en el servidor`
+}
+
+function shouldShowCriticalAutoSaveToast(message: string): boolean {
+  const lower = message.toLowerCase()
+  return !lower.includes('red') && !lower.includes('conexión')
+}
+
+async function putAttemptAnswers(attemptId: string, answersArray: Answer[]): Promise<void> {
+  const res = await fetch(`/api/attempts/${attemptId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ answers: answersArray }),
+  })
+
+  if (res.ok) return
+
+  const { safeJsonParse } = await import('@/lib/api-helpers')
+  const errorData = await safeJsonParse<{ error?: string; details?: string }>(res, {
+    path: getExamTakePath(),
+    operation: 'guardar respuestas',
+  })
+  const errorInfo = extractErrorInfo(errorData.error || 'Error al guardar respuestas')
+  const errorMessage = getErrorMessage(errorInfo.code, {
+    ...errorInfo.context,
+    details: errorData.details,
+  })
+  throw new Error(`[${errorInfo.code}] ${errorMessage.description}`)
 }
 
 /**
@@ -242,26 +304,9 @@ export default function TakeExamPage() {
   const saveAnswers = useCallback(async () => {
     if (!attempt || !exam) return
 
-    // VALIDACIÓN FRONTEND: Verificar que no haya más respuestas que preguntas
-    if (answers.size > exam.totalPreguntas) {
-      setError(`No puedes tener más de ${exam.totalPreguntas} respuestas`)
-      setAutoSaveStatus('error')
-      return
-    }
-
-    // VALIDACIÓN FRONTEND: Verificar que no haya respuestas duplicadas
-    const questionIds = new Set<string>()
-    const duplicates: string[] = []
-
-    for (const answer of answers.values()) {
-      if (questionIds.has(answer.questionId)) {
-        duplicates.push(answer.questionId)
-      }
-      questionIds.add(answer.questionId)
-    }
-
-    if (duplicates.length > 0) {
-      setError('Hay respuestas duplicadas. Por favor, revisa tus respuestas.')
+    const validationError = getSaveAnswersValidationError(answers, exam.totalPreguntas)
+    if (validationError) {
+      setError(validationError)
       setAutoSaveStatus('error')
       return
     }
@@ -272,30 +317,11 @@ export default function TakeExamPage() {
       const savedCount = answersArray.length
       const totalQuestions = exam.totalPreguntas
       
-      setSaveMessage(`Guardando ${savedCount} de ${totalQuestions} respuesta${savedCount !== 1 ? 's' : ''}...`)
-
-      const res = await fetch(`/api/attempts/${attempt.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answers: answersArray }),
-      })
-
-      if (!res.ok) {
-        const { safeJsonParse } = await import('@/lib/api-helpers')
-        const errorData = await safeJsonParse<{ error?: string; details?: string }>(res, {
-          path: typeof window !== 'undefined' ? window.location.pathname : '/exams/[id]/take',
-          operation: 'guardar respuestas',
-        })
-        const errorInfo = extractErrorInfo(errorData.error || 'Error al guardar respuestas')
-        const errorMessage = getErrorMessage(errorInfo.code, {
-          ...errorInfo.context,
-          details: errorData.details,
-        })
-        throw new Error(`[${errorInfo.code}] ${errorMessage.description}`)
-      }
+      setSaveMessage(formatSaveProgressMessage(savedCount, totalQuestions))
+      await putAttemptAnswers(attempt.id, answersArray)
 
       setAutoSaveStatus('saved')
-      setSaveMessage(`Guardado: ${savedCount} respuesta${savedCount !== 1 ? 's' : ''} en el servidor`)
+      setSaveMessage(formatSaveSuccessMessage(savedCount))
       // Limpiar error si se guardó correctamente
       if (error) setError(null)
       
@@ -308,11 +334,7 @@ export default function TakeExamPage() {
       const errorMessage = err instanceof Error ? err.message : 'Error al guardar respuestas'
 
       // Mostrar toast solo si el error es crítico (no para errores temporales de red)
-      if (
-        err instanceof Error &&
-        !errorMessage.includes('red') &&
-        !errorMessage.includes('conexión')
-      ) {
+      if (err instanceof Error && shouldShowCriticalAutoSaveToast(errorMessage)) {
         toast.error('Error al guardar respuestas', {
           description: errorMessage,
           duration: 4000,
@@ -320,7 +342,7 @@ export default function TakeExamPage() {
       }
 
       // Log error usando servicio de monitoreo
-      captureError(err instanceof Error ? err : new Error(String(err)), {
+      trackError(err instanceof Error ? err : new Error(String(err)), {
         type: 'exam_save_error',
         attemptId: attempt?.id,
         path: typeof window !== 'undefined' ? window.location.pathname : undefined,
@@ -461,7 +483,7 @@ export default function TakeExamPage() {
       // Guardar respuestas antes de salir
       if (answers.size > 0) {
         saveAnswers().catch(err => {
-          captureError(err instanceof Error ? err : new Error(String(err)), {
+          trackError(err instanceof Error ? err : new Error(String(err)), {
             type: 'exam_save_error',
             action: 'before_unload',
             path: typeof window !== 'undefined' ? window.location.pathname : undefined,
@@ -471,9 +493,10 @@ export default function TakeExamPage() {
 
       // Mostrar advertencia del navegador
       e.preventDefault()
-      e.returnValue =
+      const message =
         '¿Estás seguro de que quieres salir? Tu progreso se guardará automáticamente, pero perderás el tiempo restante del examen.'
-      return e.returnValue
+      ;(e as unknown as { returnValue?: string }).returnValue = message
+      return message
     }
 
     window.addEventListener('beforeunload', handleBeforeUnload)
@@ -498,9 +521,10 @@ export default function TakeExamPage() {
   const handleSelectOptionByIndex = useCallback(
     (index: number) => {
       if (!exam) return
-      const currentQ = exam.questions[currentQuestion]
-      if (currentQ && currentQ.question.options[index]) {
-        handleAnswerSelect(currentQ.question.id, currentQ.question.options[index].id)
+      const currentQ = exam.questions.at(currentQuestion)
+      const option = currentQ?.question.options.at(index)
+      if (currentQ && option) {
+        handleAnswerSelect(currentQ.question.id, option.id)
       }
     },
     [exam, currentQuestion, handleAnswerSelect]
@@ -645,7 +669,7 @@ export default function TakeExamPage() {
     )
   }
 
-  const currentQ = exam.questions[currentQuestion]
+  const currentQ = exam.questions.at(currentQuestion) ?? exam.questions[0]
   const currentAnswer = answers.get(currentQ.question.id)
 
   return (
@@ -852,17 +876,21 @@ export default function TakeExamPage() {
 
         <div className="flex gap-2">
           {exam.questions.map((_, idx) => {
-            const hasAnswer = answers.has(exam.questions[idx].question.id)
+            const questionAtIndex = exam.questions.at(idx)
+            if (!questionAtIndex) return null
+            const hasAnswer = answers.has(questionAtIndex.question.id)
+            let navButtonClassName = 'bg-muted hover:bg-muted/80'
+            if (idx === currentQuestion) {
+              navButtonClassName = 'bg-primary text-primary-foreground'
+            } else if (hasAnswer) {
+              navButtonClassName = 'bg-green-500 text-white'
+            }
             return (
               <button
                 key={idx}
                 onClick={() => setCurrentQuestion(idx)}
                 className={`w-8 h-8 rounded text-sm ${
-                  idx === currentQuestion
-                    ? 'bg-primary text-primary-foreground'
-                    : hasAnswer
-                      ? 'bg-green-500 text-white'
-                      : 'bg-muted hover:bg-muted/80'
+                  navButtonClassName
                 }`}
               >
                 {idx + 1}
