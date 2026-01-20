@@ -41,7 +41,7 @@ import {
   MessageSquare,
   GitMerge,
 } from 'lucide-react'
-import { captureError } from '@/lib/monitoring'
+import { trackError } from '@/lib/monitoring'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -100,12 +100,13 @@ interface NoteVersionsProps {
  * Componente para ver y restaurar versiones de notas
  * Basado en estándares de Google Docs, Notion, Linear
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity
 export function NoteVersions({
   noteId,
   open,
   onOpenChange,
   onRestore,
-}: NoteVersionsProps) {
+}: Readonly<NoteVersionsProps>) {
   const [versions, setVersions] = useState<NoteVersion[]>([])
   const [allVersions, setAllVersions] = useState<NoteVersion[]>([]) // Todas las versiones sin filtrar
   const [loadingMore, setLoadingMore] = useState(false)
@@ -124,7 +125,14 @@ export function NoteVersions({
   const [comparingVersions, setComparingVersions] = useState(false)
   const [version1ToCompare, setVersion1ToCompare] = useState<NoteVersion | null>(null)
   const [version2ToCompare, setVersion2ToCompare] = useState<NoteVersion | null>(null)
-  const [diffResult, setDiffResult] = useState<any>(null)
+  type TextDiffChunk = { type: 'equal' | 'removed' | 'added'; text: string }
+  type DiffResult = {
+    hasChanges: boolean
+    title: { changed: boolean; old: string; new: string }
+    content: { changed: boolean; diff: TextDiffChunk[] }
+    tags: { changed: boolean; old: string; new: string }
+  }
+  const [diffResult, setDiffResult] = useState<DiffResult | null>(null)
 
   // Estados para búsqueda, filtros y ordenamiento
   const [searchQuery, setSearchQuery] = useState('')
@@ -142,7 +150,8 @@ export function NoteVersions({
   const [showTimeline, setShowTimeline] = useState(false)
   const [showCharts, setShowCharts] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
-  const [restoreHistory, setRestoreHistory] = useState<any[]>([])
+  type RestoreHistoryItem = { id: string; restoredAt: string | Date }
+  const [restoreHistory, setRestoreHistory] = useState<RestoreHistoryItem[]>([])
   const [showColorPicker, setShowColorPicker] = useState<string | null>(null)
   const [selectedColor, setSelectedColor] = useState('#3b82f6')
   // savedFilters y maxVersionsLimit no se usan actualmente pero se mantienen para futuras funcionalidades
@@ -167,6 +176,7 @@ export function NoteVersions({
   useEffect(() => {
     if (!open || !noteId) return
 
+    // eslint-disable-next-line sonarjs/cognitive-complexity
     const loadVersions = async (reset = true) => {
       if (reset) {
         setLoading(true)
@@ -177,9 +187,10 @@ export function NoteVersions({
       }
       
       try {
-        const url = nextCursor && !reset
-          ? `/api/notes/versions?noteId=${noteId}&limit=20&cursor=${nextCursor}`
-          : `/api/notes/versions?noteId=${noteId}&limit=20`
+        let url = `/api/notes/versions?noteId=${noteId}&limit=20`
+        if (nextCursor && !reset) {
+          url = `/api/notes/versions?noteId=${noteId}&limit=20&cursor=${nextCursor}`
+        }
         
         const res = await fetch(url)
         if (res.ok) {
@@ -221,7 +232,7 @@ export function NoteVersions({
         }
       } catch (error) {
         toast.error('Error al cargar versiones')
-        captureError(error instanceof Error ? error : new Error(String(error)), {
+        trackError(error instanceof Error ? error : new Error(String(error)), {
           type: 'note_versions_load_error',
           noteId: noteId || 'unknown',
         })
@@ -242,6 +253,7 @@ export function NoteVersions({
   }, [debouncedSearchQuery, sortBy, filterNamed, dateFilter])
 
   // Filtrar, ordenar y paginar versiones
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   const filteredAndSortedVersions = useMemo(() => {
     let filtered = [...allVersions]
 
@@ -250,7 +262,7 @@ export function NoteVersions({
       const query = debouncedSearchQuery.trim()
       
       // Detectar búsqueda por contenido específico: contenido:"texto"
-      const contentSearchMatch = query.match(/^contenido:"(.+)"$/i)
+      const contentSearchMatch = /^contenido:"(.+)"$/i.exec(query)
       if (contentSearchMatch) {
         const contentQuery = contentSearchMatch[1].toLowerCase()
         filtered = filtered.filter(v =>
@@ -258,8 +270,8 @@ export function NoteVersions({
         )
       }
       // Detectar búsqueda exacta (entre comillas)
-      else if (query.match(/^"(.+)"$/)) {
-        const exactMatch = query.match(/^"(.+)"$/)
+      else {
+        const exactMatch = /^"(.+)"$/.exec(query)
         if (exactMatch) {
           const exactQuery = exactMatch[1].toLowerCase()
           filtered = filtered.filter(
@@ -269,17 +281,17 @@ export function NoteVersions({
               (v.name && v.name.toLowerCase().includes(exactQuery)) ||
               (v.tags && v.tags.toLowerCase().includes(exactQuery))
           )
+        } else {
+          // Búsqueda normal
+          const lowerQuery = query.toLowerCase()
+          filtered = filtered.filter(
+            v =>
+              v.title.toLowerCase().includes(lowerQuery) ||
+              v.content.toLowerCase().includes(lowerQuery) ||
+              (v.name && v.name.toLowerCase().includes(lowerQuery)) ||
+              (v.tags && v.tags.toLowerCase().includes(lowerQuery))
+          )
         }
-      } else {
-        // Búsqueda normal
-        const lowerQuery = query.toLowerCase()
-        filtered = filtered.filter(
-          v =>
-            v.title.toLowerCase().includes(lowerQuery) ||
-            v.content.toLowerCase().includes(lowerQuery) ||
-            (v.name && v.name.toLowerCase().includes(lowerQuery)) ||
-            (v.tags && v.tags.toLowerCase().includes(lowerQuery))
-        )
       }
     }
 
@@ -442,7 +454,8 @@ export function NoteVersions({
             ? paginatedVersions.findIndex(v => v.id === selectedVersion.id)
             : -1
           const nextIndex = currentIndex < paginatedVersions.length - 1 ? currentIndex + 1 : 0
-          setSelectedVersion(paginatedVersions[nextIndex])
+          const next = paginatedVersions.at(nextIndex)
+          if (next) setSelectedVersion(next)
         }
       },
     },
@@ -455,7 +468,8 @@ export function NoteVersions({
             ? paginatedVersions.findIndex(v => v.id === selectedVersion.id)
             : -1
           const prevIndex = currentIndex > 0 ? currentIndex - 1 : paginatedVersions.length - 1
-          setSelectedVersion(paginatedVersions[prevIndex])
+          const prev = paginatedVersions.at(prevIndex)
+          if (prev) setSelectedVersion(prev)
         }
       },
     },
@@ -533,7 +547,7 @@ export function NoteVersions({
         toast.error('Error al restaurar versión', {
           description: errorData.error || 'No se pudo restaurar la versión',
         })
-        captureError(new Error(errorData.error || 'Error al restaurar versión'), {
+        trackError(new Error(errorData.error || 'Error al restaurar versión'), {
           type: 'note_version_restore_error',
           noteId: noteId || 'unknown',
           versionId: versionToRestore.id,
@@ -544,7 +558,7 @@ export function NoteVersions({
       toast.error('Error al restaurar versión', {
         description: 'Ocurrió un error inesperado. Por favor, intenta nuevamente.',
       })
-      captureError(error instanceof Error ? error : new Error(String(error)), {
+      trackError(error instanceof Error ? error : new Error(String(error)), {
         type: 'note_version_restore_error',
         noteId: noteId || 'unknown',
         versionId: versionToRestore.id,
@@ -587,7 +601,7 @@ export function NoteVersions({
       toast.error('Error al exportar versión', {
         description: 'No se pudo descargar la versión',
       })
-      captureError(error instanceof Error ? error : new Error(String(error)), {
+      trackError(error instanceof Error ? error : new Error(String(error)), {
         type: 'note_version_export_error',
         noteId: noteId || 'unknown',
         versionId: version.id,
@@ -597,7 +611,8 @@ export function NoteVersions({
 
   const handleCopyToClipboard = async (version: NoteVersion) => {
     try {
-      const textToCopy = `${version.title}\n\n${version.content}${version.tags ? `\n\nTags: ${version.tags}` : ''}`
+      const tagsSuffix = version.tags ? `\n\nTags: ${version.tags}` : ''
+      const textToCopy = `${version.title}\n\n${version.content}${tagsSuffix}`
       await navigator.clipboard.writeText(textToCopy)
       toast.success('Copiado al portapapeles', {
         description: 'El contenido de la versión se ha copiado',
@@ -606,7 +621,7 @@ export function NoteVersions({
       toast.error('Error al copiar', {
         description: 'No se pudo copiar al portapapeles',
       })
-      captureError(error instanceof Error ? error : new Error(String(error)), {
+      trackError(error instanceof Error ? error : new Error(String(error)), {
         type: 'note_version_copy_error',
         noteId: noteId || 'unknown',
         versionId: version.id,
@@ -666,7 +681,7 @@ export function NoteVersions({
       toast.error('Error al eliminar versión', {
         description: 'Ocurrió un error inesperado',
       })
-      captureError(error instanceof Error ? error : new Error(String(error)), {
+      trackError(error instanceof Error ? error : new Error(String(error)), {
         type: 'note_version_delete_error',
         noteId: noteId || 'unknown',
         versionId: version.id,
@@ -728,7 +743,7 @@ export function NoteVersions({
       toast.error('Error al eliminar versiones', {
         description: 'Ocurrió un error inesperado',
       })
-      captureError(error instanceof Error ? error : new Error(String(error)), {
+      trackError(error instanceof Error ? error : new Error(String(error)), {
         type: 'note_version_bulk_delete_error',
         noteId: noteId || 'unknown',
       })
@@ -779,7 +794,7 @@ export function NoteVersions({
       toast.error('Error al actualizar nombre', {
         description: 'Ocurrió un error inesperado',
       })
-      captureError(error instanceof Error ? error : new Error(String(error)), {
+      trackError(error instanceof Error ? error : new Error(String(error)), {
         type: 'note_version_name_update_error',
         noteId: noteId || 'unknown',
         versionId: version.id,
@@ -820,7 +835,7 @@ export function NoteVersions({
           }
         } catch (error) {
           toast.error('Error al comparar versiones')
-          captureError(error instanceof Error ? error : new Error(String(error)), {
+          trackError(error instanceof Error ? error : new Error(String(error)), {
             type: 'note_version_compare_error',
             noteId: noteId || 'unknown',
           })
@@ -858,6 +873,7 @@ export function NoteVersions({
     }
   }
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   const handleBulkExport = async (format: 'txt' | 'md' | 'pdf' | 'json' | 'zip' | 'docx' | 'odt' | 'rtf') => {
     if (selectedVersions.size === 0) {
       toast.error('No hay versiones seleccionadas')
@@ -948,7 +964,7 @@ export function NoteVersions({
           toast.error('Error al exportar', {
             description: 'Ocurrió un error inesperado',
           })
-          captureError(error instanceof Error ? error : new Error(String(error)), {
+          trackError(error instanceof Error ? error : new Error(String(error)), {
             type: 'note_version_bulk_export_error',
           })
         }
@@ -966,13 +982,14 @@ export function NoteVersions({
       setSelectedVersions(new Set())
     } catch (error) {
       toast.error('Error al exportar versiones')
-      captureError(error instanceof Error ? error : new Error(String(error)), {
+      trackError(error instanceof Error ? error : new Error(String(error)), {
         type: 'note_version_bulk_export_error',
       })
     }
   }
 
   // Mejorar diff visual - función auxiliar para resaltar cambios palabra por palabra
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   const highlightWordDiff = (oldText: string, newText: string) => {
     const oldWords = oldText.split(/(\s+)/)
     const newWords = newText.split(/(\s+)/)
@@ -984,24 +1001,31 @@ export function NoteVersions({
 
     while (oldIdx < oldWords.length || newIdx < newWords.length) {
       if (oldIdx >= oldWords.length) {
-        result.push({ type: 'added', text: newWords[newIdx] })
+        const w = newWords.at(newIdx)
+        if (typeof w === 'string') result.push({ type: 'added', text: w })
         newIdx++
       } else if (newIdx >= newWords.length) {
-        result.push({ type: 'removed', text: oldWords[oldIdx] })
+        const w = oldWords.at(oldIdx)
+        if (typeof w === 'string') result.push({ type: 'removed', text: w })
         oldIdx++
-      } else if (oldWords[oldIdx] === newWords[newIdx]) {
-        result.push({ type: 'equal', text: oldWords[oldIdx] })
+      } else if (oldWords.at(oldIdx) === newWords.at(newIdx)) {
+        const w = oldWords.at(oldIdx)
+        if (typeof w === 'string') result.push({ type: 'equal', text: w })
         oldIdx++
         newIdx++
       } else {
         // Buscar la siguiente palabra igual
         let found = false
         for (let i = newIdx + 1; i < Math.min(newIdx + 10, newWords.length); i++) {
-          if (oldWords[oldIdx] === newWords[i]) {
+          const oldWord = oldWords.at(oldIdx)
+          const newWord = newWords.at(i)
+          if (typeof oldWord === 'string' && oldWord === newWord) {
             for (let j = newIdx; j < i; j++) {
-              result.push({ type: 'added', text: newWords[j] })
+              const w = newWords.at(j)
+              if (typeof w === 'string') result.push({ type: 'added', text: w })
             }
-            result.push({ type: 'equal', text: newWords[i] })
+            const w = newWords.at(i)
+            if (typeof w === 'string') result.push({ type: 'equal', text: w })
             newIdx = i + 1
             oldIdx++
             found = true
@@ -1009,8 +1033,10 @@ export function NoteVersions({
           }
         }
         if (!found) {
-          result.push({ type: 'removed', text: oldWords[oldIdx] })
-          result.push({ type: 'added', text: newWords[newIdx] })
+          const oldWord = oldWords.at(oldIdx)
+          const newWord = newWords.at(newIdx)
+          if (typeof oldWord === 'string') result.push({ type: 'removed', text: oldWord })
+          if (typeof newWord === 'string') result.push({ type: 'added', text: newWord })
           oldIdx++
           newIdx++
         }
@@ -1018,6 +1044,44 @@ export function NoteVersions({
     }
 
     return result
+  }
+
+  const pulseVersionCard = (versionId: string) => {
+    const card = document.querySelector(`[data-version-id="${versionId}"]`)
+    if (!card) return
+    card.classList.add('animate-pulse')
+    window.setTimeout(() => {
+      card.classList.remove('animate-pulse')
+    }, 500)
+  }
+
+  const handleVersionCardClick = (version: NoteVersion) => {
+    setSelectedVersion(version)
+    pulseVersionCard(version.id)
+  }
+
+  const handleVersionMouseEnter = (versionId: string) => {
+    setHoveredVersion(versionId)
+    const el = document.querySelector(`[data-version-id="${versionId}"]`) as HTMLElement | null
+    const rect = el?.getBoundingClientRect()
+    if (rect) {
+      setPreviewPosition({ x: rect.right + 10, y: rect.top })
+    }
+  }
+
+  const handleVersionMouseLeave = () => {
+    window.setTimeout(() => {
+      if (!document.querySelector('[data-preview-tooltip]')?.matches(':hover')) {
+        setHoveredVersion(null)
+      }
+    }, 100)
+  }
+
+  const focusVersionCardAtIndex = (index: number) => {
+    const id = paginatedVersions.at(index)?.id
+    if (!id) return
+    const el = document.querySelector(`[data-version-id="${id}"]`) as HTMLElement | null
+    el?.focus()
   }
 
   return (
@@ -1176,20 +1240,29 @@ export function NoteVersions({
           </div>
         )}
 
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-muted-foreground">Cargando versiones...</div>
-          </div>
-        ) : allVersions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <History className="h-16 w-16 text-muted-foreground mb-4 opacity-50" />
-            <p className="text-lg font-semibold mb-2">No hay versiones guardadas</p>
-            <p className="text-sm text-muted-foreground">
-              Las versiones se guardan automáticamente cuando realizas cambios importantes.
-            </p>
-          </div>
-        ) : (
-          <div key="versions-list">
+        {(() => {
+          if (loading) {
+            return (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-muted-foreground">Cargando versiones...</div>
+              </div>
+            )
+          }
+
+          if (allVersions.length === 0) {
+            return (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <History className="h-16 w-16 text-muted-foreground mb-4 opacity-50" />
+                <p className="text-lg font-semibold mb-2">No hay versiones guardadas</p>
+                <p className="text-sm text-muted-foreground">
+                  Las versiones se guardan automáticamente cuando realizas cambios importantes.
+                </p>
+              </div>
+            )
+          }
+
+          return (
+            <div key="versions-list">
             {/* Controles de búsqueda, filtros y ordenamiento */}
             <div className="space-y-3 border-b pb-3">
               {/* Búsqueda */}
@@ -1527,6 +1600,17 @@ export function NoteVersions({
                   {paginatedVersions.map((version, idx) => {
               const isCurrent = version.id === currentVersionId
               const isSelected = selectedVersion?.id === version.id
+              let versionBadgeContent: React.ReactNode = <>Versión {paginatedVersions.length - idx}</>
+              if (isCurrent) {
+                versionBadgeContent = (
+                  <>
+                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                    Versión actual
+                  </>
+                )
+              } else if (version.name) {
+                versionBadgeContent = <>{version.name}</>
+              }
 
               return (
                 <Card
@@ -1539,30 +1623,16 @@ export function NoteVersions({
                   style={{
                     animationDelay: `${idx * 50}ms`,
                   }}
-                  onClick={() => {
-                    setSelectedVersion(version)
-                    // Animación de feedback visual
-                    const card = document.querySelector(`[data-version-id="${version.id}"]`)
-                    card?.classList.add('animate-pulse')
-                    setTimeout(() => {
-                      card?.classList.remove('animate-pulse')
-                    }, 500)
-                  }}
-                  onMouseEnter={(e) => {
-                    setHoveredVersion(version.id)
-                    const rect = e.currentTarget.getBoundingClientRect()
-                    setPreviewPosition({ x: rect.right + 10, y: rect.top })
-                  }}
-                  onMouseLeave={() => {
-                    setTimeout(() => {
-                      if (!document.querySelector('[data-preview-tooltip]')?.matches(':hover')) {
-                        setHoveredVersion(null)
-                      }
-                    }, 100)
-                  }}
+                  onClick={() => handleVersionCardClick(version)}
+                  onMouseEnter={() => handleVersionMouseEnter(version.id)}
+                  onMouseLeave={handleVersionMouseLeave}
                   role="button"
                   tabIndex={0}
-                  aria-label={`Versión ${version.name || `del ${formatTimeAgo(new Date(version.createdAt))}`}`}
+                  aria-label={
+                    version.name
+                      ? `Versión ${version.name}`
+                      : `Versión del ${formatTimeAgo(new Date(version.createdAt))}`
+                  }
                   aria-describedby={`version-${version.id}-description`}
                   onKeyDown={e => {
                     if (e.key === 'Enter' || e.key === ' ') {
@@ -1570,18 +1640,10 @@ export function NoteVersions({
                       setSelectedVersion(version)
                     } else if (e.key === 'ArrowDown') {
                       e.preventDefault()
-                      const currentIndex = paginatedVersions.findIndex(v => v.id === version.id)
-                      if (currentIndex < paginatedVersions.length - 1) {
-                        const nextCard = document.querySelector(`[data-version-id="${paginatedVersions[currentIndex + 1].id}"]`) as HTMLElement
-                        nextCard?.focus()
-                      }
+                      if (idx < paginatedVersions.length - 1) focusVersionCardAtIndex(idx + 1)
                     } else if (e.key === 'ArrowUp') {
                       e.preventDefault()
-                      const currentIndex = paginatedVersions.findIndex(v => v.id === version.id)
-                      if (currentIndex > 0) {
-                        const prevCard = document.querySelector(`[data-version-id="${paginatedVersions[currentIndex - 1].id}"]`) as HTMLElement
-                        prevCard?.focus()
-                      }
+                      if (idx > 0) focusVersionCardAtIndex(idx - 1)
                     }
                   }}
                   data-version-id={version.id}
@@ -1607,20 +1669,15 @@ export function NoteVersions({
                       </Button>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2 flex-wrap">
-                          <Badge 
+                          <Badge
                             variant={isCurrent ? 'default' : 'outline'}
-                            style={version.color && !isCurrent ? { borderColor: version.color, color: version.color } : undefined}
+                            style={
+                              version.color && !isCurrent
+                                ? { borderColor: version.color, color: version.color }
+                                : undefined
+                            }
                           >
-                            {isCurrent ? (
-                              <>
-                                <CheckCircle2 className="h-3 w-3 mr-1" />
-                                Versión actual
-                              </>
-                            ) : version.name ? (
-                              version.name
-                            ) : (
-                              `Versión ${paginatedVersions.length - idx}`
-                            )}
+                            {versionBadgeContent}
                           </Badge>
                           {version.color && (
                             <div
@@ -1886,8 +1943,9 @@ export function NoteVersions({
               </div>
             )}
             </div>
-          </div>
-        )}
+            </div>
+          )
+        })()}
 
         {/* Editar nombre */}
         {showNameEdit && (
@@ -2114,7 +2172,7 @@ export function NoteVersions({
                             <div>
                               <h6 className="font-semibold text-sm mb-1">Contenido:</h6>
                               <div className="text-sm space-y-1 max-h-60 overflow-y-auto">
-                                {diffResult.content.diff.map((diff: any, idx: number) => {
+                                {diffResult.content.diff.map((diff, idx: number) => {
                                   if (diff.type === 'equal') {
                                     return (
                                       <div key={idx} className="p-2 rounded bg-muted/30">
@@ -2145,16 +2203,18 @@ export function NoteVersions({
                                       >
                                         {diff.type === 'removed' ? '- ' : '+ '}
                                       </span>
-                                      {wordDiff.map((word: any, wordIdx: number) => (
+                                      {wordDiff.map((word, wordIdx: number) => (
                                         <span
                                           key={wordIdx}
-                                          className={
-                                            word.type === 'removed'
-                                              ? 'bg-red-200 dark:bg-red-900/40 line-through'
-                                              : word.type === 'added'
-                                                ? 'bg-green-200 dark:bg-green-900/40 font-semibold'
-                                                : ''
-                                          }
+                                          className={(() => {
+                                            if (word.type === 'removed') {
+                                              return 'bg-red-200 dark:bg-red-900/40 line-through'
+                                            }
+                                            if (word.type === 'added') {
+                                              return 'bg-green-200 dark:bg-green-900/40 font-semibold'
+                                            }
+                                            return ''
+                                          })()}
                                         >
                                           {word.text}
                                         </span>
@@ -2342,23 +2402,36 @@ export function NoteVersions({
                 </div>
               </div>
               <Card>
-                <CardContent className={`p-4 space-y-3 ${
-                  previewTheme === 'dark' ? 'bg-gray-900 text-white' : 
-                  previewTheme === 'light' ? 'bg-white' : ''
-                }`}>
+                <CardContent
+                  className={cn(
+                    'p-4 space-y-3',
+                    previewTheme === 'dark' && 'bg-gray-900 text-white',
+                    previewTheme === 'light' && 'bg-white'
+                  )}
+                >
                   <div>
-                    <h5 className={`font-semibold mb-1 ${
-                      previewFontSize === 'sm' ? 'text-sm' :
-                      previewFontSize === 'lg' ? 'text-xl' : 'text-base'
-                    }`}>{selectedVersion.title}</h5>
+                    <h5
+                      className={cn(
+                        'font-semibold mb-1',
+                        previewFontSize === 'sm' && 'text-sm',
+                        previewFontSize === 'md' && 'text-base',
+                        previewFontSize === 'lg' && 'text-xl'
+                      )}
+                    >
+                      {selectedVersion.title}
+                    </h5>
                     <p className="text-sm text-muted-foreground">
                       {formatTimeAgo(new Date(selectedVersion.createdAt))}
                     </p>
                   </div>
-                  <div className={`prose max-w-none ${
-                    previewFontSize === 'sm' ? 'prose-sm' :
-                    previewFontSize === 'lg' ? 'prose-lg' : 'prose-base'
-                  }`}>
+                  <div
+                    className={cn(
+                      'prose max-w-none',
+                      previewFontSize === 'sm' && 'prose-sm',
+                      previewFontSize === 'md' && 'prose-base',
+                      previewFontSize === 'lg' && 'prose-lg'
+                    )}
+                  >
                     <p className="whitespace-pre-wrap">{selectedVersion.content}</p>
                   </div>
                   {selectedVersion.tags && (
@@ -2683,7 +2756,7 @@ export function NoteVersions({
                   toast.error('Error al fusionar versiones', {
                     description: 'Ocurrió un error inesperado',
                   })
-                  captureError(error instanceof Error ? error : new Error(String(error)), {
+                  trackError(error instanceof Error ? error : new Error(String(error)), {
                     type: 'note_version_merge_error',
                     noteId: noteId || 'unknown',
                   })
@@ -2718,7 +2791,11 @@ export function NoteVersions({
         style={{
           left: `${previewPosition.x}px`,
           top: `${previewPosition.y}px`,
-          transform: previewPosition.x + 320 > (typeof window !== 'undefined' ? window.innerWidth : 0) ? 'translateX(-100%)' : 'none',
+          transform: (() => {
+            const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 0
+            if (previewPosition.x + 320 > viewportWidth) return 'translateX(-100%)'
+            return 'none'
+          })(),
         }}
         onMouseEnter={() => setHoveredVersion(hoveredVersion)}
         onMouseLeave={() => setHoveredVersion(null)}
