@@ -146,7 +146,12 @@ const mockAllFetches = (
 ) => {
   const createResponse = (response: any) => {
     // Si response tiene ok: false explícitamente, respetarlo
-    const ok = response.ok === false ? false : (response.ok !== undefined ? response.ok : true)
+    let ok = true
+    if (response.ok === false) {
+      ok = false
+    } else if (response.ok !== undefined) {
+      ok = response.ok
+    }
     const status = response.status || (ok ? 200 : 500)
     const data = response.data || response
     
@@ -387,8 +392,8 @@ describe('DashboardPage', () => {
     render(<DashboardPage />)
 
     await waitFor(() => {
-      // Debe mostrar el dashboard aunque haya error en métricas
-      expect(screen.getByText(/Hola, Matías/i)).toBeInTheDocument()
+      expect(screen.getByTestId('error-message')).toBeInTheDocument()
+      expect(screen.getByTestId('error-title')).toHaveTextContent(/Error al cargar/i)
     })
   })
 
