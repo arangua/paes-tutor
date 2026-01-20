@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { ZodError, ZodSchema } from 'zod'
+import { ZodError, type ZodType } from 'zod'
 import { logger, logApiError } from './logger'
 import { sanitizeString, containsDangerousPatterns, sanitizeObject } from './security'
 import { logSecurityEvent, getClientIp, detectSuspiciousActivity } from './security-logger'
+
+function setRecordValue(target: Record<string, unknown>, key: string, value: unknown) {
+  Object.defineProperty(target, key, { value, enumerable: true, configurable: true, writable: true })
+}
 
 /**
  * Valida los parámetros de la query string usando un schema de Zod
@@ -26,7 +30,7 @@ import { logSecurityEvent, getClientIp, detectSuspiciousActivity } from './secur
  */
 export function validateQuery<T>(
   request: NextRequest,
-  schema: ZodSchema<T>
+  schema: ZodType<T>
 ): { success: true; data: T } | { success: false; error: NextResponse } {
   try {
     const searchParams = request.nextUrl.searchParams
@@ -36,7 +40,7 @@ export function validateQuery<T>(
     const sanitizedParams: Record<string, unknown> = {}
     for (const [key, value] of Object.entries(params)) {
       if (typeof value === 'string') {
-        sanitizedParams[key] = sanitizeString(value)
+        setRecordValue(sanitizedParams, key, sanitizeString(value))
 
         // Detectar patrones peligrosos
         if (containsDangerousPatterns(value)) {
@@ -55,7 +59,7 @@ export function validateQuery<T>(
           }
         }
       } else {
-        sanitizedParams[key] = value
+        setRecordValue(sanitizedParams, key, value)
       }
     }
 
@@ -104,7 +108,7 @@ export function validateQuery<T>(
  */
 export async function validateBody<T>(
   request: NextRequest,
-  schema: ZodSchema<T>
+  schema: ZodType<T>
 ): Promise<{ success: true; data: T } | { success: false; error: NextResponse }> {
   try {
     let body
@@ -256,9 +260,10 @@ export async function safeJsonParse<T = Record<string, unknown>>(
  * const { exams, pagination } = validation.data
  * ```
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity
 export async function validateResponse<T>(
   response: Response,
-  schema: ZodSchema<T>,
+  schema: ZodType<T>,
   context?: { path?: string; operation?: string }
 ): Promise<{ success: true; data: T } | { success: false; error: string }> {
   try {
@@ -268,6 +273,8 @@ export async function validateResponse<T>(
   } catch (error) {
     if (error instanceof ZodError) {
       const errorMessage = `Error de validación: ${error.issues.map(i => i.message).join(', ')}`
+      const pathSuffix = context?.path ? ` en ${context.path}` : ''
+      const operationSuffix = context?.operation ? ` (${context.operation})` : ''
       
       // Log estructurado usando logger en lugar de console.warn
       const logData = {
@@ -288,7 +295,7 @@ export async function validateResponse<T>(
       try {
         if (typeof window === 'undefined') {
           // En servidor, usar logger estructurado
-          logger.warn(logData, `Error de validación de respuesta${context?.path ? ` en ${context.path}` : ''}${context?.operation ? ` (${context.operation})` : ''}`)
+          logger.warn(logData, `Error de validación de respuesta${pathSuffix}${operationSuffix}`)
         } else {
           // En cliente, usar console.warn solo en desarrollo y con formato mejorado
           // Solo mostrar si hay issues reales (no warnings vacíos)
@@ -298,11 +305,8 @@ export async function validateResponse<T>(
               .map((issue, idx) => `${idx + 1}. ${issue.path.join('.')}: ${issue.message}`)
               .join('\n')
             
-            console.warn(
-              `⚠️ Error de validación de respuesta${context?.path ? ` en ${context.path}` : ''}${context?.operation ? ` (${context.operation})` : ''}\n` +
-              `Mensaje: ${errorMessage}\n` +
-              `Issues (${error.issues.length}):\n${issuesSummary}`
-            )
+            const header = `⚠️ Error de validación de respuesta${pathSuffix}${operationSuffix}\n`
+            console.warn(header + `Mensaje: ${errorMessage}\n` + `Issues (${error.issues.length}):\n${issuesSummary}`)
           }
         }
       } catch {
@@ -330,7 +334,8 @@ export async function validateResponse<T>(
       
       try {
         if (typeof window === 'undefined') {
-          logger.warn(logData, `Error desconocido al validar respuesta${context?.path ? ` en ${context.path}` : ''}`)
+          const pathSuffix = context?.path ? ` en ${context.path}` : ''
+          logger.warn(logData, `Error desconocido al validar respuesta${pathSuffix}`)
         } else {
           console.warn('Error desconocido al validar respuesta:', logData)
         }
