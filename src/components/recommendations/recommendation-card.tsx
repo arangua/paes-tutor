@@ -40,7 +40,7 @@ interface RecommendationCardProps {
   className?: string
 }
 
-export function RecommendationCard({ type, recommendation, className }: RecommendationCardProps) {
+export function RecommendationCard({ type, recommendation, className }: Readonly<RecommendationCardProps>) {
   const isTopic = type === 'topic'
   const topicRec = isTopic ? (recommendation as TopicRecommendation) : null
   const examRec = !isTopic ? (recommendation as ExamRecommendation) : null
@@ -61,6 +61,12 @@ export function RecommendationCard({ type, recommendation, className }: Recommen
     high: 'Alta Prioridad',
     medium: 'Prioridad Media',
     low: 'Baja Prioridad',
+  }
+
+  const getTopicPerformanceClassName = (percentage: number) => {
+    if (percentage < 30) return 'text-red-600'
+    if (percentage < 50) return 'text-yellow-600'
+    return 'text-green-600'
   }
 
   return (
@@ -108,11 +114,7 @@ export function RecommendationCard({ type, recommendation, className }: Recommen
               <span
                 className={cn(
                   'font-semibold',
-                  topicRec.currentPercentage < 30
-                    ? 'text-red-600'
-                    : topicRec.currentPercentage < 50
-                      ? 'text-yellow-600'
-                      : 'text-green-600'
+                  getTopicPerformanceClassName(topicRec.currentPercentage)
                 )}
               >
                 {topicRec.currentPercentage.toFixed(1)}%
