@@ -44,6 +44,89 @@ interface Question {
   } | null
 }
 
+function secureRandomInt(maxExclusive: number): number {
+  if (maxExclusive <= 0) return 0
+
+  if (typeof crypto !== 'undefined' && 'getRandomValues' in crypto) {
+    const buf = new Uint32Array(1)
+    crypto.getRandomValues(buf)
+    return buf[0] % maxExclusive
+  }
+
+  // Si no hay Web Crypto disponible, evitar pseudo-azar.
+  // Preferimos determinismo antes que usar un RNG inseguro.
+  return 0
+}
+
+type QuestionOption = Question['options'][number]
+
+type OptionState = 'idle' | 'selected' | 'correct' | 'incorrect'
+
+function getOptionState(args: {
+  isSelected: boolean
+  showExplanation: boolean
+  isCorrectOption: boolean
+}): OptionState {
+  if (!args.isSelected) return 'idle'
+  if (!args.showExplanation) return 'selected'
+  return args.isCorrectOption ? 'correct' : 'incorrect'
+}
+
+function getOptionButtonVariantClassName(state: OptionState): string {
+  switch (state) {
+    case 'correct':
+      return 'border-green-500 bg-green-50 dark:bg-green-950/20'
+    case 'incorrect':
+      return 'border-red-500 bg-red-50 dark:bg-red-950/20'
+    case 'selected':
+      return 'border-primary bg-primary/5'
+    case 'idle':
+    default:
+      return 'border-border hover:border-primary/50'
+  }
+}
+
+function getOptionLetterBubbleClassName(state: OptionState): string {
+  switch (state) {
+    case 'correct':
+      return 'bg-green-500 text-white'
+    case 'incorrect':
+      return 'bg-red-500 text-white'
+    case 'selected':
+      return 'bg-primary text-primary-foreground'
+    case 'idle':
+    default:
+      return 'bg-muted text-muted-foreground'
+  }
+}
+
+function getOptionLetterContent(state: OptionState, letter: string): JSX.Element | string {
+  if (state === 'correct') return <CheckCircle2 className="h-5 w-5" />
+  if (state === 'incorrect') return <XCircle className="h-5 w-5" />
+  return letter
+}
+
+function getSelectedOptionText(
+  selectedOptionId: string | null,
+  options: QuestionOption[]
+): string | undefined {
+  if (!selectedOptionId) return undefined
+  return options.find(opt => opt.id === selectedOptionId)?.texto
+}
+
+function shuffleInPlace<T>(arr: T[]): T[] {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = secureRandomInt(i + 1)
+    const right = arr.at(i)
+    const left = arr.at(j)
+    if (right !== undefined && left !== undefined) {
+      arr.splice(i, 1, left)
+      arr.splice(j, 1, right)
+    }
+  }
+  return arr
+}
+
 export default function QuickReviewPage() {
   const router = useRouter()
   const [questions, setQuestions] = useState<Question[]>([])
@@ -89,7 +172,8 @@ export default function QuickReviewPage() {
   const handleOptionSelect = (optionId: string) => {
     if (showExplanation) return
 
-    const currentQ = questions[currentQuestion]
+    const currentQ = questions.at(currentQuestion)
+    if (!currentQ) return
     const selectedOptionData = currentQ.options.find(opt => opt.id === optionId)
     const correct = selectedOptionData?.esCorrecta || false
 
@@ -129,7 +213,7 @@ export default function QuickReviewPage() {
     setIsFinished(false)
     questionStartTimeRef.current = Date.now()
     // Aleatorizar orden de preguntas
-    setQuestions(prev => [...prev].sort(() => Math.random() - 0.5))
+    setQuestions(prev => shuffleInPlace([...prev]))
   }
 
   const getProgress = () => {
@@ -207,7 +291,10 @@ export default function QuickReviewPage() {
     )
   }
 
-  const currentQ = questions[currentQuestion]
+  const currentQ = questions.at(currentQuestion)
+  if (!currentQ) {
+    return null
+  }
 
   return (
     <div className="container mx-auto py-6 px-4 max-w-4xl">
@@ -278,8 +365,15 @@ export default function QuickReviewPage() {
           <div className="space-y-2">
             {currentQ.options.map(option => {
               const isSelected = selectedOption === option.id
-              const showCorrect = showExplanation && option.esCorrecta
-              const showIncorrect = showExplanation && isSelected && !option.esCorrecta
+              const optionState = getOptionState({
+                isSelected,
+                showExplanation,
+                isCorrectOption: option.esCorrecta,
+              })
+              const optionButtonVariantClassName = getOptionButtonVariantClassName(optionState)
+              const optionLetterBubbleClassName = getOptionLetterBubbleClassName(optionState)
+              const optionLetterContent = getOptionLetterContent(optionState, option.letra)
+              const showCorrect = optionState === 'correct'
 
               return (
                 <button
@@ -289,13 +383,7 @@ export default function QuickReviewPage() {
                   className={`
                     w-full p-4 text-left rounded-lg border-2 transition-all
                     ${
-                      isSelected
-                        ? showCorrect
-                          ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
-                          : showIncorrect
-                            ? 'border-red-500 bg-red-50 dark:bg-red-950/20'
-                            : 'border-primary bg-primary/5'
-                        : 'border-border hover:border-primary/50'
+                      optionButtonVariantClassName
                     }
                     ${showExplanation ? 'cursor-default' : 'cursor-pointer hover:bg-accent'}
                   `}
@@ -305,23 +393,11 @@ export default function QuickReviewPage() {
                       className={`
                       flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-semibold
                       ${
-                        isSelected
-                          ? showCorrect
-                            ? 'bg-green-500 text-white'
-                            : showIncorrect
-                              ? 'bg-red-500 text-white'
-                              : 'bg-primary text-primary-foreground'
-                          : 'bg-muted text-muted-foreground'
+                        optionLetterBubbleClassName
                       }
                     `}
                     >
-                      {showCorrect ? (
-                        <CheckCircle2 className="h-5 w-5" />
-                      ) : showIncorrect ? (
-                        <XCircle className="h-5 w-5" />
-                      ) : (
-                        option.letra
-                      )}
+                      {optionLetterContent}
                     </div>
                     <span className="flex-1">{option.texto}</span>
                     {showCorrect && (
@@ -361,11 +437,7 @@ export default function QuickReviewPage() {
                       correctAnswer={
                         currentQ.options.find(opt => opt.esCorrecta)?.texto || 'Respuesta correcta'
                       }
-                      studentAnswer={
-                        selectedOption
-                          ? currentQ.options.find(opt => opt.id === selectedOption)?.texto
-                          : undefined
-                      }
+                      studentAnswer={getSelectedOptionText(selectedOption, currentQ.options)}
                       topic={currentQ.topic?.nombre}
                       subject={currentQ.subject.nombre}
                       variant="outline"
