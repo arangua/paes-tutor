@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Trophy, Loader2, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import { getErrorMessage, extractErrorInfo, ERROR_CODES } from '@/lib/error-messages'
-import { captureError } from '@/lib/monitoring'
+import { trackError } from '@/lib/monitoring'
 import { TIME_CONSTANTS } from '@/lib/constants'
 import {
   Dialog,
@@ -36,7 +36,7 @@ export function CreateChallengeButton({
   examId,
   examTitle,
   onChallengeCreated,
-}: CreateChallengeButtonProps) {
+}: Readonly<CreateChallengeButtonProps>) {
   const [open, setOpen] = useState(false)
   const [message, setMessage] = useState('')
   const [selectedExamId, setSelectedExamId] = useState<string>(examId || '')
@@ -125,7 +125,7 @@ export function CreateChallengeButton({
         reason: errorInfo.message,
       })
 
-      captureError(error instanceof Error ? error : new Error(String(error)), {
+      trackError(error instanceof Error ? error : new Error(String(error)), {
         type: 'challenge_error',
         action: 'create',
         examId: selectedExamId || examId,
@@ -138,6 +138,28 @@ export function CreateChallengeButton({
     } finally {
       setLoading(false)
     }
+  }
+
+  let createButtonContent: React.ReactNode = (
+    <>
+      <Trophy className="h-4 w-4 mr-2" />
+      Crear Desafío
+    </>
+  )
+  if (loading) {
+    createButtonContent = (
+      <>
+        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+        Creando...
+      </>
+    )
+  } else if (created) {
+    createButtonContent = (
+      <>
+        <Check className="h-4 w-4 mr-2" />
+        Creado
+      </>
+    )
   }
 
   return (
@@ -200,22 +222,7 @@ export function CreateChallengeButton({
             onClick={handleCreate}
             disabled={loading || created || (!selectedExamId && !examId)}
           >
-            {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Creando...
-              </>
-            ) : created ? (
-              <>
-                <Check className="h-4 w-4 mr-2" />
-                Creado
-              </>
-            ) : (
-              <>
-                <Trophy className="h-4 w-4 mr-2" />
-                Crear Desafío
-              </>
-            )}
+            {createButtonContent}
           </Button>
         </DialogFooter>
       </DialogContent>
