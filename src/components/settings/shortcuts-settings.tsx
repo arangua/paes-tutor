@@ -27,7 +27,7 @@ interface ShortcutsSettingsProps {
  * Componente para configurar atajos de teclado personalizables
  * Basado en VS Code, GitHub, Linear
  */
-export function ShortcutsSettings({ availableActions }: ShortcutsSettingsProps) {
+export function ShortcutsSettings({ availableActions }: Readonly<ShortcutsSettingsProps>) {
   const { customShortcuts, updateShortcut, resetToDefaults, getActiveShortcuts, isLoaded } =
     useCustomizableShortcuts(availableActions)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -213,22 +213,30 @@ export function ShortcutsSettings({ availableActions }: ShortcutsSettingsProps) 
 
                       {isEditing ? (
                         <div className="flex items-center gap-2">
-                          {capturing ? (
-                            <span className="text-sm text-muted-foreground animate-pulse">
-                              Presiona las teclas...
-                            </span>
-                          ) : capturedKeys ? (
-                            <span className="text-sm font-mono">
-                              {formatShortcut({
-                                ...shortcut,
-                                key: capturedKeys.key,
-                                ctrl: capturedKeys.ctrl,
-                                shift: capturedKeys.shift,
-                                alt: capturedKeys.alt,
-                                meta: capturedKeys.meta,
-                              })}
-                            </span>
-                          ) : null}
+                          {(() => {
+                            if (capturing) {
+                              return (
+                                <span className="text-sm text-muted-foreground animate-pulse">
+                                  Presiona las teclas...
+                                </span>
+                              )
+                            }
+                            if (capturedKeys) {
+                              return (
+                                <span className="text-sm font-mono">
+                                  {formatShortcut({
+                                    ...shortcut,
+                                    key: capturedKeys.key,
+                                    ctrl: capturedKeys.ctrl,
+                                    shift: capturedKeys.shift,
+                                    alt: capturedKeys.alt,
+                                    meta: capturedKeys.meta,
+                                  })}
+                                </span>
+                              )
+                            }
+                            return null
+                          })()}
                           <Button size="sm" onClick={() => handleSaveShortcut(action.id)}>
                             <Save className="h-4 w-4" />
                           </Button>
