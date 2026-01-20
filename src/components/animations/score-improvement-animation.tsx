@@ -18,7 +18,7 @@ export function ScoreImprovementAnimation({
   label = 'Puntaje',
   onComplete,
   duration = 2000,
-}: ScoreImprovementAnimationProps) {
+}: Readonly<ScoreImprovementAnimationProps>) {
   const [displayedScore, setDisplayedScore] = useState(previousScore)
   const [isAnimating, setIsAnimating] = useState(true)
 
