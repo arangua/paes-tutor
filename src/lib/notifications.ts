@@ -147,6 +147,13 @@ export async function createScheduleReminders(studentId: string) {
     const notifications = []
 
     for (const session of upcomingSessions) {
+      let actionUrl = '/dashboard'
+      if (session.examId) {
+        actionUrl = `/exams/${session.examId}`
+      } else if (session.topicId) {
+        actionUrl = `/practice/${session.topicId}`
+      }
+
       const notification = await createNotification({
         studentId,
         type: 'reminder',
@@ -154,11 +161,7 @@ export async function createScheduleReminders(studentId: string) {
         message: `Tienes una sesión de estudio programada para ${new Date(session.scheduledAt).toLocaleDateString('es-CL', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}.`,
         relatedId: session.id,
         relatedType: 'schedule',
-        actionUrl: session.examId
-          ? `/exams/${session.examId}`
-          : session.topicId
-            ? `/practice/${session.topicId}`
-            : '/dashboard',
+        actionUrl,
         priority: 'normal',
       })
 
@@ -288,7 +291,11 @@ export async function createFlashcardReminders(studentId: string) {
       title,
       message,
       actionUrl: '/flashcards/study',
-      priority: overdueCount > 5 ? 'high' : overdueCount > 0 ? 'normal' : 'low',
+      priority: (() => {
+        if (overdueCount > 5) return 'high'
+        if (overdueCount > 0) return 'normal'
+        return 'low'
+      })(),
       expiresAt: new Date(now.getTime() + 48 * 60 * 60 * 1000), // Expira en 48 horas
     })
 
