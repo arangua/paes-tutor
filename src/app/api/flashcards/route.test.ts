@@ -169,9 +169,8 @@ describe('POST /api/flashcards', () => {
     setupFlashcardCreateMock(flashcard)
     const request = createTestRequest({ method: 'POST', body: { front: 'Front', back: 'Back' } })
     const response = await POST(request)
-    const data = await assertSuccessResponse(response)
+    const data = await assertSuccessResponse(response, 201)
     expect(data.flashcard.front).toBe('Front')
-    expect(response.status).toBe(201)
   })
 
   it('debe crear flashcard con questionId válido', async () => {
@@ -185,7 +184,7 @@ describe('POST /api/flashcards', () => {
       body: { questionId: TEST_IDS.QUESTION, front: 'Front', back: 'Back' },
     })
     const response = await POST(request)
-    const data = await assertSuccessResponse(response)
+    const data = await assertSuccessResponse(response, 201)
     expect(data.flashcard.questionId).toBe(TEST_IDS.QUESTION)
   })
 
