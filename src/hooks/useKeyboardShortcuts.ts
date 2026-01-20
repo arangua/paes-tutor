@@ -30,6 +30,7 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcut[]) {
   useEffect(() => {
     if (shortcuts.length === 0) return
 
+    // eslint-disable-next-line sonarjs/cognitive-complexity
     const handleKeyDown = (event: KeyboardEvent) => {
       // Usar la referencia actual para evitar problemas de closure
       const currentShortcuts = shortcutsRef.current
@@ -45,16 +46,24 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcut[]) {
 
       for (const shortcut of currentShortcuts) {
         const keyMatches = shortcut.key.toLowerCase() === event.key.toLowerCase()
-        const ctrlMatches =
-          shortcut.ctrl !== undefined
-            ? shortcut.ctrl
-              ? event.ctrlKey || event.metaKey
-              : !event.ctrlKey && !event.metaKey
-            : true
-        const shiftMatches =
-          shortcut.shift !== undefined ? (shortcut.shift ? event.shiftKey : !event.shiftKey) : true
-        const altMatches =
-          shortcut.alt !== undefined ? (shortcut.alt ? event.altKey : !event.altKey) : true
+        let ctrlMatches = true
+        if (shortcut.ctrl !== undefined) {
+          if (shortcut.ctrl) {
+            ctrlMatches = event.ctrlKey || event.metaKey
+          } else {
+            ctrlMatches = !event.ctrlKey && !event.metaKey
+          }
+        }
+
+        let shiftMatches = true
+        if (shortcut.shift !== undefined) {
+          shiftMatches = shortcut.shift ? event.shiftKey : !event.shiftKey
+        }
+
+        let altMatches = true
+        if (shortcut.alt !== undefined) {
+          altMatches = shortcut.alt ? event.altKey : !event.altKey
+        }
 
         if (keyMatches && ctrlMatches && shiftMatches && altMatches) {
           event.preventDefault()
