@@ -199,9 +199,8 @@ describe('POST /api/notifications', () => {
       body: { type: 'system', title: 'Test', message: 'Test message' },
     })
     const response = await POST(request)
-    const data = await assertSuccessResponse(response)
+    const data = await assertSuccessResponse(response, 201)
     expect(data.notification.title).toBe('Test')
-    expect(response.status).toBe(201)
   })
 
   it('debe crear notificación con expiresAt', async () => {
@@ -219,7 +218,7 @@ describe('POST /api/notifications', () => {
       },
     })
     const response = await POST(request)
-    const data = await assertSuccessResponse(response)
+    const data = await assertSuccessResponse(response, 201)
     expect(data.notification.expiresAt).toBeDefined()
   })
 
