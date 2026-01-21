@@ -8,7 +8,7 @@ import { usePathname } from 'next/navigation'
  * 
  * Permite a los usuarios de lectores de pantalla y navegación por teclado
  * saltar directamente a las secciones principales de la página sin tener
- * que navegar por todo el contenido.
+ * que navegar por el contenido completo.
  * 
  * Cumple con:
  * - WCAG 2.1 Nivel AAA: 2.4.1 (Bypass Blocks)
