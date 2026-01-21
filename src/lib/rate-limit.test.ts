@@ -1,6 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { apiRateLimit } from './rate-limit'
 
+const TEST_IP_1 = '203.0.113.1' // RFC 5737 TEST-NET-3
+const TEST_IP_2 = '198.51.100.2' // RFC 5737 TEST-NET-2
+
 describe('rate-limit', () => {
   beforeEach(() => {
     // Reset rate limiter state between tests
@@ -102,8 +105,8 @@ describe('rate-limit', () => {
 
   describe('diferentes identificadores', () => {
     it('debe manejar diferentes IPs independientemente', async () => {
-      const ip1 = '192.168.1.1'
-      const ip2 = '192.168.1.2'
+      const ip1 = TEST_IP_1
+      const ip2 = TEST_IP_2
 
       // Agotar límite para ip1
       for (let i = 0; i < 10; i++) {
