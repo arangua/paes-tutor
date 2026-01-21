@@ -131,7 +131,7 @@ function createUpstashLimiter(
     })
     return new upstash.Ratelimit({
       redis,
-      limiter: upstash.Ratelimit.slidingWindow(count, window as any),
+      limiter: upstash.Ratelimit.slidingWindow(count, window as unknown),
       analytics: true,
     })
   } catch {
