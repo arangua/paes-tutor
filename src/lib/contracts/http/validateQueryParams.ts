@@ -30,8 +30,11 @@ export function validateQueryParams<T>(
   const result = schema.safeParse(queryParams)
 
   if (!result.success) {
+    const details = result.error.errors
+      .map((e) => `${e.path.join('.')}: ${e.message}`)
+      .join(', ')
     throw new Error(
-      `Invalid query parameters: ${result.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ')}`
+      `Invalid query parameters: ${details}`
     )
   }
 
