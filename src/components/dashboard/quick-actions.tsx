@@ -120,7 +120,7 @@ export function QuickActions({
   actions = defaultActions,
   title = 'Accesos Rápidos',
   description = 'Acciones comunes para continuar tu preparación',
-}: QuickActionsProps) {
+}: Readonly<QuickActionsProps>) {
   return (
     <Card>
       <CardHeader>

@@ -30,7 +30,7 @@ interface AchievementsProps {
   avgScore: number
 }
 
-export function Achievements({ attempts, avgScore }: AchievementsProps) {
+export function Achievements({ attempts, avgScore }: Readonly<AchievementsProps>) {
   const completedAttempts = attempts.filter(a => a.estado === 'completado').length
   const highScores = attempts.filter(a => a.porcentaje >= 70).length
   const perfectScores = attempts.filter(a => a.porcentaje === 100).length

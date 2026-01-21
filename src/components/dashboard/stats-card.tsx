@@ -36,7 +36,7 @@ export function StatsCard({
   badge,
   icon,
   className,
-}: StatsCardProps) {
+}: Readonly<StatsCardProps>) {
   const showProgress = percentage !== undefined
   const showComparison = comparison !== undefined
   const diff = showComparison ? value - comparison.value : 0
@@ -108,11 +108,11 @@ export function StatsCard({
               <TooltipContent>
                 <p className="text-sm">
                   Comparación con {comparison.label}.{' '}
-                  {isPositive
-                    ? 'Estás por encima'
-                    : isNegative
-                      ? 'Estás por debajo'
-                      : 'Estás igual'}{' '}
+                  {(() => {
+                    if (isPositive) return 'Estás por encima'
+                    if (isNegative) return 'Estás por debajo'
+                    return 'Estás igual'
+                  })()}{' '}
                   del promedio.
                 </p>
               </TooltipContent>

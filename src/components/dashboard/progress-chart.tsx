@@ -25,7 +25,7 @@ interface ProgressChartProps {
   }>
 }
 
-export function ProgressChart({ attempts }: ProgressChartProps) {
+export function ProgressChart({ attempts }: Readonly<ProgressChartProps>) {
   if (attempts.length === 0) {
     return (
       <div className="flex items-center justify-center h-[300px] text-muted-foreground">

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Star } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { captureError } from '@/lib/monitoring'
+import { trackError } from '@/lib/monitoring'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { getErrorMessage, extractErrorInfo, ERROR_CODES } from '@/lib/error-messages'
 
@@ -21,7 +21,7 @@ export function BookmarkButton({
   className,
   size = 'sm',
   variant = 'ghost',
-}: BookmarkButtonProps) {
+}: Readonly<BookmarkButtonProps>) {
   const [isBookmarked, setIsBookmarked] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isChecking, setIsChecking] = useState(true)
@@ -42,7 +42,7 @@ export function BookmarkButton({
           setIsBookmarked(item?.isBookmarked || false)
         }
       } catch (error) {
-        captureError(error instanceof Error ? error : new Error(String(error)), {
+        trackError(error instanceof Error ? error : new Error(String(error)), {
           type: 'bookmark_check_error',
           questionId,
           path: typeof window !== 'undefined' ? window.location.pathname : undefined,
@@ -54,53 +54,58 @@ export function BookmarkButton({
     checkBookmark()
   }, [questionId])
 
+  // Helper para parsear errores de API con contexto consistente
+  const parseBookmarkApiError = async (res: Response, operation: string) => {
+    const { safeJsonParse } = await import('@/lib/api-helpers')
+    const errorData = await safeJsonParse<{ error?: string }>(res, {
+      path: typeof window !== 'undefined' ? window.location.pathname : '/bookmarks',
+      operation,
+    })
+    return new Error(errorData.error || `Error al ${operation}`)
+  }
+
+  const deleteBookmark = async (): Promise<void> => {
+    const res = await fetch(`/api/bookmarks?questionId=${questionId}`, {
+      method: 'DELETE',
+    })
+
+    if (!res.ok) {
+      throw await parseBookmarkApiError(res, 'eliminar favorito')
+    }
+
+    setIsBookmarked(false)
+    toast.success('Eliminado de favoritos')
+  }
+
+  const createBookmark = async (): Promise<void> => {
+    const res = await fetch('/api/bookmarks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ questionId }),
+    })
+
+    if (res.ok) {
+      setIsBookmarked(true)
+      toast.success('Agregado a favoritos')
+      return
+    }
+
+    if (res.status === 409) {
+      // Ya existe, actualizar estado
+      setIsBookmarked(true)
+      return
+    }
+
+    throw await parseBookmarkApiError(res, 'agregar favorito')
+  }
+
   const handleToggle = async () => {
     if (isLoading || isChecking) return
 
     setIsLoading(true)
     try {
-      if (isBookmarked) {
-        // Eliminar favorito
-        const res = await fetch(`/api/bookmarks?questionId=${questionId}`, {
-          method: 'DELETE',
-        })
-
-        if (res.ok) {
-          setIsBookmarked(false)
-          toast.success('Eliminado de favoritos')
-        } else {
-          const { safeJsonParse } = await import('@/lib/api-helpers')
-          const errorData = await safeJsonParse<{ error?: string }>(res, {
-            path: typeof window !== 'undefined' ? window.location.pathname : '/bookmarks',
-            operation: 'eliminar favorito',
-          })
-          throw new Error(errorData.error || 'Error al eliminar favorito')
-        }
-      } else {
-        // Agregar favorito
-        const res = await fetch('/api/bookmarks', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ questionId }),
-        })
-
-        if (res.ok) {
-          setIsBookmarked(true)
-          toast.success('Agregado a favoritos')
-        } else {
-          const { safeJsonParse } = await import('@/lib/api-helpers')
-          const errorData = await safeJsonParse<{ error?: string }>(res, {
-            path: typeof window !== 'undefined' ? window.location.pathname : '/bookmarks',
-            operation: 'agregar favorito',
-          })
-          if (res.status === 409) {
-            // Ya existe, actualizar estado
-            setIsBookmarked(true)
-          } else {
-            throw new Error(errorData.error || 'Error al agregar favorito')
-          }
-        }
-      }
+      if (isBookmarked) await deleteBookmark()
+      else await createBookmark()
     } catch (error) {
       const errorInfo = extractErrorInfo(error)
       const errorCode = isBookmarked ? ERROR_CODES.DATA_DELETE_FAILED : ERROR_CODES.DATA_CREATE_FAILED
@@ -109,7 +114,7 @@ export function BookmarkButton({
         reason: errorInfo.message,
       })
 
-      captureError(error instanceof Error ? error : new Error(String(error)), {
+      trackError(error instanceof Error ? error : new Error(String(error)), {
         type: 'bookmark_error',
         action: isBookmarked ? 'delete' : 'create',
         questionId,
