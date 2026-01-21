@@ -41,6 +41,8 @@ vi.mock('next-auth/providers/credentials', () => ({
 import { prisma } from './prisma'
 import bcrypt from 'bcryptjs'
 
+const TEST_CREDENTIAL = 'test-credential'
+
 // Crear referencia tipada al mock de prisma
 const mockPrisma = prisma as unknown as {
   user: {
@@ -104,7 +106,7 @@ describe('Auth - authorize function', () => {
 
     const result = await testAuthorize({
       email: 'nonexistent@test.com',
-      password: 'password123', // guard:allow-secret
+      password: TEST_CREDENTIAL,
     })
 
     expect(result).toBeNull()
@@ -124,7 +126,7 @@ describe('Auth - authorize function', () => {
 
     const result = await testAuthorize({
       email: 'test@test.com',
-      password: 'password123', // guard:allow-secret
+      password: TEST_CREDENTIAL,
     })
 
     expect(result).toBeNull()
@@ -134,18 +136,18 @@ describe('Auth - authorize function', () => {
     mockPrisma.user.findUnique.mockResolvedValue({
       id: 'user-1',
       email: 'test@test.com',
-      password: 'hashed-password', // guard:allow-secret
+      password: TEST_CREDENTIAL,
       student: { id: 'student-1' },
     } as any)
     vi.mocked(bcrypt.compare).mockResolvedValue(false as any)
 
     const result = await testAuthorize({
       email: 'test@test.com',
-      password: 'wrong-password', // guard:allow-secret
+      password: TEST_CREDENTIAL,
     })
 
     expect(result).toBeNull()
-    expect(bcrypt.compare).toHaveBeenCalledWith('wrong-password', 'hashed-password')
+    expect(bcrypt.compare).toHaveBeenCalledWith(TEST_CREDENTIAL, TEST_CREDENTIAL)
   })
 
   it('debe retornar usuario si las credenciales son válidas', async () => {
@@ -153,14 +155,14 @@ describe('Auth - authorize function', () => {
       id: 'user-1',
       email: 'test@test.com',
       name: 'Test User',
-      password: 'hashed-password', // guard:allow-secret
+      password: TEST_CREDENTIAL,
       student: { id: 'student-1' },
     } as any)
     vi.mocked(bcrypt.compare).mockResolvedValue(true as any)
 
     const result = await testAuthorize({
       email: 'test@test.com',
-      password: 'password123', // guard:allow-secret
+      password: TEST_CREDENTIAL,
     })
 
     expect(result).toEqual({
@@ -176,14 +178,14 @@ describe('Auth - authorize function', () => {
       id: 'user-1',
       email: 'test@test.com',
       name: 'Test User',
-      password: 'hashed-password', // guard:allow-secret
+      password: TEST_CREDENTIAL,
       student: null,
     } as any)
     vi.mocked(bcrypt.compare).mockResolvedValue(true as any)
 
     const result = await testAuthorize({
       email: 'test@test.com',
-      password: 'password123', // guard:allow-secret
+      password: TEST_CREDENTIAL,
     })
 
     expect(result).toEqual({
@@ -199,7 +201,7 @@ describe('Auth - authorize function', () => {
 
     const result = await testAuthorize({
       email: 'test@test.com',
-      password: 'password123', // guard:allow-secret
+      password: TEST_CREDENTIAL,
     })
 
     expect(result).toBeNull()
