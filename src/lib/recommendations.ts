@@ -7,13 +7,15 @@
 
 import { ensureFiniteNumber, ensureInteger } from '@/app/api/notes/versions/validation-utils'
 
+export type RecommendationPriority = 'high' | 'medium' | 'low'
+
 export interface TopicRecommendation {
   topicId: string
   topicName: string
   subjectName: string
   subjectCode: string
   currentPercentage: number
-  priority: 'high' | 'medium' | 'low'
+  priority: RecommendationPriority
   reason: string
   suggestedActions: string[]
 }
@@ -24,7 +26,7 @@ export interface ExamRecommendation {
   subjectName: string
   subjectCode: string
   reason: string
-  priority: 'high' | 'medium' | 'low'
+  priority: RecommendationPriority
   focusTopics: string[]
 }
 
@@ -87,12 +89,11 @@ export function analyzeTopicRecommendations(metrics: PerformanceMetric[]): Topic
   const mediumTopics = metrics.filter(
     m => m.porcentaje >= 50 && m.porcentaje < 70 && m.totalPreguntas >= 3
   )
-  // strongTopics se usa implícitamente para identificar temas que no necesitan recomendaciones
-  metrics.filter(m => m.porcentaje >= 70)
+  // Nota: Los temas fuertes (>= 70%) se omiten implícitamente al construir recomendaciones.
 
   // Temas débiles (alta prioridad)
   weakTopics.forEach(topic => {
-    const priority: 'high' | 'medium' | 'low' = topic.porcentaje < 30 ? 'high' : 'medium'
+    const priority: RecommendationPriority = topic.porcentaje < 30 ? 'high' : 'medium'
 
     recommendations.push({
       topicId: topic.topicId,
