@@ -137,7 +137,7 @@ export function decrypt(encryptedText: string): string {
         },
         'Desencriptación AES retornó texto vacío, intentando método legacy'
       )
-      return decryptLegacy(encryptedText)
+      return decryptLegacyInternal(encryptedText)
     }
 
     // Si llegamos aquí, el texto encriptado está vacío pero ya validamos arriba
@@ -157,7 +157,7 @@ export function decrypt(encryptedText: string): string {
         },
         'Desencriptación AES falló, intentando método legacy'
       )
-      return decryptLegacy(encryptedText)
+      return decryptLegacyInternal(encryptedText)
     } catch (legacyError) {
       // Ambos métodos fallaron
       const legacyErrorMessage =
@@ -181,12 +181,14 @@ export function decrypt(encryptedText: string): string {
   }
 }
 
-/**
- * Método legacy de desencriptación (Base64) para compatibilidad con datos existentes
- * @deprecated Este método se mantiene solo para migración de datos existentes
- * @throws Error si la desencriptación falla
- */
-function decryptLegacy(encryptedText: string): string {
+function stripTrailingKeyOrNull(decoded: string, key: string | undefined | null): string | null {
+  if (!key) return null
+  if (!decoded.endsWith(key)) return null
+  const result = decoded.slice(0, -key.length)
+  return result || null
+}
+
+function decryptLegacyInternal(encryptedText: string): string {
   if (!encryptedText) {
     throw new Error('No se puede desencriptar: texto encriptado vacío')
   }
@@ -198,31 +200,22 @@ function decryptLegacy(encryptedText: string): string {
       throw new Error('No se pudo decodificar el texto encriptado desde base64')
     }
 
-    // Remover la clave del final (método antiguo)
-    // ENCRYPTION_KEY está validado al inicio del módulo, el non-null assertion es seguro
-    if (ENCRYPTION_KEY && decoded.endsWith(ENCRYPTION_KEY)) {
-      // ENCRYPTION_KEY ya fue validado en la condición if anterior
-       
-      const result = decoded.slice(0, -ENCRYPTION_KEY.length)
-      if (!result) {
-        throw new Error('El resultado de desencriptación legacy está vacío')
-      }
-      return result
+    // Intentar remover la clave del final (método antiguo)
+    const strippedWithCurrentKey = stripTrailingKeyOrNull(decoded, ENCRYPTION_KEY)
+    if (strippedWithCurrentKey) {
+      return strippedWithCurrentKey
     }
 
     // Intentar con clave por defecto antigua
     const oldDefaultKey = 'default-key-change-in-production' // guard:allow-secret
-    if (decoded.endsWith(oldDefaultKey)) {
-      const result = decoded.slice(0, -oldDefaultKey.length)
-      if (!result) {
-        throw new Error('El resultado de desencriptación legacy está vacío')
-      }
-      return result
+    const strippedWithOldKey = stripTrailingKeyOrNull(decoded, oldDefaultKey)
+    if (strippedWithOldKey) {
+      return strippedWithOldKey
     }
 
     // Si no tiene clave al final, retornar el texto decodificado directamente
     // pero validar que no esté vacío
-    if (!decoded || decoded.trim().length === 0) {
+    if (decoded.trim().length === 0) {
       throw new Error('El texto decodificado está vacío o inválido')
     }
 
@@ -250,6 +243,14 @@ function decryptLegacy(encryptedText: string): string {
 }
 
 /**
+ * Método legacy de desencriptación (Base64) para compatibilidad con datos existentes
+ * @deprecated Use decrypt() instead.
+ */
+export function decryptLegacy(encryptedText: string): string {
+  return decryptLegacyInternal(encryptedText)
+}
+
+/**
  * Migra datos encriptados del método legacy (Base64) al nuevo método (AES)
  * Útil para actualizar datos existentes en la base de datos
  * @throws Error si la migración falla
@@ -261,7 +262,7 @@ export function migrateEncryption(oldEncryptedText: string): string {
 
   try {
     // Desencriptar con método legacy
-    const decrypted = decryptLegacy(oldEncryptedText)
+    const decrypted = decryptLegacyInternal(oldEncryptedText)
 
     if (!decrypted || decrypted.trim().length === 0) {
       throw new Error('El resultado de desencriptación legacy está vacío')
