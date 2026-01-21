@@ -180,8 +180,10 @@ function setupMemoryCacheCleanup(cache: MemoryCacheAdapter) {
 // NOTA: Este setInterval se ejecuta a nivel de módulo y no se limpia explícitamente
 // Esto es intencional: el cleanup del caché debe ejecutarse mientras la aplicación esté corriendo
 // En producción, considerar usar un sistema de tareas programadas (cron) o un worker thread
-// eslint-disable-next-line no-constant-condition
-if (false) {
+const ENABLE_CACHE_CLEANUP_INTERVAL =
+  process.env.NODE_ENV === 'test' ? false : process.env.ENABLE_CACHE_CLEANUP_INTERVAL === 'true'
+
+if (ENABLE_CACHE_CLEANUP_INTERVAL) {
   // Limpiar caché cada 10 minutos (solo en Node.js runtime)
   if (
     typeof setInterval !== 'undefined' &&
@@ -276,7 +278,7 @@ export async function invalidateCachePattern(pattern: string): Promise<void> {
   if (cache instanceof RedisCacheAdapter) {
     try {
       // Upstash Redis no soporta SCAN directamente en REST API
-      // Por ahora, invalidar todo si hay wildcard
+      // Por el momento, invalidar caché completo si hay wildcard
       if (pattern.includes('*')) {
         // En producción con Redis, considerar usar un prefijo para versiones
         // y eliminar todas las claves con ese prefijo
@@ -288,7 +290,7 @@ export async function invalidateCachePattern(pattern: string): Promise<void> {
       console.error('Error al invalidar patrón en Redis:', error)
     }
   } else {
-    // Para memoria, invalidar todo si hay wildcard
+    // Para memoria, invalidar caché completo si hay wildcard
     if (pattern.includes('*')) {
       await cache.clear()
     } else {
