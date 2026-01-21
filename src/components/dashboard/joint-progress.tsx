@@ -17,7 +17,9 @@ import { toast } from 'sonner'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { getErrorMessage, extractErrorInfo, ERROR_CODES } from '@/lib/error-messages'
-import { captureError } from '@/lib/monitoring'
+import { trackError } from '@/lib/monitoring'
+
+type ProgressTrend = 'improving' | 'declining' | 'stable'
 
 interface JointProgressData {
   current: {
@@ -62,7 +64,7 @@ interface JointProgressData {
           }
         }
       }>
-      trend: 'improving' | 'declining' | 'stable'
+      trend: ProgressTrend
     }
   }
   other: {
@@ -107,9 +109,101 @@ interface JointProgressData {
           }
         }
       }>
-      trend: 'improving' | 'declining' | 'stable'
+      trend: ProgressTrend
     }
   }
+}
+
+function shouldHideJointProgress(res: Response, errorData: { message?: string } | null): boolean {
+  return res.status === 429 || res.status === 401 || Boolean(errorData?.message)
+}
+
+function reportJointProgressLoadFailure(params: {
+  kind: 'server_error' | 'validation_error'
+  status?: number
+  error: unknown
+  endpoint: string
+}) {
+  const { kind, status, error, endpoint } = params
+  const errorInfo = extractErrorInfo(error instanceof Error ? error : new Error(String(error)))
+
+  const code = ERROR_CODES.SYSTEM_LOAD_FAILED
+
+  const errorMessage = getErrorMessage(code, {
+    message: errorInfo.message,
+    context: { endpoint: 'joint-progress', status },
+  })
+
+  trackError(new Error(`[${errorInfo.code}] ${errorMessage.description}`), {
+    type: kind === 'validation_error' ? 'joint_progress_validation_error' : 'joint_progress_load_error',
+    status,
+    endpoint,
+  })
+
+  toast.error(errorMessage.title, { description: errorMessage.description })
+}
+
+async function handleJointProgressHttpError(res: Response): Promise<void> {
+  // Casos esperados: ocultar componente sin reportar
+  if (shouldHideJointProgress(res, null)) return
+
+  const { safeJsonParse } = await import('@/lib/api-helpers')
+  const errorData = await safeJsonParse<{ error?: string; message?: string }>(res, {
+    path: typeof window !== 'undefined' ? window.location.pathname : '/dashboard',
+    operation: 'cargar progreso conjunto',
+  })
+
+  if (shouldHideJointProgress(res, errorData)) return
+
+  // Solo para errores reales del servidor (500, 503, etc.)
+  if (res.status >= 500) {
+    reportJointProgressLoadFailure({
+      kind: 'server_error',
+      status: res.status,
+      error: errorData.error || 'Error al cargar progreso conjunto',
+      endpoint: '/api/analytics/joint-progress',
+    })
+  }
+}
+
+async function handleJointProgressSuccess(res: Response): Promise<JointProgressData | null> {
+  // Validar respuesta con Zod para type safety en runtime
+  const { validateResponse } = await import('@/lib/api-helpers')
+  const { jointProgressResponseSchema } = await import('@/lib/validations')
+
+  const validation = await validateResponse(res, jointProgressResponseSchema, {
+    path: typeof window !== 'undefined' ? window.location.pathname : '/dashboard',
+    operation: 'cargar progreso conjunto',
+  })
+
+  if (!validation.success) {
+    reportJointProgressLoadFailure({
+      kind: 'validation_error',
+      status: res.status,
+      error: validation.error,
+      endpoint: '/api/analytics/joint-progress',
+    })
+    return null
+  }
+
+  const response = validation.data
+
+  if (response.message) {
+    // No hay suficientes estudiantes, no mostrar el componente
+    // Esto es un caso esperado, no un error
+    return null
+  }
+
+  return response
+}
+
+async function fetchJointProgressData(): Promise<JointProgressData | null> {
+  const res = await fetch('/api/analytics/joint-progress')
+  if (!res.ok) {
+    await handleJointProgressHttpError(res)
+    return null
+  }
+  return await handleJointProgressSuccess(res)
 }
 
 export function JointProgress() {
@@ -123,97 +217,8 @@ export function JointProgress() {
   async function loadJointProgress() {
     try {
       setLoading(true)
-      const res = await fetch('/api/analytics/joint-progress')
-
-      if (!res.ok) {
-        // Manejar error 429 (Too Many Requests) - no mostrar error, solo ocultar componente
-        if (res.status === 429) {
-          setData(null)
-          return
-        }
-
-        const { safeJsonParse } = await import('@/lib/api-helpers')
-        const errorData = await safeJsonParse<{ error?: string; message?: string }>(res, {
-          path: typeof window !== 'undefined' ? window.location.pathname : '/dashboard',
-          operation: 'cargar progreso conjunto',
-        })
-
-        // Si la respuesta tiene un mensaje, es un caso esperado (ej: no hay suficientes estudiantes)
-        // No es un error, solo ocultamos el componente
-        if (errorData.message) {
-          setData(null)
-          return
-        }
-
-        // Si es 401 (no autorizado), no mostrar error, solo ocultar componente
-        if (res.status === 401) {
-          setData(null)
-          return
-        }
-
-        // Solo para errores reales del servidor (500, 503, etc.)
-        // Registrar y mostrar mensaje apropiado
-        if (res.status >= 500) {
-          const errorInfo = extractErrorInfo(errorData.error || 'Error al cargar progreso conjunto')
-          const errorMessage = getErrorMessage(ERROR_CODES.SYSTEM_LOAD_FAILED, {
-            message: errorInfo.message,
-            context: { endpoint: 'joint-progress', status: res.status },
-          })
-
-          captureError(new Error(`[${errorInfo.code}] ${errorMessage.description}`), {
-            type: 'joint_progress_load_error',
-            status: res.status,
-            endpoint: '/api/analytics/joint-progress',
-          })
-
-          toast.error(errorMessage.title, {
-            description: errorMessage.description,
-          })
-        }
-
-        setData(null)
-        return
-      }
-
-      // Validar respuesta con Zod para type safety en runtime
-      const { validateResponse } = await import('@/lib/api-helpers')
-      const { jointProgressResponseSchema } = await import('@/lib/validations')
-      
-      const validation = await validateResponse(res, jointProgressResponseSchema, {
-        path: typeof window !== 'undefined' ? window.location.pathname : '/dashboard',
-        operation: 'cargar progreso conjunto',
-      })
-
-      if (!validation.success) {
-        const errorInfo = extractErrorInfo(new Error(validation.error))
-        const errorMessage = getErrorMessage(ERROR_CODES.SYSTEM_LOAD_FAILED, {
-          message: errorInfo.message,
-          context: { endpoint: 'joint-progress', status: res.status },
-        })
-
-        captureError(new Error(`[${errorInfo.code}] ${errorMessage.description}`), {
-          type: 'joint_progress_validation_error',
-          status: res.status,
-          endpoint: '/api/analytics/joint-progress',
-        })
-
-        toast.error(errorMessage.title, {
-          description: errorMessage.description,
-        })
-        setData(null)
-        return
-      }
-
-      const response = validation.data
-
-      if (response.message) {
-        // No hay suficientes estudiantes, no mostrar el componente
-        // Esto es un caso esperado, no un error
-        setData(null)
-        return
-      }
-
-      setData(response)
+      const nextData = await fetchJointProgressData()
+      setData(nextData)
     } catch (error) {
       // Manejar errores de red u otros errores inesperados
       // Solo registrar si es un error real de red, no errores de parsing JSON
@@ -228,7 +233,7 @@ export function JointProgress() {
         })
 
         // Solo registrar errores de red reales, no errores de parsing
-        captureError(error instanceof Error ? error : new Error(String(error)), {
+        trackError(error instanceof Error ? error : new Error(String(error)), {
           type: 'joint_progress_load_error',
           endpoint: '/api/analytics/joint-progress',
           errorType: 'network_error',
@@ -246,7 +251,7 @@ export function JointProgress() {
     }
   }
 
-  const getTrendIcon = (trend: 'improving' | 'declining' | 'stable') => {
+  const getTrendIcon = (trend: ProgressTrend) => {
     switch (trend) {
       case 'improving':
         return <TrendingUp className="h-4 w-4 text-green-600" />
@@ -255,6 +260,12 @@ export function JointProgress() {
       default:
         return <Minus className="h-4 w-4 text-gray-600" />
     }
+  }
+
+  const getPercentageBadgeVariant = (percentage: number) => {
+    if (percentage >= 70) return 'default'
+    if (percentage >= 50) return 'secondary'
+    return 'destructive'
   }
 
   const formatDate = (dateString: string) => {
@@ -412,13 +423,7 @@ export function JointProgress() {
                         {attempt.exam.titulo}
                       </Link>
                       <Badge
-                        variant={
-                          attempt.porcentaje >= 70
-                            ? 'default'
-                            : attempt.porcentaje >= 50
-                              ? 'secondary'
-                              : 'destructive'
-                        }
+                        variant={getPercentageBadgeVariant(attempt.porcentaje)}
                         className="ml-2"
                       >
                         {attempt.porcentaje.toFixed(0)}%
@@ -449,13 +454,7 @@ export function JointProgress() {
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-medium line-clamp-1 flex-1">{attempt.exam.titulo}</span>
                       <Badge
-                        variant={
-                          attempt.porcentaje >= 70
-                            ? 'default'
-                            : attempt.porcentaje >= 50
-                              ? 'secondary'
-                              : 'destructive'
-                        }
+                        variant={getPercentageBadgeVariant(attempt.porcentaje)}
                         className="ml-2"
                       >
                         {attempt.porcentaje.toFixed(0)}%
