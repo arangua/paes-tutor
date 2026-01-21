@@ -26,6 +26,14 @@ vi.mock('@/lib/prisma', () => ({
 
 import { prisma } from '@/lib/prisma'
 
+function compareFechaAsc(a: { fecha: Date }, b: { fecha: Date }): number {
+  return a.fecha.getTime() - b.fecha.getTime()
+}
+
+function compareFechaDesc(a: { fecha: Date }, b: { fecha: Date }): number {
+  return b.fecha.getTime() - a.fecha.getTime()
+}
+
 // Mock de validation-utils
 vi.mock('@/app/api/notes/versions/validation-utils', () => ({
   safeDivide: vi.fn((dividend: number, divisor: number, fallback: number) => {
@@ -158,9 +166,9 @@ describe('admission-calendar.ts', () => {
         const eventos = [...mockEventos]
         // Si hay orderBy, ordenar los resultados
         if (args?.orderBy?.fecha === 'asc') {
-          eventos.sort((a, b) => a.fecha.getTime() - b.fecha.getTime())
+          eventos.sort(compareFechaAsc)
         } else if (args?.orderBy?.fecha === 'desc') {
-          eventos.sort((a, b) => b.fecha.getTime() - a.fecha.getTime())
+          eventos.sort(compareFechaDesc)
         }
         return eventos as any
       })
