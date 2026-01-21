@@ -25,7 +25,6 @@ export function GlobalErrorHandler() {
       if (isExtensionError) {
         // Prevenir que el error aparezca en la consola y no afecte la funcionalidad
         event.preventDefault()
-        return
       }
     }
 
@@ -53,7 +52,6 @@ export function GlobalErrorHandler() {
       if (isExtensionError || isExternalKeyframeError) {
         // Prevenir que el error aparezca en la consola
         event.preventDefault()
-        return
       }
     }
 
