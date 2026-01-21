@@ -73,7 +73,7 @@ const TYPE_COLORS = {
  * Diálogo de papelera de reciclaje
  * Basado en estándares de Gmail, Notion, Linear
  */
-export function TrashDialog({ open, onOpenChange, onRestore }: TrashDialogProps) {
+export function TrashDialog({ open, onOpenChange, onRestore }: Readonly<TrashDialogProps>) {
   const { trashItems, restoreItem, deletePermanently, emptyTrash, getDaysRemaining } = useTrash()
   const [selectedType, setSelectedType] = useState<string>('all')
 

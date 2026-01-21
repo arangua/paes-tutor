@@ -26,11 +26,33 @@ export function ShareMaterialButton({
   materialId,
   materialTitle,
   onShared,
-}: ShareMaterialButtonProps) {
+}: Readonly<ShareMaterialButtonProps>) {
   const [open, setOpen] = useState(false)
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
   const [shared, setShared] = useState(false)
+
+  let buttonContent = (
+    <>
+      <Share2 className="h-4 w-4 mr-2" />
+      Compartir
+    </>
+  )
+  if (loading) {
+    buttonContent = (
+      <>
+        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+        Compartiendo...
+      </>
+    )
+  } else if (shared) {
+    buttonContent = (
+      <>
+        <Check className="h-4 w-4 mr-2" />
+        Compartido
+      </>
+    )
+  }
 
   const handleShare = async () => {
     try {
@@ -97,22 +119,7 @@ export function ShareMaterialButton({
             Cancelar
           </Button>
           <Button onClick={handleShare} disabled={loading || shared}>
-            {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Compartiendo...
-              </>
-            ) : shared ? (
-              <>
-                <Check className="h-4 w-4 mr-2" />
-                Compartido
-              </>
-            ) : (
-              <>
-                <Share2 className="h-4 w-4 mr-2" />
-                Compartir
-              </>
-            )}
+            {buttonContent}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -48,12 +48,19 @@ interface QuestionReviewProps {
   showTopic?: boolean
 }
 
-export function QuestionReview({ answer, index, showTopic = true }: QuestionReviewProps) {
+export function QuestionReview({ answer, index, showTopic = true }: Readonly<QuestionReviewProps>) {
   const isCorrect = answer.esCorrecta === true
   const isOmitted = answer.omitida
   const isIncorrect = !isCorrect && !isOmitted
 
   const correctOption = answer.question.options.find(opt => opt.esCorrecta)
+
+  let statusIcon = <XCircle className="h-6 w-6 text-red-600" />
+  if (isCorrect) {
+    statusIcon = <CheckCircle2 className="h-6 w-6 text-green-600" />
+  } else if (isOmitted) {
+    statusIcon = <Circle className="h-6 w-6 text-yellow-600" />
+  }
 
   return (
     <Card
@@ -119,13 +126,7 @@ export function QuestionReview({ answer, index, showTopic = true }: QuestionRevi
             <CardTitle className="text-lg mt-2">{answer.question.enunciado}</CardTitle>
           </div>
           <div className="flex-shrink-0">
-            {isCorrect ? (
-              <CheckCircle2 className="h-6 w-6 text-green-600" />
-            ) : isOmitted ? (
-              <Circle className="h-6 w-6 text-yellow-600" />
-            ) : (
-              <XCircle className="h-6 w-6 text-red-600" />
-            )}
+            {statusIcon}
           </div>
         </div>
       </CardHeader>
@@ -136,17 +137,19 @@ export function QuestionReview({ answer, index, showTopic = true }: QuestionRevi
           {answer.question.options.map(option => {
             const isSelected = answer.optionSelectedId === option.id
             const isCorrectOption = option.esCorrecta
+            let optionVariantClasses = 'border-border bg-muted/50'
+            if (isCorrectOption) {
+              optionVariantClasses = 'border-green-500 bg-green-100 dark:bg-green-900/30'
+            } else if (isSelected) {
+              optionVariantClasses = 'border-red-500 bg-red-100 dark:bg-red-900/30'
+            }
 
             return (
               <div
                 key={option.id}
                 className={cn(
                   'p-3 rounded-lg border-2 transition-all',
-                  isCorrectOption
-                    ? 'border-green-500 bg-green-100 dark:bg-green-900/30'
-                    : isSelected
-                      ? 'border-red-500 bg-red-100 dark:bg-red-900/30'
-                      : 'border-border bg-muted/50'
+                  optionVariantClasses
                 )}
               >
                 <div className="flex items-center gap-3">

@@ -67,7 +67,7 @@ const TYPE_COLORS = {
   attempt: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300',
 }
 
-export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
+export function GlobalSearch({ open, onOpenChange }: Readonly<GlobalSearchProps>) {
   const router = useRouter()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
@@ -200,7 +200,6 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
       if (e.key === 'Enter') {
         e.preventDefault()
         handleSelect(selectedIndex)
-        return
       }
     }
 

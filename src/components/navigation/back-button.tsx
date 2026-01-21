@@ -52,7 +52,7 @@ export function BackButton({
   size = 'default',
   className,
   showIcon = true,
-}: BackButtonProps) {
+}: Readonly<BackButtonProps>) {
   const router = useRouter()
 
   const handleClick = () => {

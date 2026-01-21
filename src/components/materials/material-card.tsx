@@ -49,7 +49,7 @@ const tipoColors: Record<string, string> = {
   ejercicios: 'bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800',
 }
 
-export function MaterialCard({ material, isCompleted = false, className }: MaterialCardProps) {
+export function MaterialCard({ material, isCompleted = false, className }: Readonly<MaterialCardProps>) {
   const Icon = tipoIcons[material.tipo] || BookOpen
   const tipoColor =
     tipoColors[material.tipo] ||

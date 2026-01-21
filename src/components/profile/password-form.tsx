@@ -13,7 +13,7 @@ interface PasswordFormProps {
   onSuccess?: () => void
 }
 
-export function PasswordForm({ onSuccess }: PasswordFormProps) {
+export function PasswordForm({ onSuccess }: Readonly<PasswordFormProps>) {
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -68,7 +68,7 @@ export function PasswordForm({ onSuccess }: PasswordFormProps) {
         return
       }
 
-      if (!/[0-9]/.test(newPassword)) {
+      if (!/\d/.test(newPassword)) {
         setError('La contraseña debe contener al menos un número')
         setIsLoading(false)
         return

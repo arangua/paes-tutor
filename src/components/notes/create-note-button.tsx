@@ -22,7 +22,7 @@ export function CreateNoteButton({
   defaultContent = '',
   variant = 'ghost',
   size = 'sm',
-}: CreateNoteButtonProps) {
+}: Readonly<CreateNoteButtonProps>) {
   const [open, setOpen] = useState(false)
 
   return (

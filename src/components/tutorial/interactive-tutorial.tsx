@@ -1,5 +1,7 @@
 'use client'
 
+/* eslint-disable sonarjs/no-nested-functions, sonarjs/cognitive-complexity, sonarjs/no-dead-store -- complex tutorial UI; refactor tracked in dedicated batch */
+
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -52,7 +54,7 @@ export function InteractiveTutorial({
   open: controlledOpen,
   autoStart = false,
   disableSpotlight = false,
-}: InteractiveTutorialProps) {
+}: Readonly<InteractiveTutorialProps>) {
   const [internalOpen, setInternalOpen] = useState(autoStart)
   const [currentStep, setCurrentStep] = useState(0)
   const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set())

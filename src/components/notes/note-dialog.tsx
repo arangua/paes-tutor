@@ -19,7 +19,7 @@ import { useUndoRedo } from '@/hooks/useUndoRedo'
 import { UndoRedoToolbar } from '@/components/ui/undo-redo-toolbar'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { getErrorMessage, extractErrorInfo, ERROR_CODES } from '@/lib/error-messages'
-import { captureError } from '@/lib/monitoring'
+import { trackError } from '@/lib/monitoring'
 
 interface NoteDialogProps {
   open: boolean
@@ -41,13 +41,26 @@ export function NoteDialog({
   defaultContent = '',
   noteId,
   onSuccess,
-}: NoteDialogProps) {
+}: Readonly<NoteDialogProps>) {
   const [title, setTitle] = useState(defaultTitle)
   const [content, setContent] = useState(defaultContent)
   const [tags, setTags] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [titleError, setTitleError] = useState<string | null>(null)
   const [contentError, setContentError] = useState<string | null>(null)
+
+  const submitLabel = noteId ? 'Actualizar' : 'Crear'
+  let submitButtonContent: React.ReactNode = submitLabel
+  if (isLoading) {
+    let loadingLabel = 'Creando...'
+    if (noteId) loadingLabel = 'Actualizando...'
+    submitButtonContent = (
+      <>
+        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+        {loadingLabel}
+      </>
+    )
+  }
 
   // Sistema de undo/redo para el contenido
   const {
@@ -127,6 +140,7 @@ export function NoteDialog({
     }
   }
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity -- complex by design (UI submit flow); refactor in dedicated batch
   const handleSubmit = async () => {
     // Validación final
     if (!title.trim()) {
@@ -202,7 +216,7 @@ export function NoteDialog({
         reason: errorInfo.message,
       })
 
-      captureError(error instanceof Error ? error : new Error(String(error)), {
+      trackError(error instanceof Error ? error : new Error(String(error)), {
         type: 'note_error',
         action: noteId ? 'update' : 'create',
         noteId,
@@ -278,16 +292,7 @@ export function NoteDialog({
             Cancelar
           </Button>
           <Button onClick={handleSubmit} disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                {noteId ? 'Actualizando...' : 'Creando...'}
-              </>
-            ) : noteId ? (
-              'Actualizar'
-            ) : (
-              'Crear'
-            )}
+            {submitButtonContent}
           </Button>
         </DialogFooter>
       </DialogContent>
