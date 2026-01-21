@@ -11,116 +11,143 @@
  */
 
 import { describe, it, expect } from 'vitest'
+import { setTimeout as sleep } from 'node:timers/promises'
 import { measurePerformance } from './measure'
 import { SERVER_BASELINE, CLIENT_BASELINE } from './baseline'
 
+type PerfCase = Readonly<{
+  name: string
+  metric: string
+  run: () => Promise<unknown>
+  shouldMeetBaseline: boolean
+  durationMsBaseline: number
+}>
+
+async function okApiResponse() {
+  await sleep(100)
+  return { status: 200, data: 'test' }
+}
+
+async function okCriticalApi() {
+  await sleep(50)
+  return { status: 200, data: 'ok' }
+}
+
+async function okSimpleQuery() {
+  await sleep(50)
+  return [{ id: 1, name: 'test' }]
+}
+
+async function okComplexQuery() {
+  await sleep(200)
+  return [{ id: 1, name: 'test', related: { id: 2 } }]
+}
+
+async function okSsr() {
+  await sleep(300)
+  return '<html>...</html>'
+}
+
+async function okHydration() {
+  await sleep(200)
+  return 'hydrated'
+}
+
+async function okInitialRender() {
+  await sleep(300)
+  return 'rendered'
+}
+
+async function slowApiResponse() {
+  await sleep(600)
+  return { status: 200, data: 'test' }
+}
+
+async function slowCriticalApi() {
+  await sleep(250)
+  return { status: 200, data: 'ok' }
+}
+
+const PERFORMANCE_CASES: readonly PerfCase[] = [
+  {
+    name: 'API response debe cumplir con baseline (< 500ms)',
+    metric: 'api_response',
+    run: okApiResponse,
+    shouldMeetBaseline: true,
+    durationMsBaseline: SERVER_BASELINE.API_MAX_RESPONSE_TIME_MS,
+  },
+  {
+    name: 'API crítica debe cumplir con baseline (< 200ms)',
+    metric: 'api_critical',
+    run: okCriticalApi,
+    shouldMeetBaseline: true,
+    durationMsBaseline: SERVER_BASELINE.API_CRITICAL_MAX_RESPONSE_TIME_MS,
+  },
+  {
+    name: 'Query simple debe cumplir con baseline (< 100ms)',
+    metric: 'db_query',
+    run: okSimpleQuery,
+    shouldMeetBaseline: true,
+    durationMsBaseline: SERVER_BASELINE.DB_QUERY_MAX_TIME_MS,
+  },
+  {
+    name: 'Query compleja debe cumplir con baseline (< 500ms)',
+    metric: 'db_complex_query',
+    run: okComplexQuery,
+    shouldMeetBaseline: true,
+    durationMsBaseline: SERVER_BASELINE.DB_COMPLEX_QUERY_MAX_TIME_MS,
+  },
+  {
+    name: 'SSR debe cumplir con baseline (< 1000ms)',
+    metric: 'ssr',
+    run: okSsr,
+    shouldMeetBaseline: true,
+    durationMsBaseline: SERVER_BASELINE.SSR_MAX_TIME_MS,
+  },
+  {
+    name: 'Hydration debe cumplir con baseline (< 500ms)',
+    metric: 'hydration',
+    run: okHydration,
+    shouldMeetBaseline: true,
+    durationMsBaseline: CLIENT_BASELINE.HYDRATION_MAX_TIME_MS,
+  },
+  {
+    name: 'Initial render debe cumplir con baseline (< 1000ms)',
+    metric: 'initial_render',
+    run: okInitialRender,
+    shouldMeetBaseline: true,
+    durationMsBaseline: CLIENT_BASELINE.INITIAL_RENDER_MAX_TIME_MS,
+  },
+  {
+    name: 'debe fallar si API response excede baseline',
+    metric: 'api_response',
+    run: slowApiResponse,
+    shouldMeetBaseline: false,
+    durationMsBaseline: SERVER_BASELINE.API_MAX_RESPONSE_TIME_MS,
+  },
+  {
+    name: 'debe fallar si API crítica excede baseline',
+    metric: 'api_critical',
+    run: slowCriticalApi,
+    shouldMeetBaseline: false,
+    durationMsBaseline: SERVER_BASELINE.API_CRITICAL_MAX_RESPONSE_TIME_MS,
+  },
+] as const
+
+async function runPerformanceCase(c: PerfCase): Promise<void> {
+  const { measurement } = await measurePerformance(c.metric, c.run)
+  expect(measurement.meetsBaseline).toBe(c.shouldMeetBaseline)
+  if (c.shouldMeetBaseline) {
+    expect(measurement.duration).toBeLessThan(c.durationMsBaseline)
+  } else {
+    expect(measurement.duration).toBeGreaterThan(c.durationMsBaseline)
+  }
+}
+
 describe('Performance Regression Guard', () => {
-  describe('API Performance', () => {
-    it('API response debe cumplir con baseline (< 500ms)', async () => {
-      const { measurement } = await measurePerformance('api_response', async () => {
-        // Simular operación de API normal
-        await new Promise((resolve) => setTimeout(resolve, 100))
-        return { status: 200, data: 'test' }
-      })
-
-      expect(measurement.meetsBaseline).toBe(true)
-      expect(measurement.duration).toBeLessThan(SERVER_BASELINE.API_MAX_RESPONSE_TIME_MS)
+  for (const c of PERFORMANCE_CASES) {
+    it(c.name, async () => {
+      await runPerformanceCase(c)
     })
-
-    it('API crítica debe cumplir con baseline (< 200ms)', async () => {
-      const { measurement } = await measurePerformance('api_critical', async () => {
-        // Simular operación crítica (health check, auth)
-        await new Promise((resolve) => setTimeout(resolve, 50))
-        return { status: 200, data: 'ok' }
-      })
-
-      expect(measurement.meetsBaseline).toBe(true)
-      expect(measurement.duration).toBeLessThan(SERVER_BASELINE.API_CRITICAL_MAX_RESPONSE_TIME_MS)
-    })
-  })
-
-  describe('Database Performance', () => {
-    it('Query simple debe cumplir con baseline (< 100ms)', async () => {
-      const { measurement } = await measurePerformance('db_query', async () => {
-        // Simular query simple
-        await new Promise((resolve) => setTimeout(resolve, 50))
-        return [{ id: 1, name: 'test' }]
-      })
-
-      expect(measurement.meetsBaseline).toBe(true)
-      expect(measurement.duration).toBeLessThan(SERVER_BASELINE.DB_QUERY_MAX_TIME_MS)
-    })
-
-    it('Query compleja debe cumplir con baseline (< 500ms)', async () => {
-      const { measurement } = await measurePerformance('db_complex_query', async () => {
-        // Simular query compleja (joins, agregaciones)
-        await new Promise((resolve) => setTimeout(resolve, 200))
-        return [{ id: 1, name: 'test', related: { id: 2 } }]
-      })
-
-      expect(measurement.meetsBaseline).toBe(true)
-      expect(measurement.duration).toBeLessThan(SERVER_BASELINE.DB_COMPLEX_QUERY_MAX_TIME_MS)
-    })
-  })
-
-  describe('SSR Performance', () => {
-    it('SSR debe cumplir con baseline (< 1000ms)', async () => {
-      const { measurement } = await measurePerformance('ssr', async () => {
-        // Simular SSR
-        await new Promise((resolve) => setTimeout(resolve, 300))
-        return '<html>...</html>'
-      })
-
-      expect(measurement.meetsBaseline).toBe(true)
-      expect(measurement.duration).toBeLessThan(SERVER_BASELINE.SSR_MAX_TIME_MS)
-    })
-  })
-
-  describe('Client Performance', () => {
-    it('Hydration debe cumplir con baseline (< 500ms)', async () => {
-      const { measurement } = await measurePerformance('hydration', async () => {
-        // Simular hydration
-        await new Promise((resolve) => setTimeout(resolve, 200))
-        return 'hydrated'
-      })
-
-      expect(measurement.meetsBaseline).toBe(true)
-      expect(measurement.duration).toBeLessThan(CLIENT_BASELINE.HYDRATION_MAX_TIME_MS)
-    })
-
-    it('Initial render debe cumplir con baseline (< 1000ms)', async () => {
-      const { measurement } = await measurePerformance('initial_render', async () => {
-        // Simular render inicial
-        await new Promise((resolve) => setTimeout(resolve, 300))
-        return 'rendered'
-      })
-
-      expect(measurement.meetsBaseline).toBe(true)
-      expect(measurement.duration).toBeLessThan(CLIENT_BASELINE.INITIAL_RENDER_MAX_TIME_MS)
-    })
-  })
-
-  describe('Regression Detection', () => {
-    it('debe fallar si API response excede baseline', async () => {
-      const { measurement } = await measurePerformance('api_response', async () => {
-        // Simular degradación (excede 500ms)
-        await new Promise((resolve) => setTimeout(resolve, 600))
-        return { status: 200, data: 'test' }
-      })
-
-      expect(measurement.meetsBaseline).toBe(false)
-      expect(measurement.duration).toBeGreaterThan(SERVER_BASELINE.API_MAX_RESPONSE_TIME_MS)
-    })
-
-    it('debe fallar si API crítica excede baseline', async () => {
-      const { measurement } = await measurePerformance('api_critical', async () => {
-        // Simular degradación (excede 200ms)
-        await new Promise((resolve) => setTimeout(resolve, 250))
-        return { status: 200, data: 'ok' }
-      })
-
-      expect(measurement.meetsBaseline).toBe(false)
-      expect(measurement.duration).toBeGreaterThan(SERVER_BASELINE.API_CRITICAL_MAX_RESPONSE_TIME_MS)
-    })
-  })
+  }
 })
