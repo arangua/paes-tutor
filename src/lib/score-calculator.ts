@@ -30,16 +30,7 @@ export interface DatosEstudiante {
   puntajesPAES: PuntajesPAES
 }
 
-/**
- * Calcula el puntaje ponderado final basado en ponderaciones oficiales
- */
-export function calcularPuntajePonderado(
-  datos: DatosEstudiante,
-  ponderaciones: Ponderaciones
-): number {
-  const { nem, ranking, puntajesPAES } = datos
-
-  // Validar que las ponderaciones sumen 100
+function validatePonderacionesSum(ponderaciones: Ponderaciones): void {
   const sumaPonderaciones =
     ponderaciones.nem +
     ponderaciones.ranking +
@@ -54,90 +45,103 @@ export function calcularPuntajePonderado(
       `Las ponderaciones deben sumar 100. Suma actual: ${sumaPonderaciones}`
     )
   }
+}
 
-  // Calcular puntaje ponderado
+function addComponentScore(
+  score: number,
+  value: number,
+  ponderacion: number
+): number {
+  const safeValue = ensureFiniteNumber(value, 0)
+  const safePond = ensureFiniteNumber(ponderacion, 0)
+  return score + safeDivide(safeValue * safePond, 100, 0)
+}
+
+function addOptionalComponentScore(
+  score: number,
+  value: number | undefined,
+  ponderacion: number | undefined,
+  errorMessage: string
+): number {
+  if (!ponderacion || ponderacion <= 0) {
+    return score
+  }
+  if (!value) {
+    throw new Error(errorMessage)
+  }
+  return addComponentScore(score, value, ponderacion)
+}
+
+/**
+ * Calcula el puntaje ponderado final basado en ponderaciones oficiales
+ */
+export function calcularPuntajePonderado(
+  datos: DatosEstudiante,
+  ponderaciones: Ponderaciones
+): number {
+  const { nem, ranking, puntajesPAES } = datos
+
+  validatePonderacionesSum(ponderaciones)
+
   let puntajePonderado = 0
 
-  // ✅ Enterprise: Calcular componentes del puntaje ponderado usando funciones seguras
   // NEM
   if (ponderaciones.nem > 0) {
-    if (nem === undefined || nem === null) {
-      throw new Error('NEM es requerido para calcular el puntaje ponderado')
-    }
-    const safeNem = ensureFiniteNumber(nem, 0)
-    const safeNemPond = ensureFiniteNumber(ponderaciones.nem, 0)
-    puntajePonderado += safeDivide(safeNem * safeNemPond, 100, 0)
+    puntajePonderado = addComponentScore(puntajePonderado, nem, ponderaciones.nem)
   }
 
   // Ranking
   if (ponderaciones.ranking > 0) {
-    if (ranking === undefined || ranking === null) {
-      throw new Error('Ranking es requerido para calcular el puntaje ponderado')
-    }
-    const safeRanking = ensureFiniteNumber(ranking, 0)
-    const safeRankingPond = ensureFiniteNumber(ponderaciones.ranking, 0)
-    puntajePonderado += safeDivide(safeRanking * safeRankingPond, 100, 0)
+    puntajePonderado = addComponentScore(
+      puntajePonderado,
+      ranking,
+      ponderaciones.ranking
+    )
   }
 
   // Competencia Lectora
   if (ponderaciones.lectora > 0) {
-    if (!puntajesPAES.lectora) {
-      throw new Error(
-        'Puntaje de Competencia Lectora es requerido para calcular el puntaje ponderado'
-      )
-    }
-    const safeLectora = ensureFiniteNumber(puntajesPAES.lectora, 0)
-    const safeLectoraPond = ensureFiniteNumber(ponderaciones.lectora, 0)
-    puntajePonderado += safeDivide(safeLectora * safeLectoraPond, 100, 0)
+    puntajePonderado = addOptionalComponentScore(
+      puntajePonderado,
+      puntajesPAES.lectora,
+      ponderaciones.lectora,
+      'Puntaje de Competencia Lectora es requerido para calcular el puntaje ponderado'
+    )
   }
 
   // Matemática M1
   if (ponderaciones.m1 > 0) {
-    if (!puntajesPAES.m1) {
-      throw new Error(
-        'Puntaje de Matemática M1 es requerido para calcular el puntaje ponderado'
-      )
-    }
-    const safeM1 = ensureFiniteNumber(puntajesPAES.m1, 0)
-    const safeM1Pond = ensureFiniteNumber(ponderaciones.m1, 0)
-    puntajePonderado += safeDivide(safeM1 * safeM1Pond, 100, 0)
+    puntajePonderado = addOptionalComponentScore(
+      puntajePonderado,
+      puntajesPAES.m1,
+      ponderaciones.m1,
+      'Puntaje de Matemática M1 es requerido para calcular el puntaje ponderado'
+    )
   }
 
   // Matemática M2
-  if (ponderaciones.m2 && ponderaciones.m2 > 0) {
-    if (!puntajesPAES.m2) {
-      throw new Error(
-        'Puntaje de Matemática M2 es requerido para calcular el puntaje ponderado'
-      )
-    }
-    const safeM2 = ensureFiniteNumber(puntajesPAES.m2, 0)
-    const safeM2Pond = ensureFiniteNumber(ponderaciones.m2, 0)
-    puntajePonderado += safeDivide(safeM2 * safeM2Pond, 100, 0)
-  }
+  puntajePonderado = addOptionalComponentScore(
+    puntajePonderado,
+    puntajesPAES.m2,
+    ponderaciones.m2,
+    'Puntaje de Matemática M2 es requerido para calcular el puntaje ponderado'
+  )
 
   // Ciencias
-  if (ponderaciones.ciencias && ponderaciones.ciencias > 0) {
-    if (!puntajesPAES.ciencias) {
-      throw new Error(
-        'Puntaje de Ciencias es requerido para calcular el puntaje ponderado'
-      )
-    }
-    const safeCiencias = ensureFiniteNumber(puntajesPAES.ciencias, 0)
-    const safeCienciasPond = ensureFiniteNumber(ponderaciones.ciencias, 0)
-    puntajePonderado += safeDivide(safeCiencias * safeCienciasPond, 100, 0)
-  }
+  puntajePonderado = addOptionalComponentScore(
+    puntajePonderado,
+    puntajesPAES.ciencias,
+    ponderaciones.ciencias,
+    'Puntaje de Ciencias es requerido para calcular el puntaje ponderado'
+  )
 
   // Historia
-  if (ponderaciones.historia && ponderaciones.historia > 0) {
-    if (!puntajesPAES.historia) {
-      throw new Error(
-        'Puntaje de Historia es requerido para calcular el puntaje ponderado'
-      )
-    }
-    const safeHistoria = ensureFiniteNumber(puntajesPAES.historia, 0)
-    const safeHistoriaPond = ensureFiniteNumber(ponderaciones.historia, 0)
-    puntajePonderado += safeDivide(safeHistoria * safeHistoriaPond, 100, 0)
-  }
+  puntajePonderado = addOptionalComponentScore(
+    puntajePonderado,
+    puntajesPAES.historia,
+    ponderaciones.historia,
+    'Puntaje de Historia es requerido para calcular el puntaje ponderado'
+  )
 
   return safeRound(puntajePonderado, 1) // Redondear a 1 decimal
 }
