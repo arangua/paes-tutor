@@ -84,7 +84,11 @@ function getLogger(): LoggerInstance {
 
   // Solo importar pino en Node.js runtime
   // Nota: require() es necesario aquí porque pino no soporta dynamic import en tiempo de ejecución
-  const pinoModule = require('pino') as { default?: typeof import('pino'); [key: string]: unknown }
+  const nodeRequire = require as unknown as (id: string) => unknown
+  const pinoModule = nodeRequire('pino') as {
+    default?: typeof import('pino')
+    [key: string]: unknown
+  }
   const pino = (pinoModule.default || pinoModule) as typeof import('pino')
   const isDevelopment = process.env.NODE_ENV === 'development'
 
@@ -103,7 +107,7 @@ function getLogger(): LoggerInstance {
       // Cargar pino-pretty dinámicamente solo cuando se necesite (solo en desarrollo)
       // require() es necesario porque dynamic import no funciona en este contexto de inicialización
       // @ts-expect-error - pino-pretty es una dependencia opcional
-      require('pino-pretty')
+      nodeRequire('pino-pretty')
       loggerInstance = pino({
         level: 'debug',
         transport: {

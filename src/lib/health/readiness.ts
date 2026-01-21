@@ -91,17 +91,9 @@ export async function checkReadiness(): Promise<ReadinessResult> {
     checkRedis(),
   ])
 
-  // Determinar estado general
-  // Si DB está down, el servicio no está listo
-  // Si Redis está down (y está configurado), el servicio está degradado
-  let status: HealthStatus = 'ok'
-  
-  if (databaseStatus === 'down') {
-    status = 'degraded'
-  } else if (redisStatus === 'down') {
-    // Redis es opcional, pero si está configurado y no responde, es degradación
-    status = 'degraded'
-  }
+  // Determinar estado general (si cualquier servicio crítico/auxiliar está down → degraded)
+  const status: HealthStatus =
+    databaseStatus === 'down' || redisStatus === 'down' ? 'degraded' : 'ok'
 
   return {
     status,
