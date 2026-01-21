@@ -7,6 +7,8 @@
 
 import { logger } from './logger'
 
+type MonitoringMeta = Record<string, unknown>
+
 export interface MetricData {
   name: string
   value: number
@@ -16,14 +18,14 @@ export interface MetricData {
 
 export interface ErrorData {
   error: Error
-  context?: Record<string, any>
+  context?: MonitoringMeta
   severity?: 'low' | 'medium' | 'high' | 'critical'
 }
 
 export interface PerformanceData {
   operation: string
   duration: number
-  metadata?: Record<string, any>
+  metadata?: MonitoringMeta
 }
 
 /**
@@ -164,7 +166,7 @@ export class PerformanceTracker {
   /**
    * Medir tiempo de ejecución de una operación
    */
-  async measure<T>(operation: string, fn: () => Promise<T>, metadata?: Record<string, any>): Promise<T> {
+  async measure<T>(operation: string, fn: () => Promise<T>, metadata?: MonitoringMeta): Promise<T> {
     const start = Date.now()
     try {
       const result = await fn()
@@ -210,7 +212,7 @@ export const performanceTracker = new PerformanceTracker()
 export async function measurePerformance<T>(
   operation: string,
   fn: () => Promise<T>,
-  metadata?: Record<string, any>
+  metadata?: MonitoringMeta
 ): Promise<T> {
   return performanceTracker.measure(operation, fn, metadata)
 }
@@ -225,7 +227,7 @@ export function trackMetric(name: string, value: number, tags?: Record<string, s
 /**
  * Helper para trackear errores
  */
-export function trackError(error: Error, context?: Record<string, any>, severity?: ErrorData['severity']): void {
+export function trackError(error: Error, context?: MonitoringMeta, severity?: ErrorData['severity']): void {
   errorTracker.track({ error, context, severity })
 }
 
@@ -233,6 +235,6 @@ export function trackError(error: Error, context?: Record<string, any>, severity
  * Alias de trackError para compatibilidad con código existente
  * @deprecated Usar trackError en su lugar. Este alias se mantiene por compatibilidad hacia atrás.
  */
-export function captureError(error: Error, context?: Record<string, any>, severity?: ErrorData['severity']): void {
+export function captureError(error: Error, context?: MonitoringMeta, severity?: ErrorData['severity']): void {
   trackError(error, context, severity)
 }
