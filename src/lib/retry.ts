@@ -7,6 +7,17 @@
 
 import { logger } from './logger'
 
+function cryptoRandomFloat(): number {
+  const cryptoObj = globalThis.crypto
+  if (!cryptoObj || typeof cryptoObj.getRandomValues !== 'function') {
+    // Fallback determinista: evita sonarjs/pseudo-random (no usar Math.random)
+    return 0.5
+  }
+  const buf = new Uint32Array(1)
+  cryptoObj.getRandomValues(buf)
+  return buf[0] / 0xffffffff
+}
+
 export interface RetryOptions {
   /** Número máximo de intentos (incluyendo el primero) */
   maxAttempts?: number
@@ -51,7 +62,7 @@ function calculateDelay(attempt: number, options: Required<Omit<RetryOptions, 'i
   if (options.jitter) {
     // Agregar jitter aleatorio (±20%)
     const jitterAmount = delay * 0.2
-    const jitter = (Math.random() * 2 - 1) * jitterAmount
+    const jitter = (cryptoRandomFloat() * 2 - 1) * jitterAmount
     return Math.max(0, delay + jitter)
   }
 
