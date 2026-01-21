@@ -29,8 +29,8 @@ const updateScheduleSchema = z.object({
 })
 
 const getSchedulesQuerySchema = z.object({
-  startDate: z.string().datetime().optional(),
-  endDate: z.string().datetime().optional(),
+  startDate: z.datetime({ error: 'Invalid datetime' }).optional(),
+  endDate: z.datetime({ error: 'Invalid datetime' }).optional(),
   completed: z
     .enum(['true', 'false'])
     .optional()
@@ -38,7 +38,7 @@ const getSchedulesQuerySchema = z.object({
 })
 
 const scheduleIdQuerySchema = z.object({
-  scheduleId: z.string().cuid().min(1),
+  scheduleId: z.cuid({ error: 'scheduleId debe ser un CUID válido' }).min(1),
 })
 
 export async function GET(request: NextRequest) {

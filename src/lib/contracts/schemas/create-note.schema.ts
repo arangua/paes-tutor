@@ -23,8 +23,8 @@ export const CreateNoteSchema = z
       .refine((val) => val.trim().length > 0, {
         message: 'El contenido no puede ser solo espacios en blanco',
       }),
-    questionId: z.string().cuid().optional(),
-    topicId: z.string().cuid().optional(),
+    questionId: z.cuid({ error: 'questionId debe ser un CUID válido' }).optional(),
+    topicId: z.cuid({ error: 'topicId debe ser un CUID válido' }).optional(),
     tags: z.string().optional(),
   })
   .strict() // ⛔ Campos extra prohibidos

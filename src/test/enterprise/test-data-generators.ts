@@ -341,7 +341,7 @@ export function createTestVersion(overrides?: Partial<ReturnType<StudyNoteVersio
 export const TestDataSchemas = {
   user: z.object({
     id: z.string().regex(/^c[a-z0-9]{24}$/),
-    email: z.string().email(),
+    email: z.email({ error: 'Invalid email' }),
     name: z.string().nullable(),
     emailVerified: z.date().nullable(),
     image: z.string().nullable(),

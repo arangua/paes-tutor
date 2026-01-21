@@ -127,7 +127,7 @@ describe('validateRequest', () => {
       .object({
         name: z.string().min(1),
         age: z.number().int().positive(),
-        email: z.string().email().optional(),
+        email: z.email({ error: 'Email inválido' }).optional(),
         tags: z.array(z.string()).optional(),
       })
       .strict()

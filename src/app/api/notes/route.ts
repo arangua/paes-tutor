@@ -22,13 +22,13 @@ const updateNoteSchema = z.object({
 })
 
 const getNotesQuerySchema = z.object({
-  questionId: z.string().cuid().optional(),
-  topicId: z.string().cuid().optional(),
+  questionId: z.cuid({ error: 'questionId debe ser un CUID válido' }).optional(),
+  topicId: z.cuid({ error: 'topicId debe ser un CUID válido' }).optional(),
   search: z.string().min(1).max(200).optional(),
 })
 
 const noteIdQuerySchema = z.object({
-  noteId: z.string().cuid().min(1),
+  noteId: z.cuid({ error: 'noteId debe ser un CUID válido' }).min(1),
 })
 
 export async function GET(request: NextRequest) {

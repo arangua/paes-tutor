@@ -36,7 +36,9 @@ export const materialsQuerySchema = z.object({
  */
 const cuidValidator = z
   .string()
-  .regex(/^c[a-z0-9]{24}$/, 'ID debe tener formato CUID válido (c + 24 caracteres)')
+  .regex(/^c[a-z0-9]{24}$/, {
+    message: 'ID debe tener formato CUID válido (c + 24 caracteres)',
+  })
 
 /**
  * Schema para crear un nuevo intento de examen
@@ -94,12 +96,12 @@ export const updateAttemptSchema = z.object({
 
 // Esquema para autenticación
 export const signInSchema = z.object({
-  email: z.string().email('Email inválido'),
+  email: z.email({ error: 'Email inválido' }),
   password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
 })
 
 export const signUpSchema = z.object({
-  email: z.string().email('Email inválido'),
+  email: z.email({ error: 'Email inválido' }),
   password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
   name: z.string().min(1, 'El nombre es requerido'),
   nombre: z.string().min(1, 'El nombre del estudiante es requerido'),

@@ -13,12 +13,12 @@ const createBookmarkSchema = z.object({
 })
 
 const getBookmarksQuerySchema = z.object({
-  topicId: z.string().cuid().optional(),
-  subjectId: z.string().cuid().optional(),
+  topicId: z.cuid({ error: 'topicId debe ser un CUID válido' }).optional(),
+  subjectId: z.cuid({ error: 'subjectId debe ser un CUID válido' }).optional(),
 })
 
 const deleteBookmarkQuerySchema = z.object({
-  questionId: z.string().cuid().min(1),
+  questionId: z.cuid({ error: 'questionId debe ser un CUID válido' }).min(1),
 })
 
 export async function GET(request: NextRequest) {

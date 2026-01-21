@@ -78,7 +78,7 @@ export const env = (() => {
     })
 
     console.error('❌ Invalid environment variables:')
-    console.error(parsed.error.format())
+    console.error(parsed.error.issues)
     console.error('\n💡 Corrección:')
     console.error('   - Verifica que todas las variables requeridas están configuradas')
     console.error('   - Verifica que los tipos son correctos')

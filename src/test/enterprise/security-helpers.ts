@@ -209,7 +209,7 @@ export const secureStringSchema = z.string()
  * Schema de validación seguro para emails
  */
 export const secureEmailSchema = z.string()
-  .email()
+  .pipe(z.email({ error: 'Invalid email' }))
   .refine(
     (val) => !containsSQLInjection(val),
     { message: 'Potential SQL injection in email' }

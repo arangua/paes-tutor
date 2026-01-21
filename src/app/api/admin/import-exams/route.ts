@@ -19,7 +19,7 @@ import { PDFParse } from 'pdf-parse'
 // Schema de validación
 const examImportSchema = z
   .object({
-    pdfUrl: z.string().url().optional(),
+    pdfUrl: z.url({ error: 'Invalid URL' }).optional(),
     pdfFile: z.custom<File>(val => val instanceof File).optional(), // File object from FormData
     inputType: z.enum(['url', 'file']),
     subjectName: z.string().min(1),

@@ -30,11 +30,11 @@ const getFlashcardsQuerySchema = z.object({
     .optional()
     .transform(val => (val ? parseInt(val, 10) : undefined))
     .pipe(z.number().int().min(1).max(100).optional()),
-  flashcardId: z.string().cuid().optional(),
+  flashcardId: z.cuid({ error: 'flashcardId debe ser un CUID válido' }).optional(),
 })
 
 const _flashcardIdQuerySchema = z.object({
-  flashcardId: z.string().cuid().min(1),
+  flashcardId: z.cuid({ error: 'flashcardId debe ser un CUID válido' }).min(1),
 })
 
 export async function GET(request: NextRequest) {

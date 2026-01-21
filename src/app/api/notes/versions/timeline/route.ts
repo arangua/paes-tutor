@@ -15,8 +15,8 @@ import { ensureArray, ensureFiniteNumber, ensureValidDate, safeToISODate, safeTo
 const getTimelineSchema = z.object({
   noteId: cuidValidator('ID de nota inválido').optional(),
   view: z.enum(['day', 'week', 'month', 'year']).default('month'),
-  startDate: z.string().datetime().optional(),
-  endDate: z.string().datetime().optional(),
+  startDate: z.datetime({ error: 'Invalid datetime' }).optional(),
+  endDate: z.datetime({ error: 'Invalid datetime' }).optional(),
   includeCurrent: z.boolean().optional().default(true),
 })
 

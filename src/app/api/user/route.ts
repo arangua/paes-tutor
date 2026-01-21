@@ -16,7 +16,7 @@ export const runtime = 'nodejs'
 const updateUserSchema = z
   .object({
     name: z.string().min(1).max(100).optional(),
-    email: z.string().email().optional(),
+    email: z.email({ error: 'Invalid email' }).optional(),
   })
   .refine(data => data.name !== undefined || data.email !== undefined, {
     message: 'Debe proporcionar al menos un campo para actualizar',

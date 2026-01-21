@@ -28,8 +28,7 @@ function validateWebhookUrl(url: string): boolean {
 
 const createWebhookSchema = z.object({
   url: z
-    .string()
-    .url('URL inválida')
+    .url({ error: 'URL inválida' })
     .max(2048, 'La URL no puede exceder 2048 caracteres')
     .refine(validateWebhookUrl, {
       message: process.env.NODE_ENV === 'production' 
@@ -44,7 +43,7 @@ const createWebhookSchema = z.object({
     .array(z.string())
     .min(1, 'Debe especificar al menos un evento')
     .max(20, 'No se pueden especificar más de 20 eventos'),
-  noteId: z.string().cuid().optional(),
+  noteId: z.cuid({ error: 'noteId debe ser un CUID válido' }).optional(),
   description: z
     .string()
     .max(500, 'La descripción no puede exceder 500 caracteres')
@@ -53,8 +52,7 @@ const createWebhookSchema = z.object({
 
 const updateWebhookSchema = z.object({
   url: z
-    .string()
-    .url('URL inválida')
+    .url({ error: 'URL inválida' })
     .max(2048, 'La URL no puede exceder 2048 caracteres')
     .refine(validateWebhookUrl, {
       message: process.env.NODE_ENV === 'production' 

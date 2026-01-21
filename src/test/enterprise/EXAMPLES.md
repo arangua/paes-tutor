@@ -57,7 +57,7 @@ import { z } from 'zod'
 // Schema de validación
 const userSchema = z.object({
   id: z.string().regex(/^c[a-z0-9]{24}$/),
-  email: z.string().email(),
+  email: z.email({ error: 'Invalid email' }),
   name: z.string().min(1),
   createdAt: z.date(),
 })
@@ -290,7 +290,7 @@ vi.mock('@/lib/prisma', () => ({
 // Schemas
 const userSchema = z.object({
   id: z.string().regex(/^c[a-z0-9]{24}$/),
-  email: z.string().email(),
+  email: z.email({ error: 'Invalid email' }),
   name: z.string().min(1),
   createdAt: z.date(),
   updatedAt: z.date(),

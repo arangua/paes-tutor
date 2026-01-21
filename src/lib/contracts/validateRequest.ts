@@ -1,4 +1,4 @@
-import { ZodSchema } from 'zod'
+import type { ZodType } from 'zod'
 import { ContractError } from '../errors/error-types'
 
 // Alias para compatibilidad con tests
@@ -24,7 +24,7 @@ export function validateRequest<T>({
   schema,
   input,
 }: {
-  schema: ZodSchema<T>
+  schema: ZodType<T>
   input: unknown
 }): T {
   const result = schema.safeParse(input)

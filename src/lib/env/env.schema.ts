@@ -30,7 +30,7 @@ export const EnvSchema = z
     NEXTAUTH_SECRET: z
       .string()
       .min(32, 'NEXTAUTH_SECRET debe tener mínimo 32 caracteres'),
-    NEXTAUTH_URL: z.string().url('NEXTAUTH_URL debe ser una URL válida').optional(),
+    NEXTAUTH_URL: z.url({ error: 'NEXTAUTH_URL debe ser una URL válida' }).optional(),
 
     // Encriptación
     ENCRYPTION_KEY: z
@@ -38,7 +38,9 @@ export const EnvSchema = z
       .min(32, 'ENCRYPTION_KEY debe tener mínimo 32 caracteres'),
 
     // Redis (Upstash) - Opcional
-    UPSTASH_REDIS_REST_URL: z.string().url().optional(),
+    UPSTASH_REDIS_REST_URL: z
+      .url({ error: 'UPSTASH_REDIS_REST_URL debe ser una URL válida' })
+      .optional(),
     UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
 
     // AI Services - Opcionales
@@ -47,8 +49,10 @@ export const EnvSchema = z
     ANTHROPIC_API_KEY: z.string().optional(),
 
     // Sentry - Opcional
-    SENTRY_DSN: z.string().url().optional(),
-    NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
+    SENTRY_DSN: z.url({ error: 'SENTRY_DSN debe ser una URL válida' }).optional(),
+    NEXT_PUBLIC_SENTRY_DSN: z
+      .url({ error: 'NEXT_PUBLIC_SENTRY_DSN debe ser una URL válida' })
+      .optional(),
     SENTRY_ORG: z.string().optional(),
     SENTRY_PROJECT: z.string().optional(),
 
@@ -65,7 +69,7 @@ export const EnvSchema = z
       ctx.addIssue({
         path: ['NEXTAUTH_URL'],
         message: 'NEXTAUTH_URL es requerida en producción',
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
       })
     }
 
@@ -74,7 +78,7 @@ export const EnvSchema = z
       ctx.addIssue({
         path: ['UPSTASH_REDIS_REST_TOKEN'],
         message: 'UPSTASH_REDIS_REST_TOKEN es requerido cuando UPSTASH_REDIS_REST_URL está configurado',
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
       })
     }
 
@@ -83,7 +87,7 @@ export const EnvSchema = z
       ctx.addIssue({
         path: ['UPSTASH_REDIS_REST_URL'],
         message: 'UPSTASH_REDIS_REST_URL es requerida cuando UPSTASH_REDIS_REST_TOKEN está configurado',
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
       })
     }
 
@@ -93,7 +97,7 @@ export const EnvSchema = z
         ctx.addIssue({
           path: ['ENCRYPTION_KEY'],
           message: 'ENCRYPTION_KEY no puede usar prefijos de desarrollo/test en producción',
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
         })
       }
     }
