@@ -31,6 +31,67 @@ export interface AIResponse {
   tokensUsed?: number
 }
 
+type UserAISettingsRow = {
+  openaiApiKey: string | null
+  anthropicApiKey: string | null
+  geminiApiKey: string | null
+  preferredAIService: string | null
+}
+
+type DecryptFn = (value: string) => string
+
+function safeDecryptApiKey(params: {
+  encrypted: string
+  decrypt: DecryptFn
+  userId: string
+  keyType: 'openai' | 'anthropic' | 'gemini'
+}): string | null {
+  const { encrypted, decrypt, userId, keyType } = params
+  try {
+    return decrypt(encrypted)
+  } catch (error) {
+    logger.warn(
+      {
+        error: error instanceof Error ? error.message : String(error),
+        userId,
+        keyType,
+      },
+      `No se pudo desencriptar ${keyType} API key del usuario`
+    )
+    return null
+  }
+}
+
+function buildUserConfigFromDbUser(params: {
+  user: UserAISettingsRow
+  decrypt: DecryptFn
+  userId: string
+}): {
+  openaiApiKey?: string | null
+  anthropicApiKey?: string | null
+  geminiApiKey?: string | null
+  preferredAIService?: string | null
+} {
+  const { user, decrypt, userId } = params
+  return {
+    openaiApiKey: user.openaiApiKey
+      ? safeDecryptApiKey({ encrypted: user.openaiApiKey, decrypt, userId, keyType: 'openai' })
+      : null,
+    anthropicApiKey: user.anthropicApiKey
+      ? safeDecryptApiKey({
+          encrypted: user.anthropicApiKey,
+          decrypt,
+          userId,
+          keyType: 'anthropic',
+        })
+      : null,
+    geminiApiKey: user.geminiApiKey
+      ? safeDecryptApiKey({ encrypted: user.geminiApiKey, decrypt, userId, keyType: 'gemini' })
+      : null,
+    preferredAIService: user.preferredAIService,
+  }
+}
+
 /**
  * Obtiene la configuración de IA desde base de datos del usuario o variables de entorno
  */
@@ -69,62 +130,11 @@ export async function getAIConfig(
       })
 
       if (user) {
-        // Desencriptar cada API key de forma segura
-        let openaiApiKey: string | null = null
-        let anthropicApiKey: string | null = null
-        let geminiApiKey: string | null = null
-
-        if (user.openaiApiKey) {
-          try {
-            openaiApiKey = decrypt(user.openaiApiKey)
-          } catch (error) {
-            logger.warn(
-              {
-                error: error instanceof Error ? error.message : String(error),
-                userId,
-                keyType: 'openai',
-              },
-              'No se pudo desencriptar OpenAI API key del usuario'
-            )
-          }
-        }
-
-        if (user.anthropicApiKey) {
-          try {
-            anthropicApiKey = decrypt(user.anthropicApiKey)
-          } catch (error) {
-            logger.warn(
-              {
-                error: error instanceof Error ? error.message : String(error),
-                userId,
-                keyType: 'anthropic',
-              },
-              'No se pudo desencriptar Anthropic API key del usuario'
-            )
-          }
-        }
-
-        if (user.geminiApiKey) {
-          try {
-            geminiApiKey = decrypt(user.geminiApiKey)
-          } catch (error) {
-            logger.warn(
-              {
-                error: error instanceof Error ? error.message : String(error),
-                userId,
-                keyType: 'gemini',
-              },
-              'No se pudo desencriptar Gemini API key del usuario'
-            )
-          }
-        }
-
-        userConfig = {
-          openaiApiKey,
-          anthropicApiKey,
-          geminiApiKey,
-          preferredAIService: user.preferredAIService,
-        }
+        userConfig = buildUserConfigFromDbUser({
+          user: user as UserAISettingsRow,
+          decrypt,
+          userId,
+        })
       }
     } catch (error) {
       // Si falla, continuar con variables de entorno
@@ -146,39 +156,24 @@ export async function getAIConfig(
     : services
 
   // Intentar cada servicio en orden
+  const userApiKeys: Partial<Record<AIService, string | undefined>> = userConfig
+    ? {
+        anthropic: userConfig.anthropicApiKey || undefined,
+        openai: userConfig.openaiApiKey || undefined,
+        gemini: userConfig.geminiApiKey || undefined,
+      }
+    : {}
+
+  const envApiKeys: Partial<Record<AIService, string | undefined>> = {
+    anthropic: process.env.ANTHROPIC_API_KEY,
+    openai: process.env.OPENAI_API_KEY,
+    gemini: process.env.GEMINI_API_KEY,
+  }
+
   for (const service of serviceOrder) {
-    let apiKey: string | undefined
-
-    // Primero intentar con configuración del usuario
-    if (userConfig) {
-      switch (service) {
-        case 'anthropic':
-          apiKey = userConfig.anthropicApiKey || undefined
-          break
-        case 'openai':
-          apiKey = userConfig.openaiApiKey || undefined
-          break
-        case 'gemini':
-          apiKey = userConfig.geminiApiKey || undefined
-          break
-      }
-    }
-
-    // Si no hay configuración de usuario, usar variables de entorno
-    if (!apiKey) {
-      switch (service) {
-        case 'anthropic':
-          apiKey = process.env.ANTHROPIC_API_KEY
-          break
-        case 'openai':
-          apiKey = process.env.OPENAI_API_KEY
-          break
-        case 'gemini':
-          apiKey = process.env.GEMINI_API_KEY
-          break
-      }
-    }
-
+    // Primero intentar con configuración del usuario, luego variables de entorno
+    // eslint-disable-next-line security/detect-object-injection -- service is a restricted union (AIService) and keys are predefined
+    const apiKey = userApiKeys[service] || envApiKeys[service]
     if (apiKey) {
       return {
         service,
@@ -388,6 +383,86 @@ export interface StepByStepExplanation {
   relatedConcepts?: string[] // Conceptos relacionados
 }
 
+const STEP_LINE_REGEX = /^(\d+)[.)]\s*(.+)/
+const MATH_OPERATORS = ['+', '-', '×', '÷', '=', '<', '>', '≤', '≥'] as const
+
+function isLikelyMathQuestion(params: {
+  question: string
+  topic?: string
+  subject?: string
+}): boolean {
+  const { question, topic, subject } = params
+  const subjectLower = subject?.toLowerCase() || ''
+  const topicLower = topic?.toLowerCase() || ''
+
+  const hasMathKeyword =
+    subjectLower.includes('matemática') ||
+    subjectLower.includes('matematicas') ||
+    topicLower.includes('álgebra') ||
+    topicLower.includes('geometría') ||
+    topicLower.includes('cálculo')
+
+  const hasDigit = /\d/.test(question)
+  const hasOperator = MATH_OPERATORS.some(op => question.includes(op))
+
+  return hasMathKeyword || (hasDigit && hasOperator)
+}
+
+function stripMarkdownCodeFences(text: string): string {
+  let cleaned = text.trim()
+  if (cleaned.startsWith('```json')) {
+    cleaned = cleaned.replace(/```json\n?/g, '').replace(/```\n?$/g, '')
+  } else if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/```\n?/g, '')
+  }
+  return cleaned
+}
+
+function buildFallbackStepsFromText(text: string, maxSteps: number): StepByStepExplanation['steps'] {
+  const lines = text.split('\n').filter(l => l.trim())
+  const steps = lines
+    .map((line) => {
+      const stepMatch = STEP_LINE_REGEX.exec(line)
+      if (!stepMatch) return null
+      return {
+        number: parseInt(stepMatch[1]),
+        title: `Paso ${stepMatch[1]}`,
+        description: stepMatch[2].substring(0, 100),
+        explanation: stepMatch[2],
+      }
+    })
+    .filter((s): s is NonNullable<typeof s> => s !== null)
+    .slice(0, maxSteps)
+
+  if (steps.length > 0) return steps
+
+  return [
+    {
+      number: 1,
+      title: 'Explicación',
+      description: 'Análisis del problema',
+      explanation: text,
+    },
+  ]
+}
+
+function normalizeStepByStepExplanation(parsed: StepByStepExplanation): StepByStepExplanation {
+  if (!parsed.steps || !Array.isArray(parsed.steps) || parsed.steps.length === 0) {
+    throw new Error('Invalid step structure')
+  }
+
+  return {
+    ...parsed,
+    steps: parsed.steps.map((step, index) => ({
+      ...step,
+      number: step.number || index + 1,
+      title: step.title || `Paso ${index + 1}`,
+      description: step.description || step.explanation.substring(0, 100),
+      explanation: step.explanation || step.description || '',
+    })),
+  }
+}
+
 /**
  * Genera explicaciones paso a paso usando IA
  * Especialmente útil para matemáticas y problemas complejos
@@ -427,13 +502,7 @@ Formato de respuesta (JSON):
   "relatedConcepts": ["concepto 1", "concepto 2"]
 }`
 
-  const isMath =
-    subject?.toLowerCase().includes('matemática') ||
-    subject?.toLowerCase().includes('matematicas') ||
-    topic?.toLowerCase().includes('álgebra') ||
-    topic?.toLowerCase().includes('geometría') ||
-    topic?.toLowerCase().includes('cálculo') ||
-    question.match(/[0-9]+\s*[+\-×÷=<>≤≥]/) // Detecta operaciones matemáticas
+  const isMath = isLikelyMathQuestion({ question, topic, subject })
 
   const userPrompt = `Pregunta: ${question}
 
@@ -467,17 +536,10 @@ Responde SOLO con un JSON válido, sin texto adicional antes o después.`
     )
 
     // Intentar parsear la respuesta como JSON
-    let parsed: StepByStepExplanation
     try {
-      // Limpiar la respuesta (puede tener markdown code blocks)
-      let cleaned = response.content.trim()
-      if (cleaned.startsWith('```json')) {
-        cleaned = cleaned.replace(/```json\n?/g, '').replace(/```\n?$/g, '')
-      } else if (cleaned.startsWith('```')) {
-        cleaned = cleaned.replace(/```\n?/g, '')
-      }
-
-      parsed = JSON.parse(cleaned)
+      const cleaned = stripMarkdownCodeFences(response.content)
+      const parsed = JSON.parse(cleaned) as StepByStepExplanation
+      return normalizeStepByStepExplanation(parsed)
     } catch (parseError) {
       // Si falla el parseo, crear una estructura básica desde el texto
       logger.warn(
@@ -485,55 +547,13 @@ Responde SOLO con un JSON válido, sin texto adicional antes o después.`
         'Error parsing step-by-step explanation, creating fallback'
       )
 
-      const lines = response.content.split('\n').filter(l => l.trim())
-      const steps = lines
-        .map((line) => {
-          // Intentar detectar pasos numerados
-          const stepMatch = line.match(/^(\d+)[.)]\s*(.+)/)
-          if (stepMatch) {
-            return {
-              number: parseInt(stepMatch[1]),
-              title: `Paso ${stepMatch[1]}`,
-              description: stepMatch[2].substring(0, 100),
-              explanation: stepMatch[2],
-            }
-          }
-          return null
-        })
-        .filter((s): s is NonNullable<typeof s> => s !== null)
-        .slice(0, 5) // Máximo 5 pasos
-
-      parsed = {
+      const fallback = {
         steps:
-          steps.length > 0
-            ? steps
-            : [
-                {
-                  number: 1,
-                  title: 'Explicación',
-                  description: 'Análisis del problema',
-                  explanation: response.content,
-                },
-              ],
+          buildFallbackStepsFromText(response.content, 5),
         summary: 'Revisa cada paso cuidadosamente para entender el proceso completo.',
       }
+      return normalizeStepByStepExplanation(fallback)
     }
-
-    // Validar y normalizar la estructura
-    if (!parsed.steps || !Array.isArray(parsed.steps) || parsed.steps.length === 0) {
-      throw new Error('Invalid step structure')
-    }
-
-    // Asegurar que los pasos tengan números secuenciales
-    parsed.steps = parsed.steps.map((step, index) => ({
-      ...step,
-      number: step.number || index + 1,
-      title: step.title || `Paso ${index + 1}`,
-      description: step.description || step.explanation.substring(0, 100),
-      explanation: step.explanation || step.description || '',
-    }))
-
-    return parsed
   } catch (error) {
     logger.error(
       {
@@ -545,13 +565,17 @@ Responde SOLO con un JSON válido, sin texto adicional antes o después.`
     )
 
     // Retornar una explicación básica como fallback
+    const studentFeedback = studentAnswer
+      ? `Tu respuesta fue ${studentAnswer}, que es incorrecta. `
+      : ''
+    const fallbackExplanation = `La respuesta correcta es ${correctAnswer}. ${studentFeedback}${question}`
     return {
       steps: [
         {
           number: 1,
           title: 'Análisis',
           description: 'Análisis del problema',
-          explanation: `La respuesta correcta es ${correctAnswer}. ${studentAnswer ? `Tu respuesta fue ${studentAnswer}, que es incorrecta. ` : ''}${question}`,
+          explanation: fallbackExplanation,
         },
       ],
       summary: 'Revisa la pregunta y la explicación proporcionada para entender mejor el concepto.',
