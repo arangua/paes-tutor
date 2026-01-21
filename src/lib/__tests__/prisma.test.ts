@@ -35,9 +35,10 @@ describe('Prisma Client Configuration', () => {
       const PrismaClientMock = PrismaClient as unknown as typeof _mockPrismaClient
 
       // Crear instancia
-      new PrismaClientMock({
+      const client = new PrismaClientMock({
         log: ['error', 'warn'],
       })
+      expect(client).toBeDefined()
 
       // Verificar que se llamó sin adapter
       expect(PrismaClientMock).toHaveBeenCalled()
@@ -52,9 +53,10 @@ describe('Prisma Client Configuration', () => {
       const _mockPrismaClient = vi.fn()
       const PrismaClientMock = PrismaClient as unknown as typeof _mockPrismaClient
 
-      new PrismaClientMock({
+      const client = new PrismaClientMock({
         log: ['error', 'warn'],
       })
+      expect(client).toBeDefined()
 
       const callArgs = PrismaClientMock.mock.calls[0][0]
       expect(callArgs).not.toHaveProperty('accelerateUrl')
@@ -64,9 +66,10 @@ describe('Prisma Client Configuration', () => {
       const _mockPrismaClient = vi.fn()
       const PrismaClientMock = PrismaClient as unknown as typeof _mockPrismaClient
 
-      new PrismaClientMock({
+      const client = new PrismaClientMock({
         log: ['query', 'error', 'warn'],
       })
+      expect(client).toBeDefined()
 
       const callArgs = PrismaClientMock.mock.calls[0][0]
       expect(callArgs).toHaveProperty('log')
@@ -94,7 +97,7 @@ describe('Prisma Client Configuration', () => {
       await expect(async () => {
         const { prisma } = await import('@/lib/prisma')
         // Acceder a prisma para forzar inicialización
-        void prisma.user
+        expect(prisma.user).toBeDefined()
       }).rejects.toThrow(/SQLite detectado/)
     })
 
@@ -114,7 +117,7 @@ describe('Prisma Client Configuration', () => {
 
       await expect(async () => {
         const { prisma } = await import('@/lib/prisma')
-        void prisma.user
+        expect(prisma.user).toBeDefined()
       }).rejects.toThrow(/no es una URL de PostgreSQL válida/)
     })
 
@@ -123,7 +126,7 @@ describe('Prisma Client Configuration', () => {
 
       await expect(async () => {
         const { prisma } = await import('@/lib/prisma')
-        void prisma.user
+        expect(prisma.user).toBeDefined()
       }).rejects.toThrow(/DATABASE_URL no está configurada/)
     })
   })
