@@ -22,7 +22,9 @@ import * as React from 'react'
 function generateUniqueId(prefix: string): string {
   // Esta función solo debe llamarse desde useFormFieldAttributes
   // que es un hook y puede usar useId
-  return `${prefix}-${Math.random().toString(36).substring(2, 9)}`
+  const uuid = globalThis.crypto?.randomUUID?.()
+  const suffix = uuid ? uuid : String(Date.now())
+  return `${prefix}-${suffix}`
 }
 
 /**

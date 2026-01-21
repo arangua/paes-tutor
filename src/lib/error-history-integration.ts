@@ -15,8 +15,10 @@ export function errorMessageToUserError(
   path?: string,
   context?: Record<string, unknown>
 ): UserError {
+  const uuid = globalThis.crypto?.randomUUID?.()
+  const idSuffix = uuid ? uuid : String(Date.now())
   return {
-    id: `${error.code}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    id: `${error.code}-${Date.now()}-${idSuffix}`,
     timestamp: safeToISOString(new Date()),
     code: error.code,
     title: error.title,
