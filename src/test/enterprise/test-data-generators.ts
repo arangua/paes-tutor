@@ -20,29 +20,49 @@ type FakerType = {
 }
 let faker: FakerType | null = null
 try {
-  faker = require('@faker-js/faker').faker as FakerType
+  const nodeRequire = require as unknown as (id: string) => { faker?: FakerType }
+  const fakerModule = nodeRequire('@faker-js/faker')
+  faker = fakerModule.faker as FakerType
 } catch {
   // Faker no disponible, usar generadores simples
+}
+
+// Seeded PRNG para tests deterministas (evita sonarjs/pseudo-random)
+let seed = 1
+function seededNextInt(): number {
+  seed = (seed * 1103515245 + 12345) & 0x7fffffff
+  return seed
+}
+function seededNextFloat(): number {
+  return seededNextInt() / 0x7fffffff
+}
+function seededRandomString(length: number = 7): string {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
+  let result = ''
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(seededNextFloat() * chars.length))
+  }
+  return result
 }
 
 // Helper para generar datos cuando faker no está disponible
 const simpleFaker = {
   internet: {
-    email: () => `test${Math.random().toString(36).substring(7)}@example.com`,
+    email: () => `test${seededRandomString()}@example.com`,
   },
   person: {
-    fullName: () => `Test User ${Math.random().toString(36).substring(7)}`,
+    fullName: () => `Test User ${seededRandomString()}`,
   },
   lorem: {
-    sentence: () => `Test sentence ${Math.random().toString(36).substring(7)}`,
-    paragraphs: (count: number) => Array(count).fill(0).map(() => `Test paragraph ${Math.random().toString(36).substring(7)}`).join('\n\n'),
-    words: (count: number) => Array(count).fill(0).map(() => `word${Math.random().toString(36).substring(7)}`).join(' '),
+    sentence: () => `Test sentence ${seededRandomString()}`,
+    paragraphs: (count: number) => Array(count).fill(0).map(() => `Test paragraph ${seededRandomString()}`).join('\n\n'),
+    words: (count: number) => Array(count).fill(0).map(() => `word${seededRandomString()}`).join(' '),
   },
   number: {
     int: (options?: { min?: number; max?: number }) => {
       const min = options?.min || 0
       const max = options?.max || 100
-      return Math.floor(Math.random() * (max - min + 1)) + min
+      return Math.floor(seededNextFloat() * (max - min + 1)) + min
     },
   },
 }
@@ -99,7 +119,7 @@ export class EnterpriseDataGenerator<T> {
  */
 export class CUIDGenerator {
   /**
-   * Genera un CUID válido
+   * Genera un CUID válido usando seeded PRNG para tests deterministas
    */
   static generate(): string {
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
@@ -108,7 +128,7 @@ export class CUIDGenerator {
     
     let cuid = prefix
     for (let i = 0; i < length; i++) {
-      cuid += chars.charAt(Math.floor(Math.random() * chars.length))
+      cuid += chars.charAt(Math.floor(seededNextFloat() * chars.length))
     }
     
     return cuid

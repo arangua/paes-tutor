@@ -321,7 +321,8 @@ export function setupPrismaMock() {
  * Configurar mock de caché estándar
  */
 export function setupCacheMock(returnValue?: any) {
-  const { getCached } = require('@/lib/cache')
+  const nodeRequire = require as unknown as (id: string) => { getCached?: unknown }
+  const { getCached } = nodeRequire('@/lib/cache')
   if (returnValue !== undefined) {
     vi.mocked(getCached).mockResolvedValue(returnValue)
   } else {
@@ -333,7 +334,8 @@ export function setupCacheMock(returnValue?: any) {
  * Configurar mock de rate limiting (sin límite)
  */
 export function setupNoRateLimit() {
-  const { withRateLimit } = require('@/lib/rate-limit-middleware')
+  const nodeRequire = require as unknown as (id: string) => { withRateLimit?: unknown }
+  const { withRateLimit } = nodeRequire('@/lib/rate-limit-middleware')
   vi.mocked(withRateLimit).mockImplementation(
     (_req: NextRequest, handler: () => Promise<Response>) => handler()
   )
