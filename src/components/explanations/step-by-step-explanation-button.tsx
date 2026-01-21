@@ -32,7 +32,7 @@ export function StepByStepExplanationButton({
   subject,
   variant = 'outline',
   size = 'sm',
-}: StepByStepExplanationButtonProps) {
+}: Readonly<StepByStepExplanationButtonProps>) {
   const [open, setOpen] = useState(false)
   const [explanation, setExplanation] = useState<StepByStepExplanationData | null>(null)
   const [isLoading, setIsLoading] = useState(false)

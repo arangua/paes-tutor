@@ -85,7 +85,7 @@ const GUIDE_SECTIONS = [
   },
 ]
 
-export function QuickGuide({ className }: QuickGuideProps) {
+export function QuickGuide({ className }: Readonly<QuickGuideProps>) {
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(['getting-started']))
 
   const toggleSection = (sectionId: string) => {

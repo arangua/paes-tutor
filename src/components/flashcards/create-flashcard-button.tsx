@@ -16,7 +16,7 @@ import { Loader2, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { getErrorMessage, extractErrorInfo, ERROR_CODES } from '@/lib/error-messages'
-import { captureError } from '@/lib/monitoring'
+import { trackError } from '@/lib/monitoring'
 
 interface CreateFlashcardButtonProps {
   questionId?: string
@@ -32,7 +32,7 @@ export function CreateFlashcardButton({
   defaultBack = '',
   variant = 'ghost',
   size = 'sm',
-}: CreateFlashcardButtonProps) {
+}: Readonly<CreateFlashcardButtonProps>) {
   const [open, setOpen] = useState(false)
   const [front, setFront] = useState(defaultFront)
   const [back, setBack] = useState(defaultBack)
@@ -76,7 +76,7 @@ export function CreateFlashcardButton({
         reason: errorInfo.message,
       })
 
-      captureError(error instanceof Error ? error : new Error(String(error)), {
+      trackError(error instanceof Error ? error : new Error(String(error)), {
         type: 'flashcard_error',
         action: 'create',
         questionId,

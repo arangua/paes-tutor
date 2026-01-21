@@ -5,7 +5,11 @@ import { useRouter } from 'next/navigation'
 import { useKeyboardShortcuts, globalShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { KeyboardShortcutsDialog } from '@/components/ui/keyboard-shortcuts-dialog'
 
-export function KeyboardShortcutsProvider({ children }: { children: React.ReactNode }) {
+interface KeyboardShortcutsProviderProps {
+  children: React.ReactNode
+}
+
+export function KeyboardShortcutsProvider({ children }: Readonly<KeyboardShortcutsProviderProps>) {
   const router = useRouter()
   const [showShortcuts, setShowShortcuts] = useState(false)
 

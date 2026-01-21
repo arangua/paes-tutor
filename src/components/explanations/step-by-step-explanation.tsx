@@ -43,7 +43,7 @@ export function StepByStepExplanation({
   correctAnswer,
   isLoading = false,
   className,
-}: StepByStepExplanationProps) {
+}: Readonly<StepByStepExplanationProps>) {
   const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set([1])) // Expandir primer paso por defecto
   const [showTips, setShowTips] = useState(false)
   const [showConcepts, setShowConcepts] = useState(false)

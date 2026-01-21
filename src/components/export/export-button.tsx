@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Download, FileText, FileSpreadsheet, File, Loader2 } from 'lucide-react'
-import { captureError } from '@/lib/monitoring'
+import { trackError } from '@/lib/monitoring'
 import { getErrorMessage, extractErrorInfo, ERROR_CODES } from '@/lib/error-messages'
 import { toast } from 'sonner'
 
@@ -29,7 +29,7 @@ export function ExportButton({
   disabled = false,
   variant = 'outline',
   size = 'default',
-}: ExportButtonProps) {
+}: Readonly<ExportButtonProps>) {
   const [exporting, setExporting] = useState<string | null>(null)
 
   const handleExport = async (format: 'pdf' | 'excel' | 'word', handler?: () => Promise<void>) => {
@@ -41,7 +41,7 @@ export function ExportButton({
       // El toast de éxito se maneja en las funciones de exportación individuales
     } catch (error) {
       // Log error usando servicio de monitoreo
-      captureError(error instanceof Error ? error : new Error(String(error)), {
+      trackError(error instanceof Error ? error : new Error(String(error)), {
         type: 'export_error',
         format,
         path: typeof window !== 'undefined' ? window.location.pathname : undefined,

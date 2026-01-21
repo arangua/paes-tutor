@@ -9,7 +9,7 @@ interface HelpIconProps {
   side?: 'top' | 'right' | 'bottom' | 'left'
 }
 
-export function HelpIcon({ content, className, side = 'top' }: HelpIconProps) {
+export function HelpIcon({ content, className, side = 'top' }: Readonly<HelpIconProps>) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
