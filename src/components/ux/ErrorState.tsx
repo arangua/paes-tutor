@@ -66,7 +66,7 @@ export function ErrorState({
   onBack,
   retryLabel = 'Reintentar',
   backLabel = 'Volver',
-}: ErrorStateProps) {
+}: Readonly<ErrorStateProps>) {
   if (!error) {
     return null
   }

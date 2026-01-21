@@ -22,7 +22,7 @@ export function EmptyState({
   description = 'No se encontraron elementos para mostrar.',
   actionLabel,
   onAction,
-}: EmptyStateProps) {
+}: Readonly<EmptyStateProps>) {
   return (
     <div className="flex items-center justify-center py-12">
       <div className="text-center space-y-4 max-w-md">

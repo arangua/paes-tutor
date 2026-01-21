@@ -8,7 +8,7 @@
  * 1. Loading (si isLoading)
  * 2. Error (si error)
  * 3. Empty (si isEmpty)
- * 4. Children (si todo está bien)
+ * 4. Children (si no hay problemas)
  */
 
 import { LoadingState } from './LoadingState'
@@ -68,7 +68,7 @@ interface UXBoundaryProps {
   onBack?: () => void
 
   /**
-   * Contenido a mostrar cuando todo está bien
+   * Contenido a mostrar cuando no hay problemas
    */
   children: React.ReactNode
 
@@ -107,7 +107,7 @@ export function UXBoundary({
   onBack,
   children,
   fullScreenLoading = false,
-}: UXBoundaryProps) {
+}: Readonly<UXBoundaryProps>) {
   // Prioridad 1: Loading
   if (isLoading) {
     return (

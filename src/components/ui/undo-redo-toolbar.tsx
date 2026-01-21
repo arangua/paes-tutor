@@ -18,7 +18,7 @@ export function UndoRedoToolbar({
   canUndo,
   canRedo,
   className,
-}: UndoRedoToolbarProps) {
+}: Readonly<UndoRedoToolbarProps>) {
   return (
     <div className={`flex items-center gap-1 ${className || ''}`}>
       <Tooltip>

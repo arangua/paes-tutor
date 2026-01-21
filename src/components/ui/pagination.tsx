@@ -11,7 +11,12 @@ interface PaginationProps {
   className?: string
 }
 
-export function Pagination({ currentPage, totalPages, onPageChange, className }: PaginationProps) {
+export function Pagination({
+  currentPage,
+  totalPages,
+  onPageChange,
+  className,
+}: Readonly<PaginationProps>) {
   if (totalPages <= 1) {
     return null
   }

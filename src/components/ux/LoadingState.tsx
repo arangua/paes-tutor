@@ -19,7 +19,7 @@ export function LoadingState({
   message = 'Cargando...',
   description,
   fullScreen = false,
-}: LoadingStateProps) {
+}: Readonly<LoadingStateProps>) {
   const containerClass = fullScreen
     ? 'flex items-center justify-center min-h-screen'
     : 'flex items-center justify-center py-12'

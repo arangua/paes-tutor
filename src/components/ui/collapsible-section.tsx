@@ -22,7 +22,7 @@ export function CollapsibleSection({
   children,
   className,
   storageKey,
-}: CollapsibleSectionProps) {
+}: Readonly<CollapsibleSectionProps>) {
   // Cargar estado persistido o usar defaultOpen
   const [isOpen, setIsOpen] = useState(() => {
     if (typeof window === 'undefined' || !storageKey) return defaultOpen

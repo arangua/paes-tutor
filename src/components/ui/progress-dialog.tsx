@@ -38,7 +38,7 @@ export function ProgressDialog({
   steps = [],
   estimatedTimeRemaining,
   onCancel,
-}: ProgressDialogProps) {
+}: Readonly<ProgressDialogProps>) {
   return (
     <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent className="sm:max-w-md" hideCloseButton>

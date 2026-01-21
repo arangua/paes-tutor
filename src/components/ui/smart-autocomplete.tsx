@@ -78,7 +78,7 @@ export function SmartAutocomplete({
   className,
   disabled,
   inputProps,
-}: SmartAutocompleteProps) {
+}: Readonly<SmartAutocompleteProps>) {
   const containerRef = useRef<HTMLDivElement>(null)
   const suggestionsRef = useRef<HTMLDivElement>(null)
 

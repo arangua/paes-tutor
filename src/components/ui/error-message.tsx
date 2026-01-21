@@ -33,7 +33,7 @@ export function ErrorMessageComponent({
   className,
   onAction,
   onDismiss,
-}: ErrorMessageProps) {
+}: Readonly<ErrorMessageProps>) {
   const Icon = severityIcons[error.severity]
   const colorClass = severityColors[error.severity]
 

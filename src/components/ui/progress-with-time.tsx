@@ -21,7 +21,7 @@ export function ProgressWithTime({
   estimatedTimeRemaining,
   label,
   className,
-}: ProgressWithTimeProps) {
+}: Readonly<ProgressWithTimeProps>) {
   // ✅ Enterprise: Usar función centralizada para formateo de tiempo
   const formatTime = formatDuration
 

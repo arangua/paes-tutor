@@ -81,7 +81,7 @@ export function OperationStatus({
   className,
   showIcon = true,
   variant = 'default',
-}: OperationStatusProps) {
+}: Readonly<OperationStatusProps>) {
   // eslint-disable-next-line security/detect-object-injection
   const config = statusConfig[status] // key validated via OperationStatusProps union
   const Icon = config.icon

@@ -277,11 +277,11 @@ export function SubjectIcon({
   codigo,
   className,
   size = 20,
-}: {
+}: Readonly<{
   codigo: string
   className?: string
   size?: number
-}) {
+}>) {
   const config = getSubjectIcon(codigo)
   const Icon = config.icon
 

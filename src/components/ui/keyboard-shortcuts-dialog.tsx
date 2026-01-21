@@ -20,7 +20,7 @@ export function KeyboardShortcutsDialog({
   open,
   onOpenChange,
   shortcuts,
-}: KeyboardShortcutsDialogProps) {
+}: Readonly<KeyboardShortcutsDialogProps>) {
   const groupedShortcuts = shortcuts.reduce(
     (acc, shortcut) => {
       const category = shortcut.category || 'otros'

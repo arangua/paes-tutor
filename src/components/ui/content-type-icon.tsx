@@ -85,7 +85,7 @@ export function ContentTypeIcon({
   className,
   size = 20,
   showLabel = false,
-}: ContentTypeIconProps) {
+}: Readonly<ContentTypeIconProps>) {
   // Si es un tipo de pregunta, usar iconos de pregunta
   if (type === 'question' && questionType) {
     const config = getQuestionTypeIcon(questionType)
