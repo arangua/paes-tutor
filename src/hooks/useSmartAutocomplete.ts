@@ -77,30 +77,30 @@ export function useSmartAutocomplete(options: UseSmartAutocompleteOptions = {}) 
       const combined = [...local, ...server]
 
       // Ordenar por relevancia
-      return combined
-        .sort((a, b) => {
-          // Prioridad por tipo
-          const typePriority = {
-            history: 4,
-            contextual: 3,
-            server: 2,
-            popular: 1,
-          }
-          const aPriority = typePriority[a.type || 'server'] || 0
-          const bPriority = typePriority[b.type || 'server'] || 0
-          if (aPriority !== bPriority) return bPriority - aPriority
+      const sorted = [...combined].sort((a, b) => {
+        // Prioridad por tipo
+        const typePriority = {
+          history: 4,
+          contextual: 3,
+          server: 2,
+          popular: 1,
+        }
+        const aPriority = typePriority[a.type || 'server'] || 0
+        const bPriority = typePriority[b.type || 'server'] || 0
+        if (aPriority !== bPriority) return bPriority - aPriority
 
-          // Luego por relevancia
-          const aRelevance = a.metadata?.relevance || 0
-          const bRelevance = b.metadata?.relevance || 0
-          if (aRelevance !== bRelevance) return bRelevance - aRelevance
+        // Luego por relevancia
+        const aRelevance = a.metadata?.relevance || 0
+        const bRelevance = b.metadata?.relevance || 0
+        if (aRelevance !== bRelevance) return bRelevance - aRelevance
 
-          // Finalmente por frecuencia
-          const aFreq = a.metadata?.frequency || 0
-          const bFreq = b.metadata?.frequency || 0
-          return bFreq - aFreq
-        })
-        .slice(0, maxSuggestions)
+        // Finalmente por frecuencia
+        const aFreq = a.metadata?.frequency || 0
+        const bFreq = b.metadata?.frequency || 0
+        return bFreq - aFreq
+      })
+
+      return sorted.slice(0, maxSuggestions)
     },
     [maxSuggestions]
   )
