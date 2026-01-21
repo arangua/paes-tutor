@@ -62,6 +62,11 @@ export function getClientIp(request: Request): string {
   return ip
 }
 
+// Constante para caracteres de control (RFC 20): 0x00-0x1F y 0x7F (DEL)
+// Necesario para detectar caracteres de control maliciosos en seguridad
+// eslint-disable-next-line no-control-regex, sonarjs/no-control-regex
+const CONTROL_CHARS_RE = /[\x00-\x1F\x7F]/g
+
 /**
  * Helper para detectar actividad sospechosa
  */
@@ -79,8 +84,7 @@ export function detectSuspiciousActivity(
     // Intentos de XSS - detectar event handlers (onclick, onerror, etc.)
     /<script|javascript:|on\w+\s*[=:]|onclick|onerror|onload/gi,
     // Caracteres de control (intencional para seguridad)
-    // eslint-disable-next-line no-control-regex
-    /[\x00-\x1F\x7F]/g,
+    CONTROL_CHARS_RE,
   ]
 
   const pathLower = path.toLowerCase()
