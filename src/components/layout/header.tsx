@@ -41,6 +41,209 @@ interface UserInfo {
   email?: string
 }
 
+type HeaderSession = {
+  user?: {
+    name?: string | null
+    email?: string | null
+    studentId?: string | null
+  }
+} | null
+
+type HeaderUserInfoDecision =
+  | { kind: 'keep_loading' }
+  | { kind: 'set'; userInfo: UserInfo | null }
+  | { kind: 'no_update' }
+
+function sessionToUserInfo(session: HeaderSession): UserInfo | null {
+  if (!session?.user) return null
+  return {
+    nombre: session.user.name ?? undefined,
+    email: session.user.email ?? undefined,
+  }
+}
+
+async function decideHeaderUserInfo(params: {
+  pathname: string | null
+  status: string
+  session: HeaderSession
+}): Promise<HeaderUserInfoDecision> {
+  const { pathname, status, session } = params
+
+  // No cargar si estamos en la página de login
+  if (pathname === '/auth/signin') {
+    return { kind: 'no_update' }
+  }
+
+  // Si el status es 'loading', esperar a que se resuelva (mantener isLoading)
+  if (status === 'loading') {
+    return { kind: 'keep_loading' }
+  }
+
+  // Si no hay sesión (o está no-autenticado), terminar loading sin modificar userInfo
+  if (status === 'unauthenticated' || status !== 'authenticated' || !session) {
+    return { kind: 'no_update' }
+  }
+
+  // Si no hay studentId en la sesión, usar información de la sesión directamente
+  if (!session.user?.studentId) {
+    return { kind: 'set', userInfo: sessionToUserInfo(session) }
+  }
+
+  // Intentar obtener información del estudiante o usuario
+  try {
+    const res = await fetch('/api/student', {
+      credentials: 'include', // Incluir cookies de sesión
+    })
+
+    if (res.ok) {
+      const data = (await res.json()) as { nombre?: string; email?: string }
+      return {
+        kind: 'set',
+        userInfo: {
+          nombre: data.nombre || session.user?.name || undefined,
+          email: data.email || session.user?.email || undefined,
+        },
+      }
+    }
+
+    if (res.status === 401) {
+      // Solo 401 significa que no hay sesión - usar información de la sesión como fallback
+      if (session.user) {
+        return { kind: 'set', userInfo: sessionToUserInfo(session) }
+      }
+    }
+
+    return { kind: 'no_update' }
+  } catch {
+    // Silenciar errores de red, usar información de la sesión como fallback
+    if (session.user) {
+      return { kind: 'set', userInfo: sessionToUserInfo(session) }
+    }
+    return { kind: 'no_update' }
+  }
+}
+
+function HeaderUserActions(props: Readonly<{
+  isLoading: boolean
+  isAuthenticated: boolean
+  userInfo: UserInfo | null
+  isMobileMenuOpen: boolean
+  onToggleMobileMenu: () => void
+  onLogout: () => void
+  onOpenTrash: () => void
+}>): JSX.Element {
+  const {
+    isLoading,
+    isAuthenticated,
+    userInfo,
+    isMobileMenuOpen,
+    onToggleMobileMenu,
+    onLogout,
+    onOpenTrash,
+  } = props
+
+  if (isLoading) {
+    return <div className="h-8 w-8 rounded-full bg-muted animate-pulse flex-shrink-0" />
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <>
+        <ThemeToggle />
+        <Button asChild variant="default">
+          <Link href="/auth/signin">Iniciar Sesión</Link>
+        </Button>
+      </>
+    )
+  }
+
+  return (
+    <>
+      {/* Toggle de tema - siempre visible */}
+      <ThemeToggle />
+      {/* Notificaciones */}
+      <NotificationsDropdown />
+      {/* Desktop: Dropdown menu - solo icono en pantallas medianas, con nombre en pantallas grandes */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="hidden md:flex lg:size-auto lg:px-2 lg:gap-1.5 lg:max-w-[120px]"
+              >
+                <User className="h-4 w-4 flex-shrink-0" />
+                <span className="truncate text-xs max-w-[80px] hidden lg:inline">
+                  {userInfo?.nombre || userInfo?.email || 'Usuario'}
+                </span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">{userInfo?.nombre || 'Usuario'}</p>
+                  <p className="text-xs leading-none text-muted-foreground">{userInfo?.email}</p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/dashboard" className="flex items-center gap-2 cursor-pointer">
+                  <BarChart3 className="h-4 w-4" />
+                  Dashboard
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/exams" className="flex items-center gap-2 cursor-pointer">
+                  <FileText className="h-4 w-4" />
+                  Exámenes
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/profile" className="flex items-center gap-2 cursor-pointer">
+                  <User className="h-4 w-4" />
+                  Mi Perfil
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={onOpenTrash}
+                className="flex items-center gap-2 cursor-pointer"
+              >
+                <Trash2 className="h-4 w-4" />
+                Papelera
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Administración</DropdownMenuLabel>
+              <DropdownMenuItem asChild>
+                <Link href="/admin" className="flex items-center gap-2 cursor-pointer">
+                  <Settings className="h-4 w-4" />
+                  Panel de Administración
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={onLogout}
+                className="flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive"
+              >
+                <LogOut className="h-4 w-4" />
+                Cerrar Sesión
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          <p>{userInfo?.nombre || userInfo?.email || 'Mi cuenta'}</p>
+        </TooltipContent>
+      </Tooltip>
+
+      {/* Mobile: Menu button */}
+      <Button variant="ghost" size="icon" className="md:hidden" onClick={onToggleMobileMenu}>
+        {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+      </Button>
+    </>
+  )
+}
+
 export function Header() {
   const router = useRouter()
   const pathname = usePathname()
@@ -52,72 +255,28 @@ export function Header() {
   const [isTrashOpen, setIsTrashOpen] = useState(false)
 
   useEffect(() => {
-    async function fetchUserInfo() {
-      // Solo intentar obtener información si hay una sesión activa
-      if (status === 'unauthenticated') {
-        setIsLoading(false)
-        return
+    let isMounted = true
+
+    void (async () => {
+      const decision = await decideHeaderUserInfo({
+        pathname,
+        status,
+        session: (session as HeaderSession) || null,
+      })
+
+      if (!isMounted) return
+
+      if (decision.kind === 'keep_loading') return
+
+      if (decision.kind === 'set') {
+        setUserInfo(decision.userInfo)
       }
 
-      // Si el status es 'loading', esperar a que se resuelva
-      if (status === 'loading') {
-        return
-      }
-
-      // Si hay sesión autenticada, obtener información del estudiante
-      if (status === 'authenticated' && session) {
-        // Si no hay studentId en la sesión, usar información de la sesión directamente
-        if (!session.user?.studentId) {
-          setUserInfo({
-            nombre: session.user?.name || undefined,
-            email: session.user?.email || undefined,
-          })
-          setIsLoading(false)
-          return
-        }
-
-        // Intentar obtener información del estudiante o usuario
-        try {
-          const res = await fetch('/api/student', {
-            credentials: 'include', // Incluir cookies de sesión
-          })
-          if (res.ok) {
-            const data = await res.json()
-            // El endpoint ahora siempre retorna información útil (estudiante o usuario)
-            setUserInfo({
-              nombre: data.nombre || session.user?.name || undefined,
-              email: data.email || session.user?.email || undefined,
-            })
-          } else if (res.status === 401) {
-            // Solo 401 significa que no hay sesión - usar información de la sesión como fallback
-            if (session.user) {
-              setUserInfo({
-                nombre: session.user.name || undefined,
-                email: session.user.email || undefined,
-              })
-            }
-          }
-        } catch {
-          // Silenciar errores de red, usar información de la sesión como fallback
-          if (session.user) {
-            setUserInfo({
-              nombre: session.user.name || undefined,
-              email: session.user.email || undefined,
-            })
-          }
-        } finally {
-          setIsLoading(false)
-        }
-      } else {
-        setIsLoading(false)
-      }
-    }
-
-    // Solo cargar si no estamos en la página de login
-    if (pathname !== '/auth/signin') {
-      fetchUserInfo()
-    } else {
       setIsLoading(false)
+    })()
+
+    return () => {
+      isMounted = false
     }
   }, [pathname, status, session])
 
@@ -242,112 +401,15 @@ export function Header() {
                 <OnlineIndicator />
               </div>
             )}
-            {isLoading ? (
-              <div className="h-8 w-8 rounded-full bg-muted animate-pulse flex-shrink-0" />
-            ) : isAuthenticated ? (
-              <>
-                {/* Toggle de tema - siempre visible */}
-                <ThemeToggle />
-                {/* Notificaciones */}
-                <NotificationsDropdown />
-                {/* Desktop: Dropdown menu - solo icono en pantallas medianas, con nombre en pantallas grandes */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="hidden md:flex lg:size-auto lg:px-2 lg:gap-1.5 lg:max-w-[120px]"
-                        >
-                          <User className="h-4 w-4 flex-shrink-0" />
-                          <span className="truncate text-xs max-w-[80px] hidden lg:inline">
-                            {userInfo?.nombre || userInfo?.email || 'Usuario'}
-                          </span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-56">
-                        <DropdownMenuLabel>
-                          <div className="flex flex-col space-y-1">
-                            <p className="text-sm font-medium leading-none">
-                              {userInfo?.nombre || 'Usuario'}
-                            </p>
-                            <p className="text-xs leading-none text-muted-foreground">
-                              {userInfo?.email}
-                            </p>
-                          </div>
-                        </DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem asChild>
-                          <Link
-                            href="/dashboard"
-                            className="flex items-center gap-2 cursor-pointer"
-                          >
-                            <BarChart3 className="h-4 w-4" />
-                            Dashboard
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link href="/exams" className="flex items-center gap-2 cursor-pointer">
-                            <FileText className="h-4 w-4" />
-                            Exámenes
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link href="/profile" className="flex items-center gap-2 cursor-pointer">
-                            <User className="h-4 w-4" />
-                            Mi Perfil
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => setIsTrashOpen(true)}
-                          className="flex items-center gap-2 cursor-pointer"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          Papelera
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuLabel>Administración</DropdownMenuLabel>
-                        <DropdownMenuItem asChild>
-                          <Link href="/admin" className="flex items-center gap-2 cursor-pointer">
-                            <Settings className="h-4 w-4" />
-                            Panel de Administración
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={handleLogout}
-                          className="flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive"
-                        >
-                          <LogOut className="h-4 w-4" />
-                          Cerrar Sesión
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">
-                    <p>{userInfo?.nombre || userInfo?.email || 'Mi cuenta'}</p>
-                  </TooltipContent>
-                </Tooltip>
-
-                {/* Mobile: Menu button */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="md:hidden"
-                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                >
-                  {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-                </Button>
-              </>
-            ) : (
-              <>
-                <ThemeToggle />
-                <Button asChild variant="default">
-                  <Link href="/auth/signin">Iniciar Sesión</Link>
-                </Button>
-              </>
-            )}
+            <HeaderUserActions
+              isLoading={isLoading}
+              isAuthenticated={isAuthenticated}
+              userInfo={userInfo}
+              isMobileMenuOpen={isMobileMenuOpen}
+              onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              onLogout={handleLogout}
+              onOpenTrash={() => setIsTrashOpen(true)}
+            />
           </div>
         </div>
 
