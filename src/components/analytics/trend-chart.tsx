@@ -26,7 +26,7 @@ interface TrendChartProps {
   className?: string
 }
 
-export function TrendChart({ data, className }: TrendChartProps) {
+export function TrendChart({ data, className }: Readonly<TrendChartProps>) {
   // Preparar datos para el gráfico
   const chartData = useMemo(() => {
     return data.map((item, index) => ({

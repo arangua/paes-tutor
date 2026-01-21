@@ -16,7 +16,7 @@ interface SubjectPerformanceChartProps {
   data: Array<{ name: string; porcentaje: number }>
 }
 
-export function SubjectPerformanceChart({ data }: SubjectPerformanceChartProps) {
+export function SubjectPerformanceChart({ data }: Readonly<SubjectPerformanceChartProps>) {
   if (data.length === 0) {
     return (
       <div className="flex items-center justify-center h-[300px] text-gray-500">
@@ -42,7 +42,7 @@ interface RecentAttemptsChartProps {
   data: Array<{ name: string; porcentaje: number }>
 }
 
-export function RecentAttemptsChart({ data }: RecentAttemptsChartProps) {
+export function RecentAttemptsChart({ data }: Readonly<RecentAttemptsChartProps>) {
   if (data.length === 0) {
     return (
       <div className="flex items-center justify-center h-[300px] text-gray-500">
