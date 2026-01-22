@@ -358,94 +358,128 @@ export class EnterpriseResponseValidator {
     return this
   }
 
+  private validateStatus(response: Response) {
+    const config = this.config
+
+    if (config.expectedStatus !== undefined) {
+      expect(response.status).toBe(config.expectedStatus)
+      return
+    }
+
+    if (config.statusRange) {
+      expect(response.status).toBeGreaterThanOrEqual(config.statusRange[0])
+      expect(response.status).toBeLessThanOrEqual(config.statusRange[1])
+      return
+    }
+
+    expect(response.status).toBeGreaterThanOrEqual(200)
+    expect(response.status).toBeLessThan(300)
+  }
+
+  private validateContentType(response: Response) {
+    const config = this.config
+    if (!config.contentType) return
+
+    const actualContentType = response.headers.get('content-type') || ''
+    if (config.contentType instanceof RegExp) {
+      expect(actualContentType).toMatch(config.contentType)
+      return
+    }
+
+    expect(actualContentType).toContain(config.contentType)
+  }
+
+  private validateHeaders(response: Response) {
+    const config = this.config
+    if (!config.headers) return
+
+    for (const [name, validator] of Object.entries(config.headers)) {
+      const value = response.headers.get(name)
+      expect(value).toBeDefined()
+
+      if (typeof validator === 'string') {
+        expect(value).toBe(validator)
+        continue
+      }
+
+      if (validator instanceof RegExp) {
+        expect(value).toMatch(validator)
+        continue
+      }
+
+      if (typeof validator === 'function') {
+        expect(validator(value || '')).toBe(true)
+      }
+    }
+  }
+
+  private validateTiming(responseTime: number) {
+    const config = this.config
+    if (config.responseTime?.max) {
+      expect(responseTime).toBeLessThanOrEqual(config.responseTime.max)
+    }
+    if (config.responseTime?.min) {
+      expect(responseTime).toBeGreaterThanOrEqual(config.responseTime.min)
+    }
+  }
+
+  private validateSize(text: string) {
+    const config = this.config
+    if (config.size?.max) {
+      expect(text.length).toBeLessThanOrEqual(config.size.max)
+    }
+    if (config.size?.min) {
+      expect(text.length).toBeGreaterThanOrEqual(config.size.min)
+    }
+  }
+
+  private parseJsonOrEmpty<T>(text: string): T {
+    if (!text) return {} as T
+    return JSON.parse(text) as T
+  }
+
+  private validateSchema<T>(data: T): T {
+    const config = this.config
+    if (!config.schema) return data
+
+    const result = config.schema.safeParse(data)
+    if (!result.success) {
+      throw new Error(`Schema validation failed: ${result.error.message}`)
+    }
+    return result.data as T
+  }
+
+  private validateRequiredFields<T>(data: T) {
+    const config = this.config
+    if (!config.requiredFields) return
+    if (typeof data !== 'object' || data == null) return
+
+    const dataObj = data as Record<string, unknown>
+    for (const field of config.requiredFields) {
+      expect(dataObj).toHaveProperty(field)
+    }
+  }
+
   /**
    * Valida la respuesta
    */
   async validate<T = unknown>(response: Response): Promise<EnterpriseTestResult<T>> {
     const startTime = Date.now()
-    const config = this.config
 
     try {
-      // Validar código de estado
-      if (config.expectedStatus !== undefined) {
-        expect(response.status).toBe(config.expectedStatus)
-      } else if (config.statusRange) {
-        expect(response.status).toBeGreaterThanOrEqual(config.statusRange[0])
-        expect(response.status).toBeLessThanOrEqual(config.statusRange[1])
-      } else {
-        expect(response.status).toBeGreaterThanOrEqual(200)
-        expect(response.status).toBeLessThan(300)
-      }
+      this.validateStatus(response)
+      this.validateContentType(response)
+      this.validateHeaders(response)
 
-      // Validar Content-Type
-      if (config.contentType) {
-        const actualContentType = response.headers.get('content-type') || ''
-        if (config.contentType instanceof RegExp) {
-          expect(actualContentType).toMatch(config.contentType)
-        } else {
-          expect(actualContentType).toContain(config.contentType)
-        }
-      }
-
-      // Validar headers
-      if (config.headers) {
-        for (const [name, validator] of Object.entries(config.headers)) {
-          const value = response.headers.get(name)
-          expect(value).toBeDefined()
-          
-          if (typeof validator === 'string') {
-            expect(value).toBe(validator)
-          } else if (validator instanceof RegExp) {
-            expect(value).toMatch(validator)
-          } else if (typeof validator === 'function') {
-            expect(validator(value || '')).toBe(true)
-          }
-        }
-      }
-
-      // Parsear respuesta
       const text = await response.text()
       const responseTime = Date.now() - startTime
 
-      // Validar tiempo de respuesta
-      if (config.responseTime?.max) {
-        expect(responseTime).toBeLessThanOrEqual(config.responseTime.max)
-      }
-      if (config.responseTime?.min) {
-        expect(responseTime).toBeGreaterThanOrEqual(config.responseTime.min)
-      }
+      this.validateTiming(responseTime)
+      this.validateSize(text)
 
-      // Validar tamaño
-      if (config.size?.max) {
-        expect(text.length).toBeLessThanOrEqual(config.size.max)
-      }
-      if (config.size?.min) {
-        expect(text.length).toBeGreaterThanOrEqual(config.size.min)
-      }
-
-      let data: T
-      if (!text) {
-        data = {} as T
-      } else {
-        data = JSON.parse(text) as T
-      }
-
-      // Validar schema
-      if (config.schema) {
-        const result = config.schema.safeParse(data)
-        if (!result.success) {
-          throw new Error(`Schema validation failed: ${result.error.message}`)
-        }
-        data = result.data as T
-      }
-
-      // Validar campos requeridos
-      if (config.requiredFields && typeof data === 'object') {
-        const dataObj = data as Record<string, unknown>
-        for (const field of config.requiredFields) {
-          expect(dataObj).toHaveProperty(field)
-        }
-      }
+      let data = this.parseJsonOrEmpty<T>(text)
+      data = this.validateSchema<T>(data)
+      this.validateRequiredFields<T>(data)
 
       return {
         success: true,
