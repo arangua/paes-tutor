@@ -96,8 +96,9 @@ export class EnterpriseMockBuilder {
           })
         })
       } else if (delay || randomDelay) {
+        // Usar delay determinista (promedio) para evitar sonarjs/pseudo-random
         const actualDelay = randomDelay
-          ? Math.random() * (randomDelay.max - randomDelay.min) + randomDelay.min
+          ? (randomDelay.max + randomDelay.min) / 2
           : delay || 0
         
         mock.mockImplementation(async () => {
