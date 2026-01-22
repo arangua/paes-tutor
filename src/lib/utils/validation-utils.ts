@@ -109,6 +109,29 @@ export function safeRound(value: number, decimals: number = 0): number {
   return Number.isFinite(result) ? result : 0
 }
 
+// Helpers pequeños para bajar complejidad
+function resolveFallback(fallback: number): number {
+  return Number.isFinite(fallback) ? fallback : 0
+}
+
+function toFiniteNumber(
+  value: unknown,
+  _label: 'dividend' | 'divisor',
+  _ctx: Record<string, unknown>
+): number | null {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Number.parseFloat(value)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+
+  // null, undefined, boolean, object, NaN, Infinity, etc.
+  return null
+}
+
 /**
  * Divide dos números de forma segura
  * 
@@ -130,75 +153,44 @@ export function safeDivide(
   divisor: unknown,
   fallback: number = 0
 ): number {
-  // Validar que dividend sea un número finito válido
-  let safeDividend: number
-  if (typeof dividend === 'number' && Number.isFinite(dividend)) {
-    safeDividend = dividend
-  } else if (typeof dividend === 'string') {
-    const parsed = Number.parseFloat(dividend)
-    if (Number.isFinite(parsed)) {
-      safeDividend = parsed
-    } else {
-      logger.warn(
-        { dividend, divisor, fallback },
-        'safeDivide: dividend inválido, usando fallback'
-      )
-      return Number.isFinite(fallback) ? fallback : 0
-    }
-  } else {
-    // null, undefined, NaN, Infinity, etc.
+  const fb = resolveFallback(fallback)
+
+  const safeDividend = toFiniteNumber(dividend, 'dividend', { dividend, divisor, fallback })
+  if (safeDividend === null) {
     logger.warn(
       { dividend, divisor, fallback },
       'safeDivide: dividend inválido, usando fallback'
     )
-    return Number.isFinite(fallback) ? fallback : 0
+    return fb
   }
-  
-  // Validar que divisor sea un número finito válido
-  let safeDivisor: number
-  if (typeof divisor === 'number' && Number.isFinite(divisor)) {
-    safeDivisor = divisor
-  } else if (typeof divisor === 'string') {
-    const parsed = Number.parseFloat(divisor)
-    if (Number.isFinite(parsed)) {
-      safeDivisor = parsed
-    } else {
-      logger.warn(
-        { dividend: safeDividend, divisor, fallback },
-        'safeDivide: divisor inválido, usando fallback'
-      )
-      return Number.isFinite(fallback) ? fallback : 0
-    }
-  } else {
-    // null, undefined, NaN, Infinity, etc.
+
+  const safeDivisor = toFiniteNumber(divisor, 'divisor', { dividend: safeDividend, divisor, fallback })
+  if (safeDivisor === null) {
     logger.warn(
       { dividend: safeDividend, divisor, fallback },
       'safeDivide: divisor inválido, usando fallback'
     )
-    return Number.isFinite(fallback) ? fallback : 0
+    return fb
   }
-  
-  // Evitar división por cero
+
   if (safeDivisor === 0) {
     logger.warn(
       { dividend: safeDividend, divisor: safeDivisor, fallback },
       'safeDivide: división por cero detectada, usando fallback'
     )
-    return Number.isFinite(fallback) ? fallback : 0
+    return fb
   }
-  
-  // Realizar división
+
   const result = safeDividend / safeDivisor
-  
-  // Validar que el resultado sea finito
+
   if (!Number.isFinite(result)) {
     logger.warn(
       { dividend: safeDividend, divisor: safeDivisor, result, fallback },
       'safeDivide: resultado no finito, usando fallback'
     )
-    return Number.isFinite(fallback) ? fallback : 0
+    return fb
   }
-  
+
   return result
 }
 
