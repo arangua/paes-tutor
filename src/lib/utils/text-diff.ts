@@ -118,6 +118,27 @@ export function compareVersions(
   }
 }
 
+// Helpers para reducir complejidad cognitiva de generateSimpleDiff
+function pushLine(
+  result: DiffResult[],
+  type: DiffResult['type'],
+  line: string | undefined
+): void {
+  if (line !== undefined) result.push({ type, text: line })
+}
+
+function isNotLcsLine(
+  line: string | undefined,
+  lcs: string[],
+  lcsIdx: number
+): boolean {
+  // equivale a: lcsIdx >= lcs.length || (line !== undefined && line !== lcs[lcsIdx])
+  if (lcsIdx >= lcs.length) return true
+  if (line === undefined) return false
+  // eslint-disable-next-line security/detect-object-injection
+  return line !== lcs[lcsIdx]
+}
+
 /**
  * Genera un diff mejorado línea por línea usando algoritmo tipo Myers
  * 
@@ -138,65 +159,58 @@ function generateSimpleDiff(oldText: string, newText: string): DiffResult[] {
   const newLines = newText.split('\n')
   const result: DiffResult[] = []
 
-  // Algoritmo simple de LCS (Longest Common Subsequence) mejorado
   const lcs = computeLCS(oldLines, newLines)
-  
+
   let oldIdx = 0
   let newIdx = 0
   let lcsIdx = 0
 
   while (oldIdx < oldLines.length || newIdx < newLines.length) {
-    // Si hay más líneas en old que no están en LCS
-    if (oldIdx < oldLines.length && 
-        // eslint-disable-next-line security/detect-object-injection
-        (lcsIdx >= lcs.length || (oldLines[oldIdx] !== undefined && oldLines[oldIdx] !== lcs[lcsIdx]))) { // indices controlled by loop bounds
-      // eslint-disable-next-line security/detect-object-injection
-      const line = oldLines[oldIdx] // index controlled by loop bounds
-      if (line !== undefined) {
-        result.push({ type: 'removed', text: line })
-      }
+    // eslint-disable-next-line security/detect-object-injection
+    const oldLine = oldLines[oldIdx] // index controlled by loop bounds
+    // eslint-disable-next-line security/detect-object-injection
+    const newLine = newLines[newIdx] // index controlled by loop bounds
+
+    const canRemove = oldIdx < oldLines.length && isNotLcsLine(oldLine, lcs, lcsIdx)
+    const canAdd = newIdx < newLines.length && isNotLcsLine(newLine, lcs, lcsIdx)
+
+    if (canRemove) {
+      pushLine(result, 'removed', oldLine)
       oldIdx++
+      continue
     }
-    // Si hay más líneas en new que no están en LCS
-    else if (newIdx < newLines.length && 
-             // eslint-disable-next-line security/detect-object-injection
-             (lcsIdx >= lcs.length || (newLines[newIdx] !== undefined && newLines[newIdx] !== lcs[lcsIdx]))) { // indices controlled by loop bounds
-      // eslint-disable-next-line security/detect-object-injection
-      const line = newLines[newIdx] // index controlled by loop bounds
-      if (line !== undefined) {
-        result.push({ type: 'added', text: line })
-      }
+
+    if (canAdd) {
+      pushLine(result, 'added', newLine)
       newIdx++
+      continue
     }
+
     // Línea común (igual en ambas)
-    else {
-      // eslint-disable-next-line security/detect-object-injection
-      const oldLine = oldLines[oldIdx] // index controlled by loop bounds
-      if (oldLine !== undefined) {
-        result.push({ type: 'equal', text: oldLine })
-      }
-      oldIdx++
-      newIdx++
-      lcsIdx++
-    }
+    pushLine(result, 'equal', oldLine)
+    oldIdx++
+    newIdx++
+    lcsIdx++
   }
 
   return result
 }
 
-/**
- * Calcula la secuencia común más larga (LCS) entre dos arrays
- */
-function computeLCS(arr1: string[], arr2: string[]): string[] {
+// Helpers para reducir complejidad cognitiva de computeLCS
+function buildLcsTable(arr1: string[], arr2: string[]): number[][] {
   const m = arr1.length
   const n = arr2.length
-  const dp: number[][] = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0))
+  const dp: number[][] = Array(m + 1)
+    .fill(null)
+    .map(() => Array(n + 1).fill(0))
 
-  // Construir tabla DP
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
-      if (arr1[i - 1] === arr2[j - 1]) {
-        const prev = dp[i - 1]?.[j - 1] ?? 0 // indices controlled by loop bounds
+      const a = arr1[i - 1] // index controlled by loop bounds
+      const b = arr2[j - 1] // index controlled by loop bounds
+
+      if (a === b) {
+        const prev = dp[i - 1]?.[j - 1] ?? 0
         // eslint-disable-next-line security/detect-object-injection
         dp[i][j] = prev + 1 // indices controlled by loop bounds
       } else {
@@ -210,32 +224,43 @@ function computeLCS(arr1: string[], arr2: string[]): string[] {
     }
   }
 
-  // Reconstruir LCS
+  return dp
+}
+
+function reconstructLcs(arr1: string[], arr2: string[], dp: number[][]): string[] {
   const lcs: string[] = []
-  let i = m
-  let j = n
+  let i = arr1.length
+  let j = arr2.length
 
   while (i > 0 && j > 0) {
-    const arr1Val = arr1[i - 1]
-    const arr2Val = arr2[j - 1]
-    if (arr1Val !== undefined && arr2Val !== undefined && arr1Val === arr2Val) {
-      lcs.unshift(arr1Val)
+    const a = arr1[i - 1] // index controlled by loop bounds
+    const b = arr2[j - 1] // index controlled by loop bounds
+
+    if (a !== undefined && b !== undefined && a === b) {
+      lcs.unshift(a)
       i--
       j--
-    } else {
-      // eslint-disable-next-line security/detect-object-injection
-      const up = dp[i - 1]?.[j] ?? 0 // indices controlled by loop bounds
-      // eslint-disable-next-line security/detect-object-injection
-      const left = dp[i]?.[j - 1] ?? 0 // indices controlled by loop bounds
-      if (up > left) {
-        i--
-      } else {
-        j--
-      }
+      continue
     }
+
+    // eslint-disable-next-line security/detect-object-injection
+    const up = dp[i - 1]?.[j] ?? 0 // indices controlled by loop bounds
+    // eslint-disable-next-line security/detect-object-injection
+    const left = dp[i]?.[j - 1] ?? 0 // indices controlled by loop bounds
+
+    if (up > left) i--
+    else j--
   }
 
   return lcs
+}
+
+/**
+ * Calcula la secuencia común más larga (LCS) entre dos arrays
+ */
+function computeLCS(arr1: string[], arr2: string[]): string[] {
+  const dp = buildLcsTable(arr1, arr2)
+  return reconstructLcs(arr1, arr2, dp)
 }
 
 /**
