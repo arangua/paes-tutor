@@ -201,6 +201,84 @@ export function verifyWebhookSignature(
   )
 }
 
+// Helpers para reducir complejidad cognitiva de retryFailedWebhooks
+function computeNextRetry(attempts: number): Date | null {
+  if (attempts >= 4) {
+    return null // No más reintentos después de 5 intentos
+  }
+  return new Date(Date.now() + Math.pow(2, attempts) * 60 * 1000) // Backoff exponencial
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+async function safeReadResponseText(response: Response): Promise<string> {
+  return await response.text().catch(() => 'No response body')
+}
+
+async function markDeliveryFailedAttempt(
+  deliveryId: string,
+  attempts: number
+): Promise<void> {
+  await prisma.webhookDelivery.update({
+    where: { id: deliveryId },
+    data: {
+      attempts: { increment: 1 },
+      lastAttempt: new Date(),
+      nextRetry: computeNextRetry(attempts),
+    },
+  })
+}
+
+async function processSingleRetryDelivery(delivery: {
+  id: string
+  payload: string
+  attempts: number
+  webhook: {
+    id: string
+    url: string
+    secret: string | null
+    active: boolean
+  }
+}): Promise<void> {
+  // Validar que el payload es JSON válido
+  JSON.parse(delivery.payload) as WebhookPayload
+
+  const signature = delivery.webhook.secret
+    ? generateSignature(delivery.payload, delivery.webhook.secret)
+    : null
+
+  const response = await fetch(delivery.webhook.url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'User-Agent': 'PAES-Tutor-Webhooks/1.0',
+      ...(signature && { 'X-Webhook-Signature': signature }),
+    },
+    body: delivery.payload,
+    signal: AbortSignal.timeout(10000),
+  })
+
+  const responseText = await safeReadResponseText(response)
+
+  // Actualizar con nextRetry calculado correctamente
+  await prisma.webhookDelivery.update({
+    where: { id: delivery.id },
+    data: {
+      status: response.ok ? 'success' : 'failed',
+      statusCode: response.status,
+      response: responseText.substring(0, 1000),
+      attempts: { increment: 1 },
+      lastAttempt: new Date(),
+      ...(response.ok && { deliveredAt: new Date() }),
+      ...(!response.ok && {
+        nextRetry: computeNextRetry(delivery.attempts),
+      }),
+    },
+  })
+}
+
 /**
  * Reintenta webhooks fallidos
  */
@@ -231,59 +309,13 @@ export async function retryFailedWebhooks(): Promise<void> {
       }
 
       try {
-        // Validar que el payload es JSON válido
-        JSON.parse(delivery.payload) as WebhookPayload
-
-        const signature = delivery.webhook.secret
-          ? generateSignature(delivery.payload, delivery.webhook.secret)
-          : null
-
-        const response = await fetch(delivery.webhook.url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'User-Agent': 'PAES-Tutor-Webhooks/1.0',
-            ...(signature && { 'X-Webhook-Signature': signature }),
-          },
-          body: delivery.payload,
-          signal: AbortSignal.timeout(10000),
-        })
-
-        const responseText = await response.text().catch(() => 'No response body')
-
-        await prisma.webhookDelivery.update({
-          where: { id: delivery.id },
-          data: {
-            status: response.ok ? 'success' : 'failed',
-            statusCode: response.status,
-            response: responseText.substring(0, 1000),
-            attempts: { increment: 1 },
-            lastAttempt: new Date(),
-            ...(response.ok && { deliveredAt: new Date() }),
-            ...(!response.ok && {
-              nextRetry:
-                delivery.attempts < 4
-                  ? new Date(Date.now() + Math.pow(2, delivery.attempts) * 60 * 1000) // Backoff exponencial
-                  : null, // No más reintentos después de 5 intentos
-            }),
-          },
-        })
+        await processSingleRetryDelivery(delivery)
       } catch (error) {
-        await prisma.webhookDelivery.update({
-          where: { id: delivery.id },
-          data: {
-            attempts: { increment: 1 },
-            lastAttempt: new Date(),
-            nextRetry:
-              delivery.attempts < 4
-                ? new Date(Date.now() + Math.pow(2, delivery.attempts) * 60 * 1000)
-                : null,
-          },
-        })
+        await markDeliveryFailedAttempt(delivery.id, delivery.attempts)
 
         logger.error(
           {
-            error: error instanceof Error ? error.message : String(error),
+            error: getErrorMessage(error),
             deliveryId: delivery.id,
           },
           'Error al reintentar webhook'
