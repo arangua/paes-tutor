@@ -232,7 +232,7 @@ export async function assertEnterpriseResponse<T = unknown>(
   }
 
   // Validar campos requeridos
-  if (requiredFields.length > 0 && typeof data === 'object' && data !== null) {
+  if (requiredFields.length > 0 && typeof data === 'object') {
     const dataObj = data as Record<string, unknown>
     for (const field of requiredFields) {
       expect(dataObj).toHaveProperty(field)

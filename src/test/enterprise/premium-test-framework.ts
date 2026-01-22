@@ -440,7 +440,7 @@ export class EnterpriseResponseValidator {
       }
 
       // Validar campos requeridos
-      if (config.requiredFields && typeof data === 'object' && data !== null) {
+      if (config.requiredFields && typeof data === 'object') {
         const dataObj = data as Record<string, unknown>
         for (const field of config.requiredFields) {
           expect(dataObj).toHaveProperty(field)
