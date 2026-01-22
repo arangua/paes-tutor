@@ -39,6 +39,36 @@ export function formatDuration(seconds: number | null | undefined): string {
   return `${mins}m ${secs}s`
 }
 
+// Helpers para reducir complejidad cognitiva de formatTimeAgo
+type DateInput = Date | string | number
+
+function parseToTimestamp(date: DateInput): number | null {
+  if (date instanceof Date) return date.getTime()
+
+  const parsed = new Date(date)
+  const ts = parsed.getTime()
+  return Number.isFinite(ts) && !Number.isNaN(ts) ? ts : null
+}
+
+function pluralize(value: number, singular: string, plural: string): string {
+  return value === 1 ? singular : plural
+}
+
+function formatUnit(value: number, singular: string, plural: string): string {
+  return `hace ${value} ${pluralize(value, singular, plural)}`
+}
+
+type TimeUnit = { threshold: number; seconds: number; singular: string; plural: string }
+
+const TIME_UNITS: TimeUnit[] = [
+  { threshold: 60, seconds: 1, singular: 'segundo', plural: 'segundos' }, // no se usa directo (manejamos "unos segundos")
+  { threshold: 3600, seconds: 60, singular: 'minuto', plural: 'minutos' },
+  { threshold: 86400, seconds: 3600, singular: 'hora', plural: 'horas' },
+  { threshold: 2592000, seconds: 86400, singular: 'día', plural: 'días' }, // 30 días
+  { threshold: 31536000, seconds: 2592000, singular: 'mes', plural: 'meses' }, // 12 meses
+  { threshold: Number.POSITIVE_INFINITY, seconds: 31536000, singular: 'año', plural: 'años' },
+]
+
 /**
  * Formatea una fecha a tiempo relativo (hace X tiempo)
  * 
@@ -52,49 +82,28 @@ export function formatDuration(seconds: number | null | undefined): string {
  */
 export function formatTimeAgo(date: Date | string | number): string {
   const now = Date.now()
-  let dateTime: number
-  
-  if (date instanceof Date) {
-    dateTime = date.getTime()
-  } else if (typeof date === 'string' || typeof date === 'number') {
-    const parsedDate = new Date(date)
-    dateTime = parsedDate.getTime()
-  } else {
-    return 'fecha inválida'
-  }
-  
-  // ✅ Enterprise: Validar que las fechas sean válidas
-  if (!Number.isFinite(now) || !Number.isFinite(dateTime) || Number.isNaN(dateTime)) {
-    return 'fecha inválida'
-  }
-  
+  const dateTime = parseToTimestamp(date)
+
+  if (!Number.isFinite(now) || dateTime === null) return 'fecha inválida'
+
   const diffMs = now - dateTime
-  if (!Number.isFinite(diffMs) || diffMs < 0) {
-    return 'hace unos segundos'
-  }
-  
-  // ✅ Enterprise: Usar funciones seguras para cálculos
+  if (!Number.isFinite(diffMs) || diffMs < 0) return 'hace unos segundos'
+
   const diffInSeconds = ensureInteger(safeDivide(diffMs, 1000, 0), 0)
-  
   if (diffInSeconds < 60) return 'hace unos segundos'
-  if (diffInSeconds < 3600) {
-    const minutes = ensureInteger(safeDivide(diffInSeconds, 60, 0), 0)
-    return `hace ${minutes} minuto${minutes !== 1 ? 's' : ''}`
+
+  for (const unit of TIME_UNITS) {
+    if (diffInSeconds < unit.threshold) {
+      const value = ensureInteger(safeDivide(diffInSeconds, unit.seconds, 0), 0)
+
+      if (unit.singular === 'mes') return formatUnit(value, 'mes', 'meses')
+      // "años" ya viene en plural correcto
+      return formatUnit(value, unit.singular, unit.plural)
+    }
   }
-  if (diffInSeconds < 86400) {
-    const hours = ensureInteger(safeDivide(diffInSeconds, 3600, 0), 0)
-    return `hace ${hours} hora${hours !== 1 ? 's' : ''}`
-  }
-  const days = ensureInteger(safeDivide(diffInSeconds, 86400, 0), 0)
-  if (days < 30) {
-    return `hace ${days} día${days !== 1 ? 's' : ''}`
-  }
-  const months = ensureInteger(safeDivide(days, 30, 0), 0)
-  if (months < 12) {
-    return `hace ${months} mes${months !== 1 ? 'es' : ''}`
-  }
-  const years = ensureInteger(safeDivide(months, 12, 0), 0)
-  return `hace ${years} año${years !== 1 ? 's' : ''}`
+
+  // Por construcción, nunca llega aquí.
+  return 'hace unos segundos'
 }
 
 /**
