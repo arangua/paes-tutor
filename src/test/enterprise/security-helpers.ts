@@ -230,6 +230,68 @@ export const secureEmailSchema = z.string()
 // HELPERS DE TESTING
 // ============================================
 
+// Helpers para reducir complejidad cognitiva de testSecurityEndpoint
+function pushVulnerability(
+  results: SecurityTestResult[],
+  v: SecurityTestResult['vulnerability'],
+  severity: SecurityTestResult['severity'],
+  description: string,
+  payload: string
+): void {
+  results.push({
+    vulnerability: v,
+    detected: true,
+    severity,
+    description,
+    payload,
+  })
+}
+
+async function runSqlInjectionTests(
+  endpoint: (input: string) => Promise<Response>,
+  results: SecurityTestResult[]
+): Promise<void> {
+  for (const payload of SecurityPayloads.sqlInjection) {
+    try {
+      const response = await endpoint(payload)
+      if (response.status === 200 || response.status === 500) {
+        pushVulnerability(
+          results,
+          'SQL Injection',
+          'critical',
+          'Endpoint may be vulnerable to SQL injection',
+          payload
+        )
+      }
+    } catch {
+      // Error puede indicar protección, pero también puede ser un problema
+    }
+  }
+}
+
+async function runXssTests(
+  endpoint: (input: string) => Promise<Response>,
+  results: SecurityTestResult[]
+): Promise<void> {
+  for (const payload of SecurityPayloads.xss) {
+    try {
+      const response = await endpoint(payload)
+      const text = await response.text()
+      if (text.includes(payload)) {
+        pushVulnerability(
+          results,
+          'Cross-Site Scripting (XSS)',
+          'high',
+          'Endpoint may be vulnerable to XSS',
+          payload
+        )
+      }
+    } catch {
+      // Error puede indicar protección
+    }
+  }
+}
+
 /**
  * Testea un endpoint contra payloads de seguridad
  */
@@ -239,45 +301,12 @@ export async function testSecurityEndpoint(
 ): Promise<SecurityTestResult[]> {
   const results: SecurityTestResult[] = []
 
-  // SQL Injection tests
   if (config.testSQLInjection !== false) {
-    for (const payload of SecurityPayloads.sqlInjection) {
-      try {
-        const response = await endpoint(payload)
-        if (response.status === 200 || response.status === 500) {
-          results.push({
-            vulnerability: 'SQL Injection',
-            detected: true,
-            severity: 'critical',
-            description: `Endpoint may be vulnerable to SQL injection`,
-            payload,
-          })
-        }
-      } catch {
-        // Error puede indicar protección, pero también puede ser un problema
-      }
-    }
+    await runSqlInjectionTests(endpoint, results)
   }
 
-  // XSS tests
   if (config.testXSS !== false) {
-    for (const payload of SecurityPayloads.xss) {
-      try {
-        const response = await endpoint(payload)
-        const text = await response.text()
-        if (text.includes(payload)) {
-          results.push({
-            vulnerability: 'Cross-Site Scripting (XSS)',
-            detected: true,
-            severity: 'high',
-            description: 'Endpoint may be vulnerable to XSS',
-            payload,
-          })
-        }
-      } catch {
-        // Error puede indicar protección
-      }
-    }
+    await runXssTests(endpoint, results)
   }
 
   return results
