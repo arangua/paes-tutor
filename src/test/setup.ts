@@ -143,16 +143,7 @@ vi.mock('next/server', () => {
         this.cookies = new Map()
         this.method = init?.method || 'GET'
         // Guardar el body como string si es BodyInit
-        if (init?.body) {
-          if (typeof init.body === 'string') {
-            this.body = init.body as any
-          } else {
-            // Para otros tipos de BodyInit, intentar convertirlos a string
-            this.body = init.body as any
-          }
-        } else {
-          this.body = null
-        }
+        this.body = init?.body ? (init.body as any) : null
       }
       async json() {
         if (this.body && typeof this.body === 'string') {

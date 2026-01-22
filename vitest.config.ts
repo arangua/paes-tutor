@@ -34,7 +34,7 @@ function nextServerMockPlugin() {
     name: 'next-server-mock',
     enforce: 'pre' as const,
 
-    resolveId(source: string, importer?: string) {
+    resolveId(source: string, _importer?: string) {
       // Normalizar también URLs file://
       let s = normalizeId(source)
       if (s.startsWith('file:///')) {
@@ -114,7 +114,7 @@ export default defineConfig({
     // poolOptions no está disponible en esta versión de Vitest
     // Reducir salida para evitar sobrecargar Cursor
     reporter: process.env.CI ? 'verbose' : 'default',
-    outputFile: process.env.CI ? undefined : undefined, // No escribir archivos de salida en desarrollo
+    outputFile: undefined, // No escribir archivos de salida en desarrollo
     // Limitar workers para reducir carga del sistema
     maxWorkers: process.env.CI ? 1 : Math.max(1, Math.floor(os.cpus().length / 2)),
     minWorkers: 1,
