@@ -1,7 +1,7 @@
 /**
  * Utilidades de Validación Centralizadas
  * 
- * Funciones helper reutilizables para validaciones comunes en todo el código.
+ * Funciones helper reutilizables para validaciones comunes en el código completo.
  * Estas funciones están en src/lib para que puedan ser usadas por cualquier módulo
  * sin violar la arquitectura (lib no debe depender de app/api).
  * 

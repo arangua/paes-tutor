@@ -232,7 +232,7 @@ export async function retryFailedWebhooks(): Promise<void> {
 
       try {
         // Validar que el payload es JSON válido
-        void (JSON.parse(delivery.payload) as WebhookPayload)
+        JSON.parse(delivery.payload) as WebhookPayload
 
         const signature = delivery.webhook.secret
           ? generateSignature(delivery.payload, delivery.webhook.secret)

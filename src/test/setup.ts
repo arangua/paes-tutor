@@ -305,7 +305,7 @@ beforeEach(() => {
   globalThis.__mockLogApiRequest__?.mockReset()
   globalThis.__mockLogApiRequest__?.mockResolvedValue(undefined)
   
-  // ✅ Default seguro para TODO el repo: NO autenticado
+  // ✅ Default seguro para el repositorio completo: NO autenticado
   globalThis.__mockGetAuthenticatedUserWithStudent__?.mockReset()
   globalThis.__mockGetAuthenticatedUserWithStudent__?.mockResolvedValue(null)
 })
