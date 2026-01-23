@@ -96,5 +96,14 @@ eslint-*-output.txt
 # Test / tool outputs (local)
 coverage/
 
+# SonarQube / SonarCloud artifacts
+.scannerwork/
+
+# Stryker mutation testing artifacts
+.stryker-tmp/
+
+# Turbo build cache
+.turbo/
+
 # OS / editor noise
 Thumbs.db
