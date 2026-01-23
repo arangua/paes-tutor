@@ -9,7 +9,11 @@ interface SkeletonLoaderProps {
   className?: string
 }
 
-export function SkeletonLoader({ variant = 'card', count = 1, className }: SkeletonLoaderProps) {
+export function SkeletonLoader({
+  variant = 'card',
+  count = 1,
+  className,
+}: Readonly<SkeletonLoaderProps>) {
   if (variant === 'card') {
     return (
       <div className={className}>

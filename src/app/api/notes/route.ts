@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getCurrentUser } from '@/lib/get-session'
+import { getAuthenticatedUserWithStudent } from '@/lib/get-session'
 import { withRateLimit } from '@/lib/rate-limit-middleware'
 import { z } from 'zod'
 import { logger } from '@/lib/logger'
@@ -22,29 +22,24 @@ const updateNoteSchema = z.object({
 })
 
 const getNotesQuerySchema = z.object({
-  questionId: z.string().cuid().optional(),
-  topicId: z.string().cuid().optional(),
+  questionId: z.cuid({ error: 'questionId debe ser un CUID válido' }).optional(),
+  topicId: z.cuid({ error: 'topicId debe ser un CUID válido' }).optional(),
   search: z.string().min(1).max(200).optional(),
 })
 
 const noteIdQuerySchema = z.object({
-  noteId: z.string().cuid().min(1),
+  noteId: z.cuid({ error: 'noteId debe ser un CUID válido' }).min(1),
 })
 
 export async function GET(request: NextRequest) {
   return withRateLimit(request, async () => {
     try {
-      const user = await getCurrentUser()
-      if (!user?.email) {
+      const dbUser = await getAuthenticatedUserWithStudent()
+      if (!dbUser?.email) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
       }
 
-      const dbUser = await prisma.user.findUnique({
-        where: { email: user.email },
-        include: { student: true },
-      })
-
-      if (!dbUser?.student) {
+      if (!dbUser.student) {
         return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 })
       }
 
@@ -55,7 +50,7 @@ export async function GET(request: NextRequest) {
       const queryValidation = getNotesQuerySchema.safeParse(queryParams)
       if (!queryValidation.success) {
         return NextResponse.json(
-          { error: 'Parámetros de consulta inválidos', details: queryValidation.error.errors },
+          { error: 'Parámetros de consulta inválidos', details: queryValidation.error.issues },
           { status: 400 }
         )
       }
@@ -71,7 +66,7 @@ export async function GET(request: NextRequest) {
           content?: { contains: string }
         }>
       } = {
-        studentId: user.student.id,
+        studentId: dbUser.student.id,
       }
 
       if (questionId) {
@@ -131,17 +126,12 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   return withRateLimit(request, async () => {
     try {
-      const user = await getCurrentUser()
-      if (!user?.email) {
+      const dbUser = await getAuthenticatedUserWithStudent()
+      if (!dbUser?.email) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
       }
 
-      const dbUser = await prisma.user.findUnique({
-        where: { email: user.email },
-        include: { student: true },
-      })
-
-      if (!dbUser?.student) {
+      if (!dbUser.student) {
         return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 })
       }
 
@@ -149,7 +139,7 @@ export async function POST(request: NextRequest) {
       const validation = createNoteSchema.safeParse(body)
       if (!validation.success) {
         return NextResponse.json(
-          { error: 'Datos inválidos', details: validation.error.errors },
+          { error: 'Datos inválidos', details: validation.error.issues },
           { status: 400 }
         )
       }
@@ -222,17 +212,12 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   return withRateLimit(request, async () => {
     try {
-      const user = await getCurrentUser()
-      if (!user?.email) {
+      const dbUser = await getAuthenticatedUserWithStudent()
+      if (!dbUser?.email) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
       }
 
-      const dbUser = await prisma.user.findUnique({
-        where: { email: user.email },
-        include: { student: true },
-      })
-
-      if (!dbUser?.student) {
+      if (!dbUser.student) {
         return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 })
       }
 
@@ -243,7 +228,7 @@ export async function PUT(request: NextRequest) {
       const queryValidation = noteIdQuerySchema.safeParse(queryParams)
       if (!queryValidation.success) {
         return NextResponse.json(
-          { error: 'ID de nota inválido', details: queryValidation.error.errors },
+          { error: 'ID de nota inválido', details: queryValidation.error.issues },
           { status: 400 }
         )
       }
@@ -254,7 +239,36 @@ export async function PUT(request: NextRequest) {
       const validation = updateNoteSchema.safeParse(body)
       if (!validation.success) {
         return NextResponse.json(
-          { error: 'Datos inválidos', details: validation.error.errors },
+          { error: 'Datos inválidos', details: validation.error.issues },
+          { status: 400 }
+        )
+      }
+
+      const { title, content } = validation.data
+
+      // Validar tamaño de contenido
+      if (content !== undefined) {
+        const { LIMIT_CONSTANTS } = await import('@/lib/constants')
+        const contentSizeBytes = Buffer.from(content, 'utf-8').length
+        if (contentSizeBytes > LIMIT_CONSTANTS.MAX_NOTE_CONTENT_SIZE) {
+          return NextResponse.json(
+            {
+              error: 'Contenido demasiado grande',
+              details: `El contenido excede el tamaño máximo de ${LIMIT_CONSTANTS.MAX_NOTE_CONTENT_SIZE / (1024 * 1024)} MB. Tamaño actual: ${(contentSizeBytes / (1024 * 1024)).toFixed(2)} MB`,
+            },
+            { status: 400 }
+          )
+        }
+      }
+
+      // Validar longitud de título
+      if (title !== undefined && title.length > 200) {
+        const { LIMIT_CONSTANTS } = await import('@/lib/constants')
+        return NextResponse.json(
+          {
+            error: 'Título demasiado largo',
+            details: `El título excede el máximo de ${LIMIT_CONSTANTS.MAX_NOTE_TITLE_LENGTH} caracteres. Longitud actual: ${title.length}`,
+          },
           { status: 400 }
         )
       }
@@ -263,12 +277,36 @@ export async function PUT(request: NextRequest) {
       const existingNote = await prisma.studyNote.findFirst({
         where: {
           id: noteId,
-          studentId: user.student.id,
+          studentId: dbUser.student.id,
         },
       })
 
       if (!existingNote) {
         return NextResponse.json({ error: 'Nota no encontrada' }, { status: 404 })
+      }
+
+      // Verificar si hay cambios reales antes de guardar versión
+      // Comparar solo los campos que se están actualizando
+      // También validar que el contenido no esté vacío (solo espacios en blanco)
+      const hasChanges =
+        (validation.data.title !== undefined &&
+          validation.data.title.trim() !== '' &&
+          validation.data.title.trim() !== existingNote.title.trim()) ||
+        (validation.data.content !== undefined &&
+          validation.data.content.trim() !== '' &&
+          validation.data.content.trim() !== existingNote.content.trim()) ||
+        (validation.data.tags !== undefined &&
+          (validation.data.tags || '').trim() !== (existingNote.tags || '').trim())
+
+      // Validar que el contenido final no esté vacío
+      const finalTitle = validation.data.title !== undefined ? validation.data.title : existingNote.title
+      const finalContent = validation.data.content !== undefined ? validation.data.content : existingNote.content
+
+      if (!finalTitle.trim() || !finalContent.trim()) {
+        return NextResponse.json(
+          { error: 'El título y el contenido no pueden estar vacíos' },
+          { status: 400 }
+        )
       }
 
       const updateData: {
@@ -283,29 +321,71 @@ export async function PUT(request: NextRequest) {
         updateData.tags = validation.data.tags || null
       }
 
-      const note = await prisma.studyNote.update({
-        where: { id: noteId },
-        data: updateData,
-        include: {
-          question: {
-            include: {
-              subject: {
-                select: {
-                  nombre: true,
+      // Usar transacción para garantizar consistencia: guardar versión, limpiar antiguas y actualizar nota de forma atómica
+      const note = await prisma.$transaction(async (tx) => {
+        // Guardar versión antes de actualizar si hay cambios
+        if (hasChanges) {
+          // Guardar versión actual antes de actualizar
+          await tx.studyNoteVersion.create({
+            data: {
+              noteId: existingNote.id,
+              title: existingNote.title,
+              content: existingNote.content,
+              tags: existingNote.tags,
+              createdBy: dbUser.student.id,
+            },
+          })
+
+          // Limpiar versiones antiguas (mantener solo las últimas MAX_NOTE_VERSIONS)
+          // NO eliminar versiones marcadas como importantes
+          const { LIMIT_CONSTANTS } = await import('@/lib/constants')
+          const allVersions = await tx.studyNoteVersion.findMany({
+            where: { 
+              noteId: existingNote.id,
+              isImportant: false, // No considerar versiones importantes para limpieza
+            },
+            orderBy: { createdAt: 'desc' },
+            select: { id: true },
+          })
+
+          // Mantener solo las últimas MAX_NOTE_VERSIONS (excluyendo versiones importantes)
+          if (allVersions.length >= LIMIT_CONSTANTS.MAX_NOTE_VERSIONS) {
+            const versionsToDelete = allVersions.slice(LIMIT_CONSTANTS.MAX_NOTE_VERSIONS - 1)
+            if (versionsToDelete.length > 0) {
+              await tx.studyNoteVersion.deleteMany({
+                where: {
+                  id: { in: versionsToDelete.map((v) => v.id) },
+                },
+              })
+            }
+          }
+        }
+
+        // Actualizar la nota
+        return await tx.studyNote.update({
+          where: { id: noteId },
+          data: updateData,
+          include: {
+            question: {
+              include: {
+                subject: {
+                  select: {
+                    nombre: true,
+                  },
+                },
+              },
+            },
+            topic: {
+              include: {
+                subject: {
+                  select: {
+                    nombre: true,
+                  },
                 },
               },
             },
           },
-          topic: {
-            include: {
-              subject: {
-                select: {
-                  nombre: true,
-                },
-              },
-            },
-          },
-        },
+        })
       })
 
       return NextResponse.json({
@@ -321,17 +401,12 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   return withRateLimit(request, async () => {
     try {
-      const user = await getCurrentUser()
-      if (!user?.email) {
+      const dbUser = await getAuthenticatedUserWithStudent()
+      if (!dbUser?.email) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
       }
 
-      const dbUser = await prisma.user.findUnique({
-        where: { email: user.email },
-        include: { student: true },
-      })
-
-      if (!dbUser?.student) {
+      if (!dbUser.student) {
         return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 })
       }
 
@@ -342,7 +417,7 @@ export async function DELETE(request: NextRequest) {
       const queryValidation = noteIdQuerySchema.safeParse(queryParams)
       if (!queryValidation.success) {
         return NextResponse.json(
-          { error: 'ID de nota inválido', details: queryValidation.error.errors },
+          { error: 'ID de nota inválido', details: queryValidation.error.issues },
           { status: 400 }
         )
       }
@@ -352,7 +427,7 @@ export async function DELETE(request: NextRequest) {
       const note = await prisma.studyNote.findFirst({
         where: {
           id: noteId,
-          studentId: user.student.id,
+          studentId: dbUser.student.id,
         },
       })
 

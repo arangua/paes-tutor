@@ -1,32 +1,21 @@
-// Mock de next/server ANTES de cualquier import
-import { vi } from 'vitest'
+// @vitest-environment node
+/**
+ * Tests Enterprise para GET /api/exams
+ * 
+ * Usa shared enterprise test helpers para mantener tests limpios y mantenibles.
+ */
 
-vi.mock('next/server', async () => {
-  const actual = await vi.importActual('next/server')
-  return {
-    ...actual,
-    NextRequest: class {
-      url: string
-      constructor(url: string) {
-        this.url = url
-      }
-    },
-    NextResponse: {
-      json: (body: any, init?: { status?: number }) => {
-        return new Response(JSON.stringify(body), {
-          status: init?.status || 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
-      },
-    },
-  }
-})
-
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { GET } from './route'
 import { prisma } from '@/lib/prisma'
-import { getCurrentStudentId } from '@/lib/get-session'
-import { NextRequest } from 'next/server'
+import {
+  setupStandardAuth,
+  setupUnauthenticated,
+  createTestRequest,
+  assertErrorResponse,
+  SHARED_TEST_IDS,
+  clearAllMocks,
+} from '@/test/enterprise/shared-test-helpers'
 
 vi.mock('@/lib/prisma', () => ({
   prisma: {
@@ -37,17 +26,33 @@ vi.mock('@/lib/prisma', () => ({
   },
 }))
 
-vi.mock('@/lib/get-session', () => ({
-  getCurrentStudentId: vi.fn(),
+vi.mock('@/lib/get-session', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/get-session')>('@/lib/get-session')
+  return {
+    ...actual,
+    getSession: vi.fn(),
+    getCurrentUser: vi.fn(),
+    getCurrentStudentId: vi.fn(),
+    getAuthenticatedUserWithStudent: vi.fn(),
+  }
+})
+
+vi.mock('@/lib/auth', () => ({
+  auth: vi.fn(),
 }))
 
 vi.mock('@/lib/rate-limit-middleware', () => ({
-  withRateLimit: vi.fn((req: NextRequest, handler: () => Promise<Response>) => handler()),
+  withRateLimit: vi.fn((req: any, handler: () => Promise<Response>) => handler()),
 }))
 
 vi.mock('@/lib/logger', () => ({
   logApiRequest: vi.fn(),
   logApiError: vi.fn(),
+  logger: {
+    warn: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+  },
 }))
 
 vi.mock('@/lib/cache', () => ({
@@ -59,7 +64,7 @@ vi.mock('@/lib/cache', () => ({
 }))
 
 vi.mock('@/lib/api-helpers', () => ({
-  validateQuery: vi.fn((req: NextRequest, schema: any) => ({
+  validateQuery: vi.fn((_req: any, _schema: any) => ({
     success: true,
     data: {
       subjectId: undefined,
@@ -80,25 +85,45 @@ vi.mock('@/lib/validations', () => ({
   examQuerySchema: {},
 }))
 
+vi.mock('@/lib/monitoring', () => ({
+  measurePerformance: vi.fn((_name: string, fn: () => Promise<any>) => fn()),
+  trackMetric: vi.fn(),
+  trackError: vi.fn(),
+}))
+
+vi.mock('@/app/api/notes/versions/circuit-breaker', () => ({
+  circuitBreakers: {
+    database: {
+      execute: vi.fn((fn: () => Promise<any>, _fallback?: () => Promise<any>) => fn()),
+    },
+  },
+}))
+
+vi.mock('@/lib/constants', () => ({
+  TIME_CONSTANTS: {
+    EXAMS_CACHE_TTL_MS: 300000, // 5 minutos
+  },
+}))
+
 describe('GET /api/exams', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    // Mock autenticación por defecto
-    vi.mocked(getCurrentStudentId).mockResolvedValue('student-123')
+    clearAllMocks()
   })
 
   it('debe retornar error 401 si no está autenticado', async () => {
-    vi.mocked(getCurrentStudentId).mockResolvedValue(null)
+    // ✅ Enterprise: Usar shared helpers
+    setupUnauthenticated()
 
-    const request = new NextRequest('http://localhost:3000/api/exams')
+    const request = createTestRequest({ url: 'http://localhost:3000/api/exams' })
     const response = await GET(request)
-    const data = await response.json()
 
-    expect(response.status).toBe(401)
-    expect(data.error).toBe('No autorizado')
+    await assertErrorResponse(response, 401, 'No autorizado')
   })
 
   it('debe retornar la lista de exámenes', async () => {
+    // ✅ Enterprise: Usar shared helpers
+    await setupStandardAuth({ studentId: SHARED_TEST_IDS.STUDENT })
+
     const mockExams = [
       {
         id: '1',
@@ -118,11 +143,11 @@ describe('GET /api/exams', () => {
     vi.mocked(prisma.exam.findMany).mockResolvedValue(mockExams as any)
     vi.mocked(prisma.exam.count).mockResolvedValue(1)
 
-    const request = new NextRequest('http://localhost:3000/api/exams')
+    const request = createTestRequest({ url: 'http://localhost:3000/api/exams' })
     const response = await GET(request)
-    const data = await response.json()
 
     expect(response.status).toBe(200)
+    const data = await response.json()
     expect(data).toHaveProperty('exams')
     expect(data).toHaveProperty('pagination')
     expect(Array.isArray(data.exams)).toBe(true)
@@ -132,28 +157,30 @@ describe('GET /api/exams', () => {
   })
 
   it('debe retornar array vacío si no hay exámenes', async () => {
+    // ✅ Enterprise: Usar shared helpers
+    await setupStandardAuth({ studentId: SHARED_TEST_IDS.STUDENT })
+
     vi.mocked(prisma.exam.findMany).mockResolvedValue([])
     vi.mocked(prisma.exam.count).mockResolvedValue(0)
 
-    const request = new NextRequest('http://localhost:3000/api/exams')
+    const request = createTestRequest({ url: 'http://localhost:3000/api/exams' })
     const response = await GET(request)
-    const data = await response.json()
 
     expect(response.status).toBe(200)
-    expect(data).toHaveProperty('exams')
+    const data = await response.json()
     expect(Array.isArray(data.exams)).toBe(true)
     expect(data.exams).toHaveLength(0)
     expect(data.pagination.total).toBe(0)
   })
 
   it('debe manejar errores correctamente', async () => {
+    // ✅ Enterprise: Usar shared helpers
+    await setupStandardAuth({ studentId: SHARED_TEST_IDS.STUDENT })
     vi.mocked(prisma.exam.findMany).mockRejectedValueOnce(new Error('Database error'))
 
-    const request = new NextRequest('http://localhost:3000/api/exams')
+    const request = createTestRequest({ url: 'http://localhost:3000/api/exams' })
     const response = await GET(request)
-    const data = await response.json()
 
-    expect(response.status).toBe(500)
-    expect(data.error).toBe('Database error')
+    await assertErrorResponse(response, 500)
   })
 })

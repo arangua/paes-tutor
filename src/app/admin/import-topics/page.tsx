@@ -25,7 +25,6 @@ import {
   FileJson,
   File,
 } from 'lucide-react'
-import Link from 'next/link'
 import { Breadcrumbs } from '@/components/layout/breadcrumbs'
 
 const SUBJECTS = [
@@ -169,8 +168,100 @@ export default function ImportTopicsPage() {
       }
 
       return topics
-    } catch (error) {
+    } catch {
       return null
+    }
+  }
+
+  // Helper: Validar y preparar request según tipo de tab
+  const prepareImportRequest = async (): Promise<Response | null> => {
+    if (activeTab === 'pdf') {
+      if (!pdfFile) {
+        setResult({
+          success: false,
+          message: 'Archivo PDF requerido',
+          details: 'Por favor, selecciona un archivo PDF del temario.',
+        })
+        return null
+      }
+      const formData = new FormData()
+      formData.append('pdfFile', pdfFile)
+      if (subjectName) {
+        formData.append('subjectName', subjectName)
+      }
+      return fetch('/api/admin/import-topics', { method: 'POST', body: formData })
+    }
+
+    if (activeTab === 'csv-file') {
+      if (!csvFile) {
+        setResult({
+          success: false,
+          message: 'Archivo requerido',
+          details: 'Por favor, selecciona un archivo CSV.',
+        })
+        return null
+      }
+      const formData = new FormData()
+      formData.append('csvFile', csvFile)
+      return fetch('/api/admin/import-topics', { method: 'POST', body: formData })
+    }
+
+    if (activeTab === 'csv-text') {
+      if (!csvText.trim()) {
+        setResult({
+          success: false,
+          message: 'Texto CSV requerido',
+          details: 'Por favor, ingresa el contenido CSV.',
+        })
+        return null
+      }
+      const formData = new FormData()
+      formData.append('csvText', csvText)
+      return fetch('/api/admin/import-topics', { method: 'POST', body: formData })
+    }
+
+    // JSON
+    if (!jsonText.trim()) {
+      setResult({
+        success: false,
+        message: 'JSON requerido',
+        details: 'Por favor, ingresa el JSON con los temas.',
+      })
+      return null
+    }
+
+    const topics = validateJsonFormat(jsonText)
+    if (!topics) {
+      setResult({
+        success: false,
+        message: 'JSON inválido',
+        details: 'El formato JSON no es válido. Cada tema debe tener: asignatura, ejeTematico, nombre.',
+      })
+      return null
+    }
+
+    return fetch('/api/admin/import-topics', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topics }),
+    })
+  }
+
+  // Helper: Limpiar formularios después de importación exitosa
+  const clearFormAfterSuccess = () => {
+    if (activeTab === 'pdf') {
+      setPdfFile(null)
+      setSubjectName(undefined)
+      const fileInput = document.getElementById('pdfFile') as HTMLInputElement
+      if (fileInput) fileInput.value = ''
+    } else if (activeTab === 'csv-file') {
+      setCsvFile(null)
+      const fileInput = document.getElementById('csvFile') as HTMLInputElement
+      if (fileInput) fileInput.value = ''
+    } else if (activeTab === 'csv-text') {
+      setCsvText('')
+    } else {
+      setJsonText('')
     }
   }
 
@@ -179,100 +270,13 @@ export default function ImportTopicsPage() {
     setResult(null)
 
     try {
-      let response: Response
-
-      if (activeTab === 'pdf') {
-        if (!pdfFile) {
-          setResult({
-            success: false,
-            message: 'Archivo PDF requerido',
-            details: 'Por favor, selecciona un archivo PDF del temario.',
-          })
-          setLoading(false)
-          return
-        }
-
-        const formData = new FormData()
-        formData.append('pdfFile', pdfFile)
-        if (subjectName) {
-          formData.append('subjectName', subjectName)
-        }
-
-        response = await fetch('/api/admin/import-topics', {
-          method: 'POST',
-          body: formData,
-        })
-      } else if (activeTab === 'csv-file') {
-        if (!csvFile) {
-          setResult({
-            success: false,
-            message: 'Archivo requerido',
-            details: 'Por favor, selecciona un archivo CSV.',
-          })
-          setLoading(false)
-          return
-        }
-
-        const formData = new FormData()
-        formData.append('csvFile', csvFile)
-
-        response = await fetch('/api/admin/import-topics', {
-          method: 'POST',
-          body: formData,
-        })
-      } else if (activeTab === 'csv-text') {
-        if (!csvText.trim()) {
-          setResult({
-            success: false,
-            message: 'Texto CSV requerido',
-            details: 'Por favor, ingresa el contenido CSV.',
-          })
-          setLoading(false)
-          return
-        }
-
-        const formData = new FormData()
-        formData.append('csvText', csvText)
-
-        response = await fetch('/api/admin/import-topics', {
-          method: 'POST',
-          body: formData,
-        })
-      } else {
-        // JSON
-        if (!jsonText.trim()) {
-          setResult({
-            success: false,
-            message: 'JSON requerido',
-            details: 'Por favor, ingresa el JSON con los temas.',
-          })
-          setLoading(false)
-          return
-        }
-
-        const topics = validateJsonFormat(jsonText)
-        if (!topics) {
-          setResult({
-            success: false,
-            message: 'JSON inválido',
-            details:
-              'El formato JSON no es válido. Cada tema debe tener: asignatura, ejeTematico, nombre.',
-          })
-          setLoading(false)
-          return
-        }
-
-        response = await fetch('/api/admin/import-topics', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ topics }),
-        })
+      const response = await prepareImportRequest()
+      if (!response) {
+        setLoading(false)
+        return
       }
 
       const data = await response.json()
-
       if (!response.ok) {
         throw new Error(data.error || 'Error al importar temarios')
       }
@@ -284,25 +288,7 @@ export default function ImportTopicsPage() {
         result: data.result,
       })
 
-      // Limpiar formularios si fue exitoso
-      if (activeTab === 'pdf') {
-        setPdfFile(null)
-        setSubjectName(undefined)
-        const fileInput = document.getElementById('pdfFile') as HTMLInputElement
-        if (fileInput) {
-          fileInput.value = ''
-        }
-      } else if (activeTab === 'csv-file') {
-        setCsvFile(null)
-        const fileInput = document.getElementById('csvFile') as HTMLInputElement
-        if (fileInput) {
-          fileInput.value = ''
-        }
-      } else if (activeTab === 'csv-text') {
-        setCsvText('')
-      } else {
-        setJsonText('')
-      }
+      clearFormAfterSuccess()
     } catch (error) {
       setResult({
         success: false,
@@ -387,6 +373,7 @@ Competencia Lectora,Comprensión lectora,Inferencia,Capacidad de inferir informa
                 <Label htmlFor="pdfFile">Archivo PDF del Temario *</Label>
                 <Input
                   id="pdfFile"
+                  name="pdfFile"
                   type="file"
                   accept=".pdf,application/pdf"
                   onChange={handlePdfFileChange}
@@ -436,6 +423,7 @@ Competencia Lectora,Comprensión lectora,Inferencia,Capacidad de inferir informa
                 <Label htmlFor="csvFile">Archivo CSV *</Label>
                 <Input
                   id="csvFile"
+                  name="csvFile"
                   type="file"
                   accept=".csv,.txt"
                   onChange={handleCsvFileChange}

@@ -1,8 +1,64 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+// @vitest-environment node
+/**
+ * Tests Enterprise para GET /api/student
+ * 
+ * Usa shared enterprise test helpers para mantener tests limpios y mantenibles.
+ */
+
+// Mock de next/server ANTES de cualquier import
+import { vi } from 'vitest'
+
+vi.mock('next/server', () => {
+  return {
+    NextRequest: class NextRequest {
+      url: string
+      nextUrl: { searchParams: URLSearchParams; href: string; pathname: string }
+      headers: Headers
+      body: any
+      method: string
+      constructor(url: string, init?: any) {
+        this.url = url
+        const urlObj = new URL(url)
+        this.nextUrl = {
+          searchParams: urlObj.searchParams,
+          href: url,
+          pathname: urlObj.pathname,
+        }
+        this.headers = new Headers()
+        this.body = init?.body
+        this.method = init?.method || 'GET'
+      }
+      async json() {
+        if (typeof this.body === 'string') {
+          return JSON.parse(this.body)
+        }
+        return this.body || {}
+      }
+    },
+    NextResponse: {
+      json: (body: any, init?: { status?: number }) => {
+        return new Response(JSON.stringify(body), {
+          status: init?.status || 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      },
+    },
+  }
+})
+
+import { describe, it, expect, beforeEach } from 'vitest'
 import { GET } from './route'
 import { prisma } from '@/lib/prisma'
-import { getCurrentStudentId } from '@/lib/get-session'
-import { NextRequest } from 'next/server'
+import { getSession } from '@/lib/get-session'
+import {
+  setupStandardAuth,
+  setupUnauthenticated,
+  createTestRequest,
+  assertSuccessResponse,
+  assertErrorResponse,
+  SHARED_TEST_IDS,
+  clearAllMocks,
+} from '@/test/enterprise/shared-test-helpers'
 
 // Mock de Prisma y autenticación
 vi.mock('@/lib/prisma', () => ({
@@ -13,15 +69,28 @@ vi.mock('@/lib/prisma', () => ({
   },
 }))
 
-vi.mock('@/lib/get-session', () => ({
-  getCurrentStudentId: vi.fn(),
-}))
+vi.mock('@/lib/get-session', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/get-session')>('@/lib/get-session')
+  return {
+    ...actual,
+    getSession: vi.fn(),
+    getCurrentUser: vi.fn(),
+    getCurrentStudentId: vi.fn(),
+    getAuthenticatedUserWithStudent: vi.fn(),
+  }
+})
 
 vi.mock('@/lib/rate-limit-middleware', () => ({
-  withRateLimit: vi.fn((req: NextRequest, handler: () => Promise<Response>) => handler()),
+  withRateLimit: vi.fn((req: any, handler: () => Promise<Response>) => handler()),
 }))
 
 vi.mock('@/lib/logger', () => ({
+  logger: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
   logApiRequest: vi.fn(),
   logApiError: vi.fn(),
 }))
@@ -33,19 +102,21 @@ vi.mock('@/lib/cache', () => {
     cacheKeys: {
       student: (id: string) => `student:${id}`,
     },
-    __mockGetCached: mockGetCached, // Exportar para uso en tests
+    __mockGetCached: mockGetCached,
   }
 })
 
 describe('GET /api/student', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    vi.mocked(getCurrentStudentId).mockResolvedValue('student-1')
+    clearAllMocks()
   })
 
   it('debe retornar el estudiante con intentos y métricas', async () => {
+    // ✅ Enterprise: Usar shared helpers
+    await setupStandardAuth({ studentId: SHARED_TEST_IDS.STUDENT })
+
     const mockStudent = {
-      id: 'student-1',
+      id: SHARED_TEST_IDS.STUDENT,
       nombre: 'Matías',
       attempts: [
         {
@@ -67,49 +138,75 @@ describe('GET /api/student', () => {
       metrics: [],
     }
 
+    const { getCached } = await import('@/lib/cache')
+    vi.mocked(getCached).mockResolvedValue(mockStudent as any)
     vi.mocked(prisma.student.findUnique).mockResolvedValue(mockStudent as any)
 
-    const request = new NextRequest('http://localhost:3000/api/student')
-    const response = await GET(request)
-    const data = await response.json()
+    vi.mocked(getSession).mockResolvedValue({
+      user: {
+        id: SHARED_TEST_IDS.USER,
+        email: 'test@example.com',
+        studentId: SHARED_TEST_IDS.STUDENT,
+      },
+    } as any)
 
-    expect(response.status).toBe(200)
+    const request = createTestRequest({ url: 'http://localhost:3000/api/student' })
+    const response = await GET(request)
+
+    await assertSuccessResponse(response, 200, {
+      requiredFields: ['nombre', 'attempts'],
+    })
+
+    const data = await response.json()
     expect(data.nombre).toBe('Matías')
     expect(data.attempts).toHaveLength(1)
   })
 
   it('debe retornar 401 si no está autenticado', async () => {
-    vi.mocked(getCurrentStudentId).mockResolvedValue(null)
+    // ✅ Enterprise: Usar shared helpers
+    setupUnauthenticated()
+    vi.mocked(getSession).mockResolvedValue(null)
 
-    const request = new NextRequest('http://localhost:3000/api/student')
+    const request = createTestRequest({ url: 'http://localhost:3000/api/student' })
     const response = await GET(request)
-    const data = await response.json()
 
-    expect(response.status).toBe(401)
-    expect(data.error).toBe('No autorizado')
+    await assertErrorResponse(response, 401, 'No autorizado')
   })
 
-  it('debe retornar 404 si no hay estudiante', async () => {
+  it('debe retornar información del usuario si no hay estudiante', async () => {
+    // ✅ Enterprise: Usar shared helpers
+    await setupStandardAuth({ hasStudent: false })
+
+    const { getCached } = await import('@/lib/cache')
+    vi.mocked(getCached).mockResolvedValue(null)
     vi.mocked(prisma.student.findUnique).mockResolvedValue(null)
+    
+    vi.mocked(getSession).mockResolvedValue({
+      user: {
+        id: SHARED_TEST_IDS.USER,
+        email: 'test@example.com',
+        name: 'Test User',
+        studentId: null,
+      },
+    } as any)
 
-    const request = new NextRequest('http://localhost:3000/api/student')
+    const request = createTestRequest({ url: 'http://localhost:3000/api/student' })
     const response = await GET(request)
-    const data = await response.json()
 
-    expect(response.status).toBe(404)
-    expect(data.error).toBe('Estudiante no encontrado')
+    await assertSuccessResponse(response, 200)
+    const data = await response.json()
+    expect(data.isStudent).toBe(false)
+    expect(data.nombre).toBe('Test User')
   })
 
   it('debe manejar errores correctamente', async () => {
-    // Mock getCached para que lance el error
-    const { getCached } = await import('@/lib/cache')
-    vi.mocked(getCached).mockRejectedValueOnce(new Error('Database error'))
+    // ✅ Enterprise: Usar shared helpers
+    await setupStandardAuth()
+    vi.mocked(getSession).mockRejectedValue(new Error('Database error'))
 
-    const request = new NextRequest('http://localhost:3000/api/student')
+    const request = createTestRequest({ url: 'http://localhost:3000/api/student' })
     const response = await GET(request)
-    const data = await response.json()
 
-    expect(response.status).toBe(500)
-    expect(data.error).toBe('Database error')
+    await assertErrorResponse(response, 500)
   })
 })

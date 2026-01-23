@@ -10,7 +10,6 @@
 
 import 'dotenv/config'
 import { PrismaClient } from '@prisma/client'
-import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
 import fs from 'fs/promises'
 import fsSync from 'fs'
 import path from 'path'
@@ -18,14 +17,35 @@ import https from 'https'
 import http from 'http'
 // Importación de pdf-parse v2
 // La versión 2 usa una clase PDFParse en lugar de una función directa
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
 const { PDFParse } = require('pdf-parse')
 
-// Configurar Prisma
-const adapter = new PrismaBetterSqlite3({
-  url: process.env.DATABASE_URL || 'file:./paes.db',
-})
+// ⛔ GUARD CRÍTICO: Validar DATABASE_URL antes de crear PrismaClient
+const databaseUrl = process.env.DATABASE_URL
+if (!databaseUrl) {
+  throw new Error(
+    'DATABASE_URL no está configurada. Debe configurar una URL de PostgreSQL (Neon) en .env.local'
+  )
+}
 
-const prisma = new PrismaClient({ adapter }) as any
+if (databaseUrl.startsWith('file:')) {
+  throw new Error(
+    `❌ SQLite detectado en DATABASE_URL. Este proyecto solo usa PostgreSQL (Neon).\n` +
+    `   DATABASE_URL actual: ${databaseUrl.substring(0, 50)}...\n` +
+    `   Configure DATABASE_URL con una URL de PostgreSQL en .env.local`
+  )
+}
+
+if (!databaseUrl.startsWith('postgresql://') && !databaseUrl.startsWith('postgres://')) {
+  throw new Error(
+    `❌ DATABASE_URL no es una URL de PostgreSQL válida.\n` +
+    `   DATABASE_URL actual: ${databaseUrl.substring(0, 50)}...\n` +
+    `   Debe comenzar con 'postgresql://' o 'postgres://'`
+  )
+}
+
+// Crear PrismaClient estándar para PostgreSQL
+const prisma = new PrismaClient()
 
 // Directorio para guardar PDFs descargados
 const PDFS_DIR = path.join(process.cwd(), 'data', 'pdfs')
@@ -51,37 +71,57 @@ async function ensureDirectories() {
 }
 
 /**
+ * Helper para limpiar archivo en caso de error
+ */
+function cleanupFileOnError(dest: string, reject: (reason?: unknown) => void) {
+  return (err: Error) => {
+    fs.unlink(dest).catch(() => {})
+    reject(err)
+  }
+}
+
+/**
+ * Helper para manejar respuesta HTTP
+ */
+function handleHttpResponse(
+  response: http.IncomingMessage,
+  file: fsSync.WriteStream,
+  dest: string,
+  resolve: () => void,
+  reject: (reason?: unknown) => void
+) {
+  if (response.statusCode === 301 || response.statusCode === 302) {
+    // Seguir redirecciones
+    downloadFile(response.headers.location!, dest).then(resolve).catch(reject)
+    return
+  }
+
+  if (response.statusCode !== 200) {
+    reject(new Error(`Error descargando: ${response.statusCode}`))
+    return
+  }
+
+  response.pipe(file)
+
+  file.on('finish', () => {
+    file.close()
+    resolve()
+  })
+
+  file.on('error', cleanupFileOnError(dest, reject))
+}
+
+/**
  * Descargar archivo desde URL
  */
 function downloadFile(url: string, dest: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const protocol = url.startsWith('https') ? https : http
-
     const file = fsSync.createWriteStream(dest)
 
     protocol
-      .get(url, response => {
-        if (response.statusCode === 301 || response.statusCode === 302) {
-          // Seguir redirecciones
-          return downloadFile(response.headers.location!, dest).then(resolve).catch(reject)
-        }
-
-        if (response.statusCode !== 200) {
-          reject(new Error(`Error descargando: ${response.statusCode}`))
-          return
-        }
-
-        response.pipe(file)
-
-        file.on('finish', () => {
-          file.close()
-          resolve()
-        })
-      })
-      .on('error', err => {
-        fs.unlink(dest).catch(() => {})
-        reject(err)
-      })
+      .get(url, (response) => handleHttpResponse(response, file, dest, resolve, reject))
+      .on('error', cleanupFileOnError(dest, reject))
   })
 }
 
@@ -105,8 +145,7 @@ async function extractTextFromPDF(pdfPath: string): Promise<string> {
  * del texto extraído. El formato puede variar según el PDF.
  */
 function parseQuestionsFromText(
-  text: string,
-  subjectCode: string
+  text: string
 ): Array<{
   enunciado: string
   options: Array<{ letra: string; texto: string; esCorrecta: boolean }>
@@ -132,8 +171,11 @@ function parseQuestionsFromText(
   const matches = Array.from(text.matchAll(questionPattern))
 
   for (const match of matches) {
-    const questionNumber = match[1]
-    const questionText = match[2].trim()
+    const questionText = match[2]?.trim()
+    
+    if (!questionText) {
+      continue
+    }
 
     // Intentar encontrar opciones (A), B), C), D), E))
     const optionPattern = /([A-E])\)\s+(.+?)(?=[A-E]\)|$)/g
@@ -141,17 +183,24 @@ function parseQuestionsFromText(
 
     if (optionMatches.length >= 4) {
       // Extraer enunciado (todo antes de las opciones)
-      const enunciado = questionText.split(/[A-E]\)/)[0].trim()
+      const enunciado = questionText.split(/[A-E]\)/)[0]?.trim() || ''
 
       // Extraer opciones
-      const options = optionMatches.map((opt, index) => {
-        const letra = opt[1]
-        const texto = opt[2].trim()
-        // Por defecto, la primera opción es correcta (esto debe ajustarse manualmente o con IA)
-        const esCorrecta = index === 0 // TEMPORAL: debe detectarse correctamente
+      const options = optionMatches
+        .map((opt, index) => {
+          const letra = opt[1]
+          const texto = opt[2]?.trim()
+          
+          if (!letra || !texto) {
+            return null
+          }
+          
+          // Por defecto, la primera opción es correcta (esto debe ajustarse manualmente o con IA)
+          const esCorrecta = index === 0 // TEMPORAL: debe detectarse correctamente
 
-        return { letra, texto, esCorrecta }
-      })
+          return { letra, texto, esCorrecta }
+        })
+        .filter((opt): opt is { letra: string; texto: string; esCorrecta: boolean } => opt !== null)
 
       // Solo agregar si tiene al menos 4 opciones
       if (options.length >= 4) {
@@ -248,7 +297,7 @@ async function importExamFromPDF(
 
   // Parsear preguntas
   console.log(`🔍 Parseando preguntas...`)
-  const parsedQuestions = parseQuestionsFromText(text, subjectCode)
+  const parsedQuestions = parseQuestionsFromText(text)
   console.log(`✅ ${parsedQuestions.length} preguntas encontradas`)
 
   if (parsedQuestions.length === 0) {
@@ -298,7 +347,11 @@ async function importExamFromPDF(
       titulo: examTitle,
       descripcion: `Examen oficial PAES ${year} - ${subjectName}`,
       tipo: examType,
-      tiempoLimiteMin: subjectCode === 'LECTORA' ? 90 : subjectCode === 'M1' ? 135 : 120,
+      tiempoLimiteMin: (() => {
+        if (subjectCode === 'LECTORA') return 90
+        if (subjectCode === 'M1') return 135
+        return 120
+      })(),
       totalPreguntas: createdQuestions.length,
       fuente: `DEMRE ${year}`,
       questions: {

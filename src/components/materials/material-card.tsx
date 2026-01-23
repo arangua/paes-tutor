@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { BookOpen, FileText, ExternalLink, CheckCircle2, Clock } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { ShareMaterialButton } from './share-material-button'
 
 interface Material {
   id: string
@@ -48,7 +49,7 @@ const tipoColors: Record<string, string> = {
   ejercicios: 'bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800',
 }
 
-export function MaterialCard({ material, isCompleted = false, className }: MaterialCardProps) {
+export function MaterialCard({ material, isCompleted = false, className }: Readonly<MaterialCardProps>) {
   const Icon = tipoIcons[material.tipo] || BookOpen
   const tipoColor =
     tipoColors[material.tipo] ||
@@ -110,13 +111,16 @@ export function MaterialCard({ material, isCompleted = false, className }: Mater
           )}
         </div>
 
-        {/* Botón de acción */}
-        <Button variant="default" className="w-full" asChild>
-          <Link href={`/materials/${material.id}`}>
-            Ver Material
-            <ExternalLink className="h-4 w-4 ml-2" />
-          </Link>
-        </Button>
+        {/* Botones de acción */}
+        <div className="flex gap-2">
+          <Button variant="default" className="flex-1" asChild>
+            <Link href={`/materials/${material.id}`}>
+              Ver Material
+              <ExternalLink className="h-4 w-4 ml-2" />
+            </Link>
+          </Button>
+          <ShareMaterialButton materialId={material.id} materialTitle={material.titulo} />
+        </div>
       </CardContent>
     </Card>
   )

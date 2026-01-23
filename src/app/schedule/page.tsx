@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useEffect, useState, useMemo, useCallback } from 'react'
+import { safeToISOString, safeToISODate } from '@/app/api/notes/versions/validation-utils'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Dialog,
   DialogContent,
@@ -24,7 +25,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {
-  Loader2,
   Calendar,
   Plus,
   Edit,
@@ -34,7 +34,7 @@ import {
   BookOpen,
   PlayCircle,
   RotateCcw,
-  Cards,
+  FileStack,
   FileText,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -68,10 +68,8 @@ interface StudySchedule {
 }
 
 export default function SchedulePage() {
-  const router = useRouter()
   const [schedules, setSchedules] = useState<StudySchedule[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingSchedule, setEditingSchedule] = useState<StudySchedule | null>(null)
   const [currentMonth, setCurrentMonth] = useState(new Date())
@@ -89,13 +87,7 @@ export default function SchedulePage() {
   const [topics, setTopics] = useState<Array<{ id: string; nombre: string }>>([])
   const [exams, setExams] = useState<Array<{ id: string; titulo: string }>>([])
 
-  useEffect(() => {
-    loadSchedules()
-    loadTopics()
-    loadExams()
-  }, [currentMonth])
-
-  async function loadSchedules() {
+  const loadSchedules = useCallback(async () => {
     try {
       setLoading(true)
       const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1)
@@ -109,18 +101,31 @@ export default function SchedulePage() {
       )
 
       const res = await fetch(
-        `/api/schedule?startDate=${startOfMonth.toISOString()}&endDate=${endOfMonth.toISOString()}`
+        `/api/schedule?startDate=${safeToISOString(startOfMonth)}&endDate=${safeToISOString(endOfMonth)}`
       )
       if (!res.ok) throw new Error('Error al cargar calendario')
       const data = await res.json()
       setSchedules(data.schedules || [])
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido')
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Error desconocido')
       toast.error('Error al cargar calendario')
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentMonth])
+
+  useEffect(() => {
+    loadSchedules()
+    loadTopics()
+    loadExams()
+  }, [currentMonth, loadSchedules])
+
+  // loadTopics y loadExams son funciones estables que no dependen de props/state
+  useEffect(() => {
+    loadSchedules()
+    loadTopics()
+    loadExams()
+  }, [currentMonth, loadSchedules])
 
   async function loadTopics() {
     try {
@@ -129,8 +134,8 @@ export default function SchedulePage() {
         const data = await res.json()
         setTopics(data.topics || [])
       }
-    } catch (err) {
-      captureError(err instanceof Error ? err : new Error(String(err)), {
+    } catch (error) {
+      captureError(error instanceof Error ? error : new Error(String(error)), {
         type: 'schedule_load_error',
         action: 'load_topics',
         path: typeof window !== 'undefined' ? window.location.pathname : undefined,
@@ -145,8 +150,8 @@ export default function SchedulePage() {
         const data = await res.json()
         setExams(data.exams || [])
       }
-    } catch (err) {
-      captureError(err instanceof Error ? err : new Error(String(err)), {
+    } catch (error) {
+      captureError(error instanceof Error ? error : new Error(String(error)), {
         type: 'schedule_load_error',
         action: 'load_exams',
         path: typeof window !== 'undefined' ? window.location.pathname : undefined,
@@ -159,7 +164,7 @@ export default function SchedulePage() {
       setEditingSchedule(schedule)
       setFormTitle(schedule.title)
       setFormDescription(schedule.description || '')
-      setFormScheduledAt(new Date(schedule.scheduledAt).toISOString().slice(0, 16))
+      setFormScheduledAt(safeToISOString(new Date(schedule.scheduledAt))?.slice(0, 16) || '')
       setFormDuration(schedule.durationMinutes)
       setFormType(schedule.type)
       setFormTopicId(schedule.topic?.id || '')
@@ -214,15 +219,19 @@ export default function SchedulePage() {
       })
 
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
+        const { safeJsonParse } = await import('@/lib/api-helpers')
+        const errorData = await safeJsonParse<{ error?: string }>(res, {
+          path: typeof window !== 'undefined' ? window.location.pathname : '/schedule',
+          operation: 'guardar sesión',
+        })
         throw new Error(errorData.error || 'Error al guardar sesión')
       }
 
       toast.success(editingSchedule ? 'Sesión actualizada' : 'Sesión creada')
       setDialogOpen(false)
       loadSchedules()
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Error desconocido'
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido'
       toast.error('Error', {
         description: errorMessage,
       })
@@ -241,7 +250,7 @@ export default function SchedulePage() {
 
       toast.success('Sesión eliminada')
       loadSchedules()
-    } catch (err) {
+    } catch {
       toast.error('Error al eliminar sesión')
     }
   }
@@ -260,7 +269,7 @@ export default function SchedulePage() {
 
       toast.success(schedule.completed ? 'Sesión marcada como pendiente' : 'Sesión completada')
       loadSchedules()
-    } catch (err) {
+    } catch {
       toast.error('Error al actualizar sesión')
     }
   }
@@ -274,7 +283,7 @@ export default function SchedulePage() {
       case 'review':
         return <RotateCcw className="h-4 w-4" />
       case 'flashcards':
-        return <Cards className="h-4 w-4" />
+        return <FileStack className="h-4 w-4" />
       default:
         return <BookOpen className="h-4 w-4" />
     }
@@ -299,7 +308,7 @@ export default function SchedulePage() {
   const schedulesByDate = useMemo(() => {
     const grouped = new Map<string, StudySchedule[]>()
     schedules.forEach(schedule => {
-      const date = new Date(schedule.scheduledAt).toISOString().split('T')[0]
+      const date = safeToISODate(new Date(schedule.scheduledAt)) || ''
       if (!grouped.has(date)) {
         grouped.set(date, [])
       }

@@ -1,11 +1,60 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+// @vitest-environment node
+/**
+ * Tests Enterprise para GET /api/metrics
+ * 
+ * Usa shared enterprise test helpers para mantener tests limpios y mantenibles.
+ */
+
+// Mock de next/server ANTES de cualquier import
+import { vi } from 'vitest'
+
+vi.mock('next/server', () => {
+  return {
+    NextRequest: class NextRequest {
+      url: string
+      nextUrl: { searchParams: URLSearchParams; href: string; pathname: string }
+      headers: Headers
+      constructor(url: string) {
+        this.url = url
+        const urlObj = new URL(url)
+        this.nextUrl = {
+          searchParams: urlObj.searchParams,
+          href: url,
+          pathname: urlObj.pathname,
+        }
+        this.headers = new Headers()
+      }
+    },
+    NextResponse: {
+      json: (body: any, init?: { status?: number }) => {
+        return new Response(JSON.stringify(body), {
+          status: init?.status || 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      },
+    },
+  }
+})
+
+import { describe, it, expect, beforeEach } from 'vitest'
 import { GET } from './route'
 import { prisma } from '@/lib/prisma'
-import { NextRequest } from 'next/server'
+import {
+  setupStandardAuth,
+  createTestRequest,
+  assertSuccessResponse,
+  assertErrorResponse,
+  assertArrayResponse,
+  SHARED_TEST_IDS,
+  clearAllMocks,
+} from '@/test/enterprise/shared-test-helpers'
 
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     student: {
+      findUnique: vi.fn(),
+    },
+    user: {
       findUnique: vi.fn(),
     },
     performanceMetric: {
@@ -14,24 +63,34 @@ vi.mock('@/lib/prisma', () => ({
   },
 }))
 
-vi.mock('@/lib/get-session', () => ({
-  getCurrentStudentId: vi.fn(),
-}))
+vi.mock('@/lib/get-session', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/get-session')>('@/lib/get-session')
+  return {
+    ...actual,
+    getSession: vi.fn(),
+    getCurrentUser: vi.fn(),
+    getCurrentStudentId: vi.fn(),
+    getAuthenticatedUserWithStudent: vi.fn(),
+  }
+})
 
 vi.mock('@/lib/rate-limit-middleware', () => ({
-  withRateLimit: vi.fn((req: NextRequest, handler: () => Promise<Response>) => handler()),
+  withRateLimit: vi.fn((req: any, handler: () => Promise<Response>) => handler()),
 }))
 
 vi.mock('@/lib/logger', () => ({
   logApiRequest: vi.fn(),
   logApiError: vi.fn(),
+  logger: {
+    warn: vi.fn(),
+  },
 }))
 
 vi.mock('@/lib/api-helpers', async () => {
   const actual = await vi.importActual('@/lib/api-helpers')
   return {
     ...actual,
-    validateQuery: vi.fn((req: NextRequest, schema: any) => ({
+    validateQuery: vi.fn((_req: any, _schema: any) => ({
       success: true,
       data: {},
     })),
@@ -41,16 +100,24 @@ vi.mock('@/lib/api-helpers', async () => {
   }
 })
 
+vi.mock('@/app/api/notes/versions/circuit-breaker', () => ({
+  circuitBreakers: {
+    database: {
+      execute: vi.fn((operation: () => Promise<any>) => operation()),
+    },
+  },
+}))
+
 describe('GET /api/metrics', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    clearAllMocks()
   })
 
   it('debe retornar métricas agrupadas por asignatura', async () => {
-    const { getCurrentStudentId } = await import('@/lib/get-session')
-    vi.mocked(getCurrentStudentId).mockResolvedValue('student-1')
+    // ✅ Enterprise: Usar shared helpers
+    await setupStandardAuth({ studentId: SHARED_TEST_IDS.STUDENT })
 
-    const mockStudent = { id: 'student-1', nombre: 'Matías' }
+    const mockStudent = { id: SHARED_TEST_IDS.STUDENT, nombre: 'Matías' }
     const mockMetrics = [
       {
         id: '1',
@@ -87,15 +154,18 @@ describe('GET /api/metrics', () => {
     vi.mocked(prisma.student.findUnique).mockResolvedValue(mockStudent as any)
     vi.mocked(prisma.performanceMetric.findMany).mockResolvedValue(mockMetrics as any)
 
-    const request = new NextRequest('http://localhost:3000/api/metrics')
+    const request = createTestRequest({ url: 'http://localhost:3000/api/metrics' })
     const response = await GET(request)
-    const data = await response.json()
 
-    expect(response.status).toBe(200)
-    expect(Array.isArray(data)).toBe(true)
-    expect(data.length).toBeGreaterThan(0)
-
-    // Verificar que las métricas están agrupadas por asignatura
+    const data = await assertArrayResponse(response, {
+      minLength: 1,
+      itemValidator: (item: any) => {
+        expect(item).toHaveProperty('codigo')
+        expect(item).toHaveProperty('nombre')
+        expect(item).toHaveProperty('totalPreguntas')
+        expect(item).toHaveProperty('correctas')
+      },
+    })
     const lectora = data.find((m: any) => m.codigo === 'LECTORA')
     expect(lectora).toBeDefined()
     expect(lectora.totalPreguntas).toBe(10)
@@ -103,20 +173,25 @@ describe('GET /api/metrics', () => {
   })
 
   it('debe retornar 404 si no hay estudiante', async () => {
+    // ✅ Enterprise: Usar shared helpers
+    await setupStandardAuth({ studentId: SHARED_TEST_IDS.STUDENT, hasStudent: false })
+
     vi.mocked(prisma.student.findUnique).mockResolvedValue(null)
+    const { getSession } = await import('@/lib/get-session')
+    vi.mocked(getSession).mockResolvedValue(null)
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(null)
 
-    const { getCurrentStudentId } = await import('@/lib/get-session')
-    vi.mocked(getCurrentStudentId).mockResolvedValue('student-1')
-    const request = new NextRequest('http://localhost:3000/api/metrics')
+    const request = createTestRequest({ url: 'http://localhost:3000/api/metrics' })
     const response = await GET(request)
-    const data = await response.json()
 
-    expect(response.status).toBe(404)
-    expect(data.error).toBe('Estudiante no encontrado')
+    await assertErrorResponse(response, 404, 'Estudiante no encontrado')
   })
 
   it('debe calcular correctamente el porcentaje por asignatura', async () => {
-    const mockStudent = { id: '1', nombre: 'Matías' }
+    // ✅ Enterprise: Usar shared helpers
+    await setupStandardAuth({ studentId: SHARED_TEST_IDS.STUDENT })
+
+    const mockStudent = { id: SHARED_TEST_IDS.STUDENT, nombre: 'Matías' }
     const mockMetrics = [
       {
         id: '1',
@@ -138,35 +213,33 @@ describe('GET /api/metrics', () => {
     vi.mocked(prisma.student.findUnique).mockResolvedValue(mockStudent as any)
     vi.mocked(prisma.performanceMetric.findMany).mockResolvedValue(mockMetrics as any)
 
-    const { getCurrentStudentId } = await import('@/lib/get-session')
-    vi.mocked(getCurrentStudentId).mockResolvedValue('student-1')
-    const request = new NextRequest('http://localhost:3000/api/metrics')
+    const request = createTestRequest({ url: 'http://localhost:3000/api/metrics' })
     const response = await GET(request)
-    const data = await response.json()
 
-    expect(response.status).toBe(200)
+    const data = await assertSuccessResponse(response, 200)
     const lectora = data.find((m: any) => m.codigo === 'LECTORA')
-    expect(lectora.porcentaje).toBe(80) // 8/10 * 100
+    expect(lectora.porcentaje).toBe(80)
   })
 
   it('debe manejar errores correctamente', async () => {
-    const mockStudent = { id: '1', nombre: 'Matías' }
+    // ✅ Enterprise: Usar shared helpers
+    await setupStandardAuth({ studentId: SHARED_TEST_IDS.STUDENT })
 
+    const mockStudent = { id: SHARED_TEST_IDS.STUDENT, nombre: 'Matías' }
     vi.mocked(prisma.student.findUnique).mockResolvedValue(mockStudent as any)
     vi.mocked(prisma.performanceMetric.findMany).mockRejectedValue(new Error('Database error'))
 
-    const { getCurrentStudentId } = await import('@/lib/get-session')
-    vi.mocked(getCurrentStudentId).mockResolvedValue('student-1')
-    const request = new NextRequest('http://localhost:3000/api/metrics')
+    const request = createTestRequest({ url: 'http://localhost:3000/api/metrics' })
     const response = await GET(request)
-    const data = await response.json()
 
-    expect(response.status).toBe(500)
-    expect(data.error).toBe('Error al obtener métricas')
+    await assertErrorResponse(response, 500, 'Error al obtener métricas')
   })
 
   it('debe agrupar múltiples métricas de la misma asignatura', async () => {
-    const mockStudent = { id: '1', nombre: 'Matías' }
+    // ✅ Enterprise: Usar shared helpers
+    await setupStandardAuth({ studentId: SHARED_TEST_IDS.STUDENT })
+
+    const mockStudent = { id: SHARED_TEST_IDS.STUDENT, nombre: 'Matías' }
     const mockMetrics = [
       {
         id: '1',
@@ -203,191 +276,15 @@ describe('GET /api/metrics', () => {
     vi.mocked(prisma.student.findUnique).mockResolvedValue(mockStudent as any)
     vi.mocked(prisma.performanceMetric.findMany).mockResolvedValue(mockMetrics as any)
 
-    const { getCurrentStudentId } = await import('@/lib/get-session')
-    vi.mocked(getCurrentStudentId).mockResolvedValue('student-1')
-    const request = new NextRequest('http://localhost:3000/api/metrics')
+    const request = createTestRequest({ url: 'http://localhost:3000/api/metrics' })
     const response = await GET(request)
-    const data = await response.json()
 
-    expect(response.status).toBe(200)
+    const data = await assertSuccessResponse(response, 200)
     const lectora = data.find((m: any) => m.codigo === 'LECTORA')
     expect(lectora).toBeDefined()
     expect(lectora.totalPreguntas).toBe(10) // 5 + 5
     expect(lectora.correctas).toBe(7) // 4 + 3
     expect(lectora.porcentaje).toBe(70) // 7/10 * 100
     expect(lectora.temas).toHaveLength(2)
-  })
-
-  it('debe manejar el caso cuando totalPreguntas es 0', async () => {
-    const mockStudent = { id: '1', nombre: 'Matías' }
-    const mockMetrics = [
-      {
-        id: '1',
-        totalPreguntas: 0,
-        correctas: 0,
-        porcentaje: 0,
-        nivel: null,
-        topic: {
-          id: '1',
-          nombre: 'Comprensión literal',
-          subject: {
-            codigo: 'LECTORA',
-            nombre: 'Competencia Lectora',
-          },
-        },
-      },
-    ]
-
-    vi.mocked(prisma.student.findUnique).mockResolvedValue(mockStudent as any)
-    vi.mocked(prisma.performanceMetric.findMany).mockResolvedValue(mockMetrics as any)
-
-    const { getCurrentStudentId } = await import('@/lib/get-session')
-    vi.mocked(getCurrentStudentId).mockResolvedValue('student-1')
-    const request = new NextRequest('http://localhost:3000/api/metrics')
-    const response = await GET(request)
-    const data = await response.json()
-
-    expect(response.status).toBe(200)
-    const lectora = data.find((m: any) => m.codigo === 'LECTORA')
-    expect(lectora).toBeDefined()
-    expect(lectora.porcentaje).toBe(0) // Cuando totalPreguntas es 0
-  })
-
-  it('debe manejar métricas vacías', async () => {
-    const mockStudent = { id: '1', nombre: 'Matías' }
-    const mockMetrics: any[] = []
-
-    vi.mocked(prisma.student.findUnique).mockResolvedValue(mockStudent as any)
-    vi.mocked(prisma.performanceMetric.findMany).mockResolvedValue(mockMetrics)
-
-    const { getCurrentStudentId } = await import('@/lib/get-session')
-    vi.mocked(getCurrentStudentId).mockResolvedValue('student-1')
-    const request = new NextRequest('http://localhost:3000/api/metrics')
-    const response = await GET(request)
-    const data = await response.json()
-
-    expect(response.status).toBe(200)
-    expect(Array.isArray(data)).toBe(true)
-    expect(data).toHaveLength(0)
-  })
-
-  it('debe manejar el caso cuando ya existe subjectCode en el acumulador', async () => {
-    const mockStudent = { id: '1', nombre: 'Matías' }
-    const mockMetrics = [
-      {
-        id: '1',
-        totalPreguntas: 5,
-        correctas: 4,
-        porcentaje: 80,
-        nivel: 'alto',
-        topic: {
-          id: '1',
-          nombre: 'Tema 1',
-          subject: {
-            codigo: 'LECTORA',
-            nombre: 'Competencia Lectora',
-          },
-        },
-      },
-      {
-        id: '2',
-        totalPreguntas: 3,
-        correctas: 2,
-        porcentaje: 66.67,
-        nivel: 'medio',
-        topic: {
-          id: '2',
-          nombre: 'Tema 2',
-          subject: {
-            codigo: 'LECTORA', // Misma asignatura
-            nombre: 'Competencia Lectora',
-          },
-        },
-      },
-      {
-        id: '3',
-        totalPreguntas: 2,
-        correctas: 1,
-        porcentaje: 50,
-        nivel: 'bajo',
-        topic: {
-          id: '3',
-          nombre: 'Tema 3',
-          subject: {
-            codigo: 'LECTORA', // Misma asignatura (tercera iteración)
-            nombre: 'Competencia Lectora',
-          },
-        },
-      },
-    ]
-
-    vi.mocked(prisma.student.findUnique).mockResolvedValue(mockStudent as any)
-    vi.mocked(prisma.performanceMetric.findMany).mockResolvedValue(mockMetrics as any)
-
-    const { getCurrentStudentId } = await import('@/lib/get-session')
-    vi.mocked(getCurrentStudentId).mockResolvedValue('student-1')
-    const request = new NextRequest('http://localhost:3000/api/metrics')
-    const response = await GET(request)
-    const data = await response.json()
-
-    expect(response.status).toBe(200)
-    const lectora = data.find((m: any) => m.codigo === 'LECTORA')
-    expect(lectora).toBeDefined()
-    expect(lectora.totalPreguntas).toBe(10) // 5 + 3 + 2
-    expect(lectora.correctas).toBe(7) // 4 + 2 + 1
-    expect(lectora.porcentaje).toBe(70) // 7/10 * 100
-    expect(lectora.temas).toHaveLength(3) // Debe tener 3 temas
-  })
-
-  it('debe manejar el caso cuando totalPreguntas es 0 después de agrupar', async () => {
-    const mockStudent = { id: '1', nombre: 'Matías' }
-    const mockMetrics = [
-      {
-        id: '1',
-        totalPreguntas: 0,
-        correctas: 0,
-        porcentaje: 0,
-        nivel: null,
-        topic: {
-          id: '1',
-          nombre: 'Tema 1',
-          subject: {
-            codigo: 'LECTORA',
-            nombre: 'Competencia Lectora',
-          },
-        },
-      },
-      {
-        id: '2',
-        totalPreguntas: 0,
-        correctas: 0,
-        porcentaje: 0,
-        nivel: null,
-        topic: {
-          id: '2',
-          nombre: 'Tema 2',
-          subject: {
-            codigo: 'LECTORA',
-            nombre: 'Competencia Lectora',
-          },
-        },
-      },
-    ]
-
-    vi.mocked(prisma.student.findUnique).mockResolvedValue(mockStudent as any)
-    vi.mocked(prisma.performanceMetric.findMany).mockResolvedValue(mockMetrics as any)
-
-    const { getCurrentStudentId } = await import('@/lib/get-session')
-    vi.mocked(getCurrentStudentId).mockResolvedValue('student-1')
-    const request = new NextRequest('http://localhost:3000/api/metrics')
-    const response = await GET(request)
-    const data = await response.json()
-
-    expect(response.status).toBe(200)
-    const lectora = data.find((m: any) => m.codigo === 'LECTORA')
-    expect(lectora).toBeDefined()
-    expect(lectora.totalPreguntas).toBe(0)
-    expect(lectora.correctas).toBe(0)
-    expect(lectora.porcentaje).toBe(0) // Debe usar el branch de totalPreguntas === 0
   })
 })

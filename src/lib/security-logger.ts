@@ -3,6 +3,7 @@
  */
 
 import { logger } from './logger'
+import { safeToISOString } from '@/app/api/notes/versions/validation-utils'
 
 export interface SecurityEvent {
   type:
@@ -30,7 +31,7 @@ export function logSecurityEvent(event: SecurityEvent) {
     ip: event.ip,
     path: event.path,
     severity: event.severity,
-    timestamp: new Date().toISOString(),
+    timestamp: safeToISOString(new Date()),
     ...event.details,
   }
 
@@ -57,15 +58,20 @@ export function logSecurityEvent(event: SecurityEvent) {
 export function getClientIp(request: Request): string {
   const forwarded = request.headers.get('x-forwarded-for')
   const realIp = request.headers.get('x-real-ip')
-  const ip = forwarded ? forwarded.split(',')[0].trim() : realIp || 'unknown'
+  const ip = forwarded ? forwarded.split(',')[0]?.trim() || 'unknown' : (realIp || 'unknown')
   return ip
 }
+
+// Constante para caracteres de control (RFC 20): 0x00-0x1F y 0x7F (DEL)
+// Necesario para detectar caracteres de control maliciosos en seguridad
+// eslint-disable-next-line no-control-regex, sonarjs/no-control-regex
+const CONTROL_CHARS_RE = /[\x00-\x1F\x7F]/g
 
 /**
  * Helper para detectar actividad sospechosa
  */
 export function detectSuspiciousActivity(
-  ip: string,
+  _ip: string,
   path: string,
   details: Record<string, unknown>
 ): boolean {
@@ -77,8 +83,8 @@ export function detectSuspiciousActivity(
     /\.\.\//g,
     // Intentos de XSS - detectar event handlers (onclick, onerror, etc.)
     /<script|javascript:|on\w+\s*[=:]|onclick|onerror|onload/gi,
-    // Caracteres de control
-    /[\x00-\x1F\x7F]/g,
+    // Caracteres de control (intencional para seguridad)
+    CONTROL_CHARS_RE,
   ]
 
   const pathLower = path.toLowerCase()

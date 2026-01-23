@@ -10,15 +10,17 @@ import { PasswordForm } from '@/components/profile/password-form'
 import { AIKeysForm } from '@/components/profile/ai-keys-form'
 import { Breadcrumbs } from '@/components/layout/breadcrumbs'
 import {
-  User,
   Mail,
-  Calendar,
   Loader2,
   AlertCircle,
   ArrowLeft,
   Shield,
   Settings,
 } from 'lucide-react'
+import { HelpIcon } from '@/components/help/help-icon'
+import { ShortcutsSettings } from '@/components/settings/shortcuts-settings'
+import { ExpertMode } from '@/components/settings/expert-mode'
+import { getAvailableShortcutActions } from '@/lib/shortcut-actions'
 
 interface UserData {
   id: string
@@ -130,7 +132,13 @@ export default function ProfilePage() {
               Volver
             </Button>
           </div>
-          <h1 className="text-3xl font-bold">Mi Perfil</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-3xl font-bold">Mi Perfil</h1>
+            <HelpIcon
+              content="Aquí puedes actualizar tu información personal, cambiar tu contraseña y configurar tus API keys para usar el Tutor de IA."
+              side="right"
+            />
+          </div>
           <p className="text-muted-foreground">
             Gestiona tu información personal y configuración de cuenta
           </p>
@@ -204,6 +212,16 @@ export default function ProfilePage() {
       {/* Configuración de API Keys de IA */}
       <div className="mb-6">
         <AIKeysForm />
+      </div>
+
+      {/* Configuración de Atajos de Teclado */}
+      <div className="mb-6">
+        <ShortcutsSettings availableActions={getAvailableShortcutActions(router)} />
+      </div>
+
+      {/* Modo Experto */}
+      <div className="mb-6">
+        <ExpertMode />
       </div>
 
       {/* Información de Seguridad */}

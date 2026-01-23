@@ -8,10 +8,15 @@ import { getAIConfig, sendAIMessage, type AIMessage } from './ai-service'
 import { prisma } from './prisma'
 import { logger } from './logger'
 import type { Prisma } from '@prisma/client'
+import { LIMIT_CONSTANTS, EXAM_CONSTANTS } from './constants'
+
+function setRecordValue(target: Record<number, string>, key: number, value: string) {
+  Object.defineProperty(target, key, { value, enumerable: true, configurable: true, writable: true })
+}
 
 export interface ExamGenerationParams {
   subjectId: string
-  topicIds?: string[] // Si no se especifica, usa todos los temas del subject
+  topicIds?: string[] // Si no se especifica, usa la lista completa de temas del subject
   numQuestions: number // Número de preguntas a generar
   difficulty?: 'baja' | 'media' | 'alta' | 'mixta'
   tipo?: 'objetiva' | 'desarrollo' | 'mixta'
@@ -43,6 +48,11 @@ export interface GeneratedExam {
 
 /**
  * Obtiene información del temario para el contexto de generación
+ * 
+ * @param subjectId - ID de la asignatura
+ * @param topicIds - IDs opcionales de temas específicos. Si no se proporciona, obtiene la lista completa de temas de la asignatura
+ * @returns Contexto con información de la asignatura, temas y materiales de estudio
+ * @throws Error si la asignatura no existe o no tiene temas
  */
 async function getTopicContext(subjectId: string, topicIds?: string[]) {
   const where: Prisma.TopicWhereInput = { subjectId }
@@ -82,7 +92,7 @@ async function getTopicContext(subjectId: string, topicIds?: string[]) {
         },
       },
     },
-    take: 10, // Limitar a 10 materiales más relevantes
+    take: LIMIT_CONSTANTS.MAX_MATERIALS_CONTEXT, // Limitar materiales más relevantes
   })
 
   return {
@@ -107,15 +117,83 @@ function buildPromptForExamGeneration(
   }
 
   const topicsText = topics
-    .map(t => `- ${t.nombre} (Eje: ${t.ejeTematico})${t.descripcion ? `: ${t.descripcion}` : ''}`)
+    .map(t => {
+      const descriptionSuffix = t.descripcion ? `: ${t.descripcion}` : ''
+      return `- ${t.nombre} (Eje: ${t.ejeTematico})${descriptionSuffix}`
+    })
     .join('\n')
 
   const materialsText = materials
     .map(
-      m =>
-        `- ${m.titulo}${m.topic?.ejeTematico ? ` (Eje: ${m.topic.ejeTematico})` : ''}: ${m.contenido.substring(0, 200)}...`
+      m => {
+        const ejeSuffix = m.topic?.ejeTematico ? ` (Eje: ${m.topic.ejeTematico})` : ''
+        return `- ${m.titulo}${ejeSuffix}: ${m.contenido.substring(0, 200)}...`
+      }
     )
     .join('\n')
+
+  const materialsSection =
+    materials.length > 0 ? `\nMATERIALES DE ESTUDIO DE REFERENCIA:\n${materialsText}` : ''
+
+  let examTypeText = 'Mixto (objetivas y desarrollo)'
+  if (tipo === 'objetiva') {
+    examTypeText = 'Preguntas de opción múltiple (4 opciones A, B, C, D)'
+  } else if (tipo === 'desarrollo') {
+    examTypeText = 'Preguntas de desarrollo (sin opciones múltiples)'
+  }
+
+  let difficultyText = 'Mixta (distribución equilibrada)'
+  if (difficulty === 'baja') difficultyText = 'Baja (nivel básico)'
+  else if (difficulty === 'media') difficultyText = 'Media (nivel intermedio)'
+  else if (difficulty === 'alta') difficultyText = 'Alta (nivel avanzado)'
+
+  const optionsRequirement =
+    tipo === 'objetiva' || tipo === 'mixta'
+      ? '* 4 opciones (A, B, C, D) si es objetiva\n  * Una opción correcta claramente identificada'
+      : '* NO debe incluir opciones múltiples (es pregunta de desarrollo)'
+
+  const questionExampleObjetiva = `{
+      "enunciado": "Texto de la pregunta",
+      "opciones": [
+        {"letra": "A", "texto": "Opción A", "esCorrecta": false},
+        {"letra": "B", "texto": "Opción B", "esCorrecta": true},
+        {"letra": "C", "texto": "Opción C", "esCorrecta": false},
+        {"letra": "D", "texto": "Opción D", "esCorrecta": false}
+      ],
+      "explicacion": "Explicación detallada",
+      "dificultad": 3,
+      "ejeTematico": "Nombre del eje temático"
+    }`
+
+  const questionExampleDesarrollo = `{
+      "enunciado": "Texto de la pregunta de desarrollo",
+      "opciones": [],
+      "explicacion": "Explicación de la respuesta esperada",
+      "dificultad": 3,
+      "ejeTematico": "Nombre del eje temático"
+    }`
+
+  const questionExampleMixta = `{
+      "enunciado": "Texto de la pregunta",
+      "opciones": [opciones solo si es objetiva, vacío [] si es desarrollo],
+      "explicacion": "Explicación detallada",
+      "dificultad": 3,
+      "ejeTematico": "Nombre del eje temático"
+    }`
+
+  let questionExample = questionExampleMixta
+  if (tipo === 'objetiva') questionExample = questionExampleObjetiva
+  else if (tipo === 'desarrollo') questionExample = questionExampleDesarrollo
+
+  let tipoSpecificRules =
+    '- Las preguntas objetivas deben tener 4 opciones (A, B, C, D)\n- Las preguntas de desarrollo NO deben tener opciones\n- Solo una opción debe ser correcta por pregunta objetiva'
+  if (tipo === 'objetiva') {
+    tipoSpecificRules =
+      '- Cada pregunta debe tener exactamente 4 opciones (A, B, C, D)\n- Solo una opción debe ser correcta por pregunta'
+  } else if (tipo === 'desarrollo') {
+    tipoSpecificRules =
+      '- Las preguntas de desarrollo NO deben tener opciones múltiples\n- Deben requerir respuestas escritas o desarrolladas'
+  }
 
   const systemPrompt = `Eres un experto en educación chilena especializado en la Prueba de Acceso a la Educación Superior (PAES) y la malla curricular establecida por el Ministerio de Educación de Chile (MINEDUC).
 
@@ -133,14 +211,14 @@ IMPORTANTE: Las preguntas deben ser apropiadas para estudiantes de 4° medio y e
 TEMAS Y EJES TEMÁTICOS A CUBRIR:
 ${topicsText}
 
-${materials.length > 0 ? `\nMATERIALES DE ESTUDIO DE REFERENCIA:\n${materialsText}` : ''}
+${materialsSection}
 
 REQUISITOS:
-- Tipo de examen: ${tipo === 'objetiva' ? 'Preguntas de opción múltiple (4 opciones A, B, C, D)' : tipo === 'desarrollo' ? 'Preguntas de desarrollo (sin opciones múltiples)' : 'Mixto (objetivas y desarrollo)'}
-- Dificultad: ${difficulty === 'baja' ? 'Baja (nivel básico)' : difficulty === 'media' ? 'Media (nivel intermedio)' : difficulty === 'alta' ? 'Alta (nivel avanzado)' : 'Mixta (distribución equilibrada)'}
+- Tipo de examen: ${examTypeText}
+- Dificultad: ${difficultyText}
 - Cada pregunta debe tener:
   * Un enunciado claro y conciso
-  ${tipo === 'objetiva' || tipo === 'mixta' ? '* 4 opciones (A, B, C, D) si es objetiva\n  * Una opción correcta claramente identificada' : '* NO debe incluir opciones múltiples (es pregunta de desarrollo)'}
+  ${optionsRequirement}
   * Una explicación educativa de por qué la respuesta es correcta
   * Nivel de dificultad (1-5)
   * Asociación a un tema específico del temario
@@ -150,36 +228,7 @@ FORMATO DE RESPUESTA (JSON):
   "titulo": "Título del examen",
   "descripcion": "Descripción breve del examen",
   "questions": [
-    ${
-      tipo === 'objetiva' || tipo === 'mixta'
-        ? `{
-      "enunciado": "Texto de la pregunta",
-      "opciones": [
-        {"letra": "A", "texto": "Opción A", "esCorrecta": false},
-        {"letra": "B", "texto": "Opción B", "esCorrecta": true},
-        {"letra": "C", "texto": "Opción C", "esCorrecta": false},
-        {"letra": "D", "texto": "Opción D", "esCorrecta": false}
-      ],
-      "explicacion": "Explicación detallada",
-      "dificultad": 3,
-      "ejeTematico": "Nombre del eje temático"
-    }`
-        : tipo === 'desarrollo'
-          ? `{
-      "enunciado": "Texto de la pregunta de desarrollo",
-      "opciones": [],
-      "explicacion": "Explicación de la respuesta esperada",
-      "dificultad": 3,
-      "ejeTematico": "Nombre del eje temático"
-    }`
-          : `{
-      "enunciado": "Texto de la pregunta",
-      "opciones": [opciones solo si es objetiva, vacío [] si es desarrollo],
-      "explicacion": "Explicación detallada",
-      "dificultad": 3,
-      "ejeTematico": "Nombre del eje temático"
-    }`
-    }
+    ${questionExample}
   ]
 }
 
@@ -187,7 +236,7 @@ IMPORTANTE:
 - Las preguntas deben estar alineadas con la malla curricular chilena
 - Deben ser apropiadas para estudiantes de 4° medio
 - Debe haber exactamente ${numQuestions} preguntas
-${tipo === 'objetiva' ? '- Cada pregunta debe tener exactamente 4 opciones (A, B, C, D)\n- Solo una opción debe ser correcta por pregunta' : tipo === 'desarrollo' ? '- Las preguntas de desarrollo NO deben tener opciones múltiples\n- Deben requerir respuestas escritas o desarrolladas' : '- Las preguntas objetivas deben tener 4 opciones (A, B, C, D)\n- Las preguntas de desarrollo NO deben tener opciones\n- Solo una opción debe ser correcta por pregunta objetiva'}
+${tipoSpecificRules}
 - Las explicaciones deben ser educativas y claras`
 
   return [
@@ -199,15 +248,18 @@ ${tipo === 'objetiva' ? '- Cada pregunta debe tener exactamente 4 opciones (A, B
 /**
  * Parsea la respuesta de la IA y extrae el JSON del examen
  */
-function parseAIResponse(response: { content: string; service: string; model: string }): GeneratedExam {
+function parseAIResponse(response: {
+  content: string
+  service: string
+  model: string
+}): GeneratedExam {
   try {
     // Intentar extraer JSON de la respuesta
-    const jsonMatch = response.content.match(/\{[\s\S]*\}/)
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0])
-    } else {
-      throw new Error('No se encontró JSON en la respuesta')
-    }
+    const start = response.content.indexOf('{')
+    const end = response.content.lastIndexOf('}')
+    if (start < 0 || end < 0 || end <= start) throw new Error('No se encontró JSON en la respuesta')
+    const jsonText = response.content.slice(start, end + 1)
+    return JSON.parse(jsonText)
   } catch (parseError) {
     logger.error(
       {
@@ -244,9 +296,7 @@ function validateAndFixQuestions(
     )
   }
 
-  const OPTION_LETTERS = ['A', 'B', 'C', 'D'] as const
-  const REQUIRED_OPTIONS_COUNT = 4
-
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   return questions.map((q, index) => {
     // Para tipo mixta, algunas preguntas pueden ser de desarrollo (sin opciones)
     // Para tipo objetiva, todas deben tener opciones
@@ -254,9 +304,9 @@ function validateAndFixQuestions(
 
     if (tipo === 'objetiva') {
       // Todas las preguntas objetivas deben tener 4 opciones
-      if (!q.opciones || q.opciones.length !== REQUIRED_OPTIONS_COUNT) {
+      if (!q.opciones || q.opciones.length !== EXAM_CONSTANTS.REQUIRED_OPTIONS_COUNT) {
         throw new Error(
-          `La pregunta ${index + 1} no tiene ${REQUIRED_OPTIONS_COUNT} opciones (tipo objetiva requiere opciones)`
+          `La pregunta ${index + 1} no tiene ${EXAM_CONSTANTS.REQUIRED_OPTIONS_COUNT} opciones (tipo objetiva requiere opciones)`
         )
       }
 
@@ -272,20 +322,20 @@ function validateAndFixQuestions(
       // Asegurar que las letras sean A, B, C, D
       q.opciones = q.opciones.map((opt, i) => ({
         ...opt,
-        letra: OPTION_LETTERS[i],
+        letra: EXAM_CONSTANTS.OPTION_LETTERS.at(i) ?? 'A',
       }))
     } else if (tipo === 'mixta') {
       // Para tipo mixta, validar si tiene opciones (es objetiva) o no (es desarrollo)
       if (q.opciones && q.opciones.length > 0) {
         // Es pregunta objetiva, debe tener 4 opciones
-        if (q.opciones.length !== REQUIRED_OPTIONS_COUNT) {
+        if (q.opciones.length !== EXAM_CONSTANTS.REQUIRED_OPTIONS_COUNT) {
           // Si no tiene 4, intentar corregir o eliminar opciones
-          if (q.opciones.length < REQUIRED_OPTIONS_COUNT) {
+          if (q.opciones.length < EXAM_CONSTANTS.REQUIRED_OPTIONS_COUNT) {
             // No tiene suficientes opciones, convertir a desarrollo
             q.opciones = []
           } else {
             // Tiene más de 4, tomar las primeras 4
-            q.opciones = q.opciones.slice(0, REQUIRED_OPTIONS_COUNT)
+            q.opciones = q.opciones.slice(0, EXAM_CONSTANTS.REQUIRED_OPTIONS_COUNT)
           }
         }
 
@@ -300,7 +350,7 @@ function validateAndFixQuestions(
         // Asegurar que las letras sean A, B, C, D
         q.opciones = q.opciones.map((opt, i) => ({
           ...opt,
-          letra: OPTION_LETTERS[i],
+          letra: EXAM_CONSTANTS.OPTION_LETTERS.at(i) ?? 'A',
         }))
       } else {
         // Es pregunta de desarrollo, no requiere opciones
@@ -313,20 +363,40 @@ function validateAndFixQuestions(
 
     // Asociar con tema si no está asociado
     if (!q.topicId && context.topics.length > 0) {
-      // Buscar tema por nombre o eje temático
-      const matchingTopic = context.topics.find(
-        t =>
-          t.nombre.toLowerCase().includes(q.ejeTematico?.toLowerCase() || '') ||
-          q.ejeTematico?.toLowerCase().includes(t.nombre.toLowerCase())
+      // Buscar tema por nombre o eje temático con múltiples estrategias de coincidencia
+      const ejeTematicoLower = q.ejeTematico?.toLowerCase() || ''
+      
+      // Estrategia 1: Coincidencia exacta de eje temático (más precisa)
+      let matchingTopic = context.topics.find(
+        t => t.ejeTematico?.toLowerCase() === ejeTematicoLower
       )
+      
+      // Estrategia 2: Coincidencia parcial de eje temático
+      if (!matchingTopic) {
+        matchingTopic = context.topics.find(
+          t =>
+            t.ejeTematico?.toLowerCase().includes(ejeTematicoLower) ||
+            ejeTematicoLower.includes(t.ejeTematico?.toLowerCase() || '')
+        )
+      }
+      
+      // Estrategia 3: Coincidencia por nombre del tema
+      if (!matchingTopic) {
+        matchingTopic = context.topics.find(
+          t =>
+            t.nombre.toLowerCase().includes(ejeTematicoLower) ||
+            ejeTematicoLower.includes(t.nombre.toLowerCase())
+        )
+      }
+      
       if (matchingTopic) {
         q.topicId = matchingTopic.id
         q.ejeTematico = matchingTopic.ejeTematico
       } else {
-        // Asignar tema aleatorio si no hay coincidencia
-        const randomTopic = context.topics[Math.floor(Math.random() * context.topics.length)]
-        q.topicId = randomTopic.id
-        q.ejeTematico = randomTopic.ejeTematico
+        // Asignar el primer tema disponible si no hay coincidencia (más determinístico que aleatorio)
+        const firstTopic = context.topics[0]
+        q.topicId = firstTopic.id
+        q.ejeTematico = firstTopic.ejeTematico
       }
     }
 
@@ -344,7 +414,7 @@ function generateAnswerKey(questions: GeneratedQuestion[]): Record<number, strin
     if (q.opciones && q.opciones.length > 0) {
       const correctOption = q.opciones.find(o => o.esCorrecta)
       if (correctOption) {
-        answerKey[index] = correctOption.letra
+        setRecordValue(answerKey, index, correctOption.letra)
       }
     }
     // Las preguntas de desarrollo no se incluyen en el clavijero
@@ -353,67 +423,137 @@ function generateAnswerKey(questions: GeneratedQuestion[]): Record<number, strin
 }
 
 /**
- * Genera un examen usando IA basado en temarios
+ * Valida que el contexto del temario sea válido para generar el examen
  */
-export async function generateExamWithAI(params: ExamGenerationParams): Promise<GeneratedExam> {
-  const {
-    subjectId,
-    topicIds,
-    numQuestions,
-    difficulty = 'mixta',
-    tipo = 'objetiva',
-    userId,
-    includeAnswerKey = true,
-  } = params
-
-  // Obtener contexto del temario
-  const context = await getTopicContext(subjectId, topicIds)
-
-  if (!context.subject || context.topics.length === 0) {
-    throw new Error('No se encontraron temas para la asignatura seleccionada')
+function validateTopicContext(
+  context: Awaited<ReturnType<typeof getTopicContext>>,
+  subjectId: string
+): void {
+  if (!context.subject) {
+    throw new Error(`No se encontró la asignatura con ID: ${subjectId}`)
   }
 
-  // Obtener configuración de IA
+  if (context.topics.length === 0) {
+    throw new Error(
+      `No se encontraron temas para la asignatura "${context.subject.nombre}". Por favor, importa un temario primero.`
+    )
+  }
+}
+
+/**
+ * Valida y obtiene la configuración de IA del usuario
+ */
+async function validateAndGetAIConfig(userId?: string) {
   const aiConfig = await getAIConfig(userId)
   if (!aiConfig) {
     throw new Error(
       'No hay configuración de IA disponible. Por favor, configura tus API keys en tu perfil.'
     )
   }
+  return aiConfig
+}
+
+/**
+ * Valida la estructura básica del examen generado
+ */
+function validateExamStructure(examData: GeneratedExam): void {
+  if (!examData.questions || !Array.isArray(examData.questions)) {
+    throw new Error('El examen generado no tiene preguntas válidas')
+  }
+
+  if (examData.questions.length === 0) {
+    throw new Error('El examen generado no contiene preguntas')
+  }
+}
+
+/**
+ * Procesa el examen generado: valida, corrige y genera clavijero si es necesario
+ */
+function processGeneratedExam(
+  examData: GeneratedExam,
+  params: ExamGenerationParams,
+  context: Awaited<ReturnType<typeof getTopicContext>>
+): GeneratedExam {
+  // Validar estructura básica
+  validateExamStructure(examData)
+
+  // Validar y corregir preguntas
+  examData.questions = validateAndFixQuestions(
+    examData.questions,
+    params.tipo,
+    params.numQuestions,
+    context
+  )
+
+  // Generar clavijero si se solicita
+  if (params.includeAnswerKey) {
+    examData.answerKey = generateAnswerKey(examData.questions)
+  }
+
+  return examData
+}
+
+/**
+ * Genera un examen usando IA basado en temarios
+ *
+ * Esta función orquesta el proceso completo de generación:
+ * 1. Obtiene y valida el contexto del temario
+ * 2. Obtiene y valida la configuración de IA
+ * 3. Construye el prompt y genera el examen con IA
+ * 4. Parsea, valida y procesa el examen generado
+ * 
+ * @param params - Parámetros de generación del examen
+ * @param params.subjectId - ID de la asignatura
+ * @param params.topicIds - IDs opcionales de temas específicos
+ * @param params.numQuestions - Número de preguntas a generar
+ * @param params.difficulty - Nivel de dificultad ('baja', 'media', 'alta', 'mixta')
+ * @param params.tipo - Tipo de examen ('objetiva', 'desarrollo', 'mixta')
+ * @param params.userId - ID del usuario que solicita la generación
+ * @param params.includeAnswerKey - Si true, genera también el clavijero con respuestas correctas
+ * @returns Examen generado con preguntas validadas y procesadas
+ * @throws Error si falla la validación del contexto, la configuración de IA, o la generación del examen
+ * 
+ * @example
+ * ```typescript
+ * const exam = await generateExamWithAI({
+ *   subjectId: 'c123...',
+ *   numQuestions: 20,
+ *   difficulty: 'media',
+ *   tipo: 'objetiva',
+ *   userId: 'c456...',
+ *   includeAnswerKey: true
+ * })
+ * ```
+ */
+export async function generateExamWithAI(params: ExamGenerationParams): Promise<GeneratedExam> {
+  const { subjectId, topicIds, userId } = params
 
   try {
-    // Construir prompt para la IA
-    const messages = buildPromptForExamGeneration(context, params)
+    // 1. Obtener y validar contexto del temario
+    const context = await getTopicContext(subjectId, topicIds)
+    validateTopicContext(context, subjectId)
 
-    // Generar examen con IA
+    // 2. Obtener y validar configuración de IA
+    const aiConfig = await validateAndGetAIConfig(userId)
+
+    // 3. Construir prompt y generar examen con IA
+    const messages = buildPromptForExamGeneration(context, params)
     const response = await sendAIMessage(messages, aiConfig, userId)
 
-    // Parsear respuesta JSON
+    // 4. Parsear respuesta JSON
     const examData = parseAIResponse(response)
 
-    // Validar estructura
-    if (!examData.questions || !Array.isArray(examData.questions)) {
-      throw new Error('El examen generado no tiene preguntas válidas')
-    }
-
-    // Validar y corregir preguntas
-    examData.questions = validateAndFixQuestions(examData.questions, tipo, numQuestions, context)
-
-    // Generar clavijero si se solicita
-    if (includeAnswerKey) {
-      examData.answerKey = generateAnswerKey(examData.questions)
-    }
-
-    return examData
+    // 5. Procesar examen (validar, corregir, generar clavijero)
+    return processGeneratedExam(examData, params, context)
   } catch (error) {
     logger.error(
       {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
         subjectId,
-        numQuestions,
-        tipo,
-        difficulty,
+        numQuestions: params.numQuestions,
+        tipo: params.tipo,
+        difficulty: params.difficulty,
         userId,
       },
       'Error al generar examen con IA'

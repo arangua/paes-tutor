@@ -3,10 +3,11 @@ import { prisma } from '@/lib/prisma'
 import { withRateLimit } from '@/lib/rate-limit-middleware'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
+import type { Prisma } from '@prisma/client'
 
 export const runtime = 'nodejs'
 
-const topicsQuerySchema = z.object({
+const _topicsQuerySchema = z.object({
   subjectId: z.string().optional(),
 })
 
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
       const { searchParams } = new URL(request.url)
       const subjectId = searchParams.get('subjectId')
 
-      const where: any = {}
+      const where: Prisma.TopicWhereInput = {}
       if (subjectId) {
         where.subjectId = subjectId
       }

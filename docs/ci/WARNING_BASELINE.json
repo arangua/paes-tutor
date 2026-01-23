@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "updatedAt": "2025-01-28",
+  "scope": {
+    "command": "npm run test:run",
+    "note": "Baseline de warnings (stderr/stdout) permitido. No debe aumentar."
+  },
+  "budget": {
+    "totalAllowed": 0,
+    "byPatternAllowed": {
+      "console-error": 2
+    }
+  }
+}

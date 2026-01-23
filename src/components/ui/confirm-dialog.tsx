@@ -33,7 +33,7 @@ export function ConfirmDialog({
   cancelText = 'Cancelar',
   variant = 'default',
   loading = false,
-}: ConfirmDialogProps) {
+}: Readonly<ConfirmDialogProps>) {
   const handleConfirm = () => {
     onConfirm()
   }

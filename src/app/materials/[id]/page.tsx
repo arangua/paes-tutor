@@ -16,6 +16,7 @@ import {
   ExternalLink,
   CheckCircle2,
 } from 'lucide-react'
+import { ShareMaterialButton } from '@/components/materials/share-material-button'
 
 interface Material {
   id: string
@@ -229,6 +230,7 @@ export default function MaterialDetailPage() {
                 </>
               )}
             </Button>
+            <ShareMaterialButton materialId={material.id} materialTitle={material.titulo} />
             <Button variant="outline" asChild>
               <Link href="/materials">Ver Más Materiales</Link>
             </Button>

@@ -5,12 +5,11 @@ import { validateQuery, handleApiError } from '@/lib/api-helpers'
 import { withRateLimit } from '@/lib/rate-limit-middleware'
 import { logApiRequest } from '@/lib/logger'
 import { getCached, cacheKeys } from '@/lib/cache'
-import { z } from 'zod'
+import { TIME_CONSTANTS } from '@/lib/constants'
+import { materialsQuerySchema } from '@/lib/validations'
 
 // Especificar Node.js runtime
 export const runtime = 'nodejs'
-
-import { materialsQuerySchema } from '@/lib/validations'
 
 export async function GET(request: NextRequest) {
   return withRateLimit(request, async () => {
@@ -30,6 +29,13 @@ export async function GET(request: NextRequest) {
 
       const { subjectId, topicId, tipo, limit, offset } = validation.data
 
+      // Construir where clause una sola vez para evitar duplicación
+      const whereClause = {
+        ...(subjectId && { subjectId }),
+        ...(topicId && { topicId }),
+        ...(tipo && { tipo }),
+      }
+
       // Usar caché para queries frecuentes
       const cacheKey = cacheKeys.materials(subjectId, topicId, tipo, limit, offset)
       const materials = await getCached(
@@ -38,11 +44,7 @@ export async function GET(request: NextRequest) {
           // Búsqueda mejorada basada en malla curricular chilena
           // Prioriza materiales por relevancia: tema específico > asignatura > eje temático
           const materials = await prisma.studyMaterial.findMany({
-            where: {
-              ...(subjectId && { subjectId }),
-              ...(topicId && { topicId }),
-              ...(tipo && { tipo }),
-            },
+            where: whereClause,
             select: {
               id: true,
               titulo: true,
@@ -78,19 +80,75 @@ export async function GET(request: NextRequest) {
 
           // Ordenar por relevancia según malla curricular
           // Materiales con tema específico primero, luego por asignatura
-          return materials.sort((a, b) => {
-            // Si ambos tienen tema, ordenar por fecha (más recientes primero)
-            if (a.topic && b.topic) {
-              return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-            }
-            // Materiales con tema primero
-            if (a.topic && !b.topic) return -1
-            if (!a.topic && b.topic) return 1
-            // Si ninguno tiene tema, ordenar por fecha
-            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          })
+          return materials
+            .filter(m => m && typeof m === 'object')
+            .sort((a, b) => {
+              // Si ambos tienen tema, ordenar por fecha (más recientes primero)
+              if (a.topic && b.topic) {
+                const dateA = (() => {
+                  if (!a.createdAt) return 0
+                  try {
+                    const date = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt)
+                    if (date instanceof Date && !Number.isNaN(date.getTime())) {
+                      const time = date.getTime()
+                      return Number.isFinite(time) ? time : 0
+                    }
+                  } catch {
+                    // Ignorar errores de fecha
+                  }
+                  return 0
+                })()
+                const dateB = (() => {
+                  if (!b.createdAt) return 0
+                  try {
+                    const date = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt)
+                    if (date instanceof Date && !Number.isNaN(date.getTime())) {
+                      const time = date.getTime()
+                      return Number.isFinite(time) ? time : 0
+                    }
+                  } catch {
+                    // Ignorar errores de fecha
+                  }
+                  return 0
+                })()
+                const diff = dateB - dateA
+                return Number.isFinite(diff) ? diff : 0
+              }
+              // Materiales con tema primero
+              if (a.topic && !b.topic) return -1
+              if (!a.topic && b.topic) return 1
+              // Si ninguno tiene tema, ordenar por fecha
+              const dateA = (() => {
+                if (!a.createdAt) return 0
+                try {
+                  const date = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt)
+                  if (date instanceof Date && !Number.isNaN(date.getTime())) {
+                    const time = date.getTime()
+                    return Number.isFinite(time) ? time : 0
+                  }
+                } catch {
+                  // Ignorar errores de fecha
+                }
+                return 0
+              })()
+              const dateB = (() => {
+                if (!b.createdAt) return 0
+                try {
+                  const date = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt)
+                  if (date instanceof Date && !Number.isNaN(date.getTime())) {
+                    const time = date.getTime()
+                    return Number.isFinite(time) ? time : 0
+                  }
+                } catch {
+                  // Ignorar errores de fecha
+                }
+                return 0
+              })()
+              const diff = dateB - dateA
+              return Number.isFinite(diff) ? diff : 0
+            })
         },
-        10 * 60 * 1000 // Cache por 10 minutos
+        TIME_CONSTANTS.MATERIALS_CACHE_TTL_MS
       )
 
       // Obtener total para paginación
@@ -98,14 +156,10 @@ export async function GET(request: NextRequest) {
         `${cacheKey}:total`,
         async () => {
           return await prisma.studyMaterial.count({
-            where: {
-              ...(subjectId && { subjectId }),
-              ...(topicId && { topicId }),
-              ...(tipo && { tipo }),
-            },
+            where: whereClause,
           })
         },
-        10 * 60 * 1000
+        TIME_CONSTANTS.MATERIALS_CACHE_TTL_MS
       )
 
       return NextResponse.json({

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getCurrentUser } from '@/lib/get-session'
+import { getAuthenticatedUserWithStudent } from '@/lib/get-session'
 import { withRateLimit } from '@/lib/rate-limit-middleware'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
@@ -18,17 +18,12 @@ const quickReviewQuerySchema = z.object({
 export async function GET(request: NextRequest) {
   return withRateLimit(request, async () => {
     try {
-      const user = await getCurrentUser()
-      if (!user?.email) {
+      const dbUser = await getAuthenticatedUserWithStudent()
+      if (!dbUser?.email) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
       }
 
-      const dbUser = await prisma.user.findUnique({
-        where: { email: user.email },
-        include: { student: true },
-      })
-
-      if (!dbUser?.student) {
+      if (!dbUser.student) {
         return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 })
       }
 
@@ -96,11 +91,18 @@ export async function GET(request: NextRequest) {
       >()
 
       // Ordenar por fecha de intento (más recientes primero)
-      const sortedAnswers = [...incorrectAnswers].sort(
-        (a, b) => b.attempt.startedAt.getTime() - a.attempt.startedAt.getTime()
-      )
+      const sortedAnswers = [...incorrectAnswers]
+        .filter(answer => answer.attempt && answer.attempt.startedAt)
+        .sort((a, b) => {
+          const timeA = a.attempt?.startedAt ? a.attempt.startedAt.getTime() : 0
+          const timeB = b.attempt?.startedAt ? b.attempt.startedAt.getTime() : 0
+          return timeB - timeA
+        })
 
       sortedAnswers.forEach(answer => {
+        if (!answer.question || !answer.attempt || !answer.attempt.startedAt) {
+          return // Saltar respuestas inválidas
+        }
         const questionId = answer.question.id
         if (!questionMap.has(questionId)) {
           questionMap.set(questionId, {
@@ -109,27 +111,99 @@ export async function GET(request: NextRequest) {
             lastFailed: answer.attempt.startedAt,
           })
         }
-        const data = questionMap.get(questionId)!
-        data.timesFailed++
-        if (answer.attempt.startedAt > data.lastFailed) {
-          data.lastFailed = answer.attempt.startedAt
+        const data = questionMap.get(questionId)
+        if (data && answer.attempt && answer.attempt.startedAt) {
+          data.timesFailed++
+          const startedAtTime = answer.attempt.startedAt instanceof Date && !Number.isNaN(answer.attempt.startedAt.getTime())
+            ? answer.attempt.startedAt.getTime()
+            : 0
+          const lastFailedTime = data.lastFailed instanceof Date && !Number.isNaN(data.lastFailed.getTime())
+            ? data.lastFailed.getTime()
+            : 0
+          if (startedAtTime > lastFailedTime) {
+            data.lastFailed = answer.attempt.startedAt
+          }
         }
       })
 
       // Convertir a array, ordenar por veces fallada y fecha, luego aleatorizar
-      const questionsArray = Array.from(questionMap.values())
+      const sortedArray = Array.from(questionMap.values())
+        .filter(item => item && item.question && Number.isFinite(item.timesFailed))
         .sort((a, b) => {
+          // Validar que a y b sean objetos válidos
+          if (!a || !b || typeof a !== 'object' || typeof b !== 'object') {
+            return 0
+          }
           // Priorizar preguntas falladas más veces
-          if (b.timesFailed !== a.timesFailed) {
-            return b.timesFailed - a.timesFailed
+          const safeATimes = Number.isFinite(a.timesFailed) && a.timesFailed >= 0 ? a.timesFailed : 0
+          const safeBTimes = Number.isFinite(b.timesFailed) && b.timesFailed >= 0 ? b.timesFailed : 0
+          if (safeBTimes !== safeATimes) {
+            return safeBTimes - safeATimes
           }
           // Si tienen el mismo número de fallos, priorizar las más recientes
-          return b.lastFailed.getTime() - a.lastFailed.getTime()
+          const timeA = a.lastFailed instanceof Date && !Number.isNaN(a.lastFailed.getTime())
+            ? a.lastFailed.getTime()
+            : 0
+          const timeB = b.lastFailed instanceof Date && !Number.isNaN(b.lastFailed.getTime())
+            ? b.lastFailed.getTime()
+            : 0
+          const diff = timeB - timeA
+          return Number.isFinite(diff) ? diff : 0
         })
-        .slice(0, validLimit) // Tomar solo el límite solicitado
-        .sort(() => Math.random() - 0.5) // Aleatorizar el orden final
+      
+      // CORRECCIÓN: Validar que sortedArray sea un array válido antes de usar slice() y sort()
+      let questionsArray: typeof sortedArray
+      try {
+        // Validar que sortedArray sea un array válido antes de usar slice()
+        if (!Array.isArray(sortedArray)) {
+          logger.warn({ sortedArray }, 'review/quick: sortedArray no es un array válido antes de slice(), usando array vacío')
+          questionsArray = []
+        } else {
+          const sliced = sortedArray.slice(0, validLimit)
+          // Validar que slice() retorne un array válido
+          if (!Array.isArray(sliced)) {
+            logger.warn({ sortedArray, validLimit, sliced }, 'review/quick: slice() retornó resultado inválido, usando sortedArray original')
+            questionsArray = sortedArray
+          } else {
+            try {
+              const randomized = sliced.sort(() => {
+                const random = Math.random()
+                return Number.isFinite(random) ? random - 0.5 : 0
+              })
+              // Validar que sort() retorne un array válido
+              questionsArray = Array.isArray(randomized) ? randomized : sliced
+            } catch (sortError) {
+              logger.warn({ error: sortError, sliced }, 'review/quick: Error al ejecutar sort() para aleatorizar, usando sliced original')
+              questionsArray = sliced
+            }
+          }
+        }
+      } catch (error) {
+        logger.warn({ error, sortedArray, validLimit }, 'review/quick: Error al procesar sortedArray, usando array vacío')
+        questionsArray = []
+      }
 
-      const questions = questionsArray.map(item => item.question)
+      // CORRECCIÓN: Validar que questionsArray sea un array válido y que item.question exista antes de mapear
+      const questions = (() => {
+        if (!Array.isArray(questionsArray)) {
+          logger.warn({ questionsArray }, 'review/quick: questionsArray no es un array válido, retornando array vacío')
+          return []
+        }
+        try {
+          const mapped = questionsArray
+            .filter(item => item && typeof item === 'object' && item.question && typeof item.question === 'object')
+            .map(item => item.question)
+          // Validar que mapped sea un array válido
+          if (!Array.isArray(mapped)) {
+            logger.warn({ questionsArray, mapped }, 'review/quick: map() retornó resultado inválido, retornando array vacío')
+            return []
+          }
+          return mapped
+        } catch (error) {
+          logger.warn({ error, questionsArray }, 'review/quick: Error al ejecutar map() en questionsArray, retornando array vacío')
+          return []
+        }
+      })()
 
       return NextResponse.json({
         questions,

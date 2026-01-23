@@ -1,0 +1,65 @@
+name: deps-major-label-gate
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  major_label_gate:
+    name: Major deps label gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check if PR is Dependabot
+        id: is_dependabot
+        run: |
+          if [ "${{ github.actor }}" = "dependabot[bot]" ]; then
+            echo "is_dependabot=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_dependabot=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Enforce label on major updates
+        if: steps.is_dependabot.outputs.is_dependabot == 'true'
+        uses: dependabot/fetch-metadata@v2
+        id: metadata
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Fail if major update missing approval label
+        if: steps.is_dependabot.outputs.is_dependabot == 'true'
+        run: |
+          UPDATE_TYPE="${{ steps.metadata.outputs.update-type }}"
+          LABELS='${{ toJson(github.event.pull_request.labels.*.name) }}'
+
+          echo "dependabot update-type: $UPDATE_TYPE"
+          echo "labels: $LABELS"
+
+          if [ "$UPDATE_TYPE" != "version-update:semver-major" ]; then
+            echo "Not a major update. Gate passed."
+            exit 0
+          fi
+
+          # Required labels for major bumps (governance + semver)
+          REQUIRED_APPROVAL="deps-major-approved"
+          REQUIRED_RELEASE="release:major"
+
+          has_approval=$(echo "$LABELS" | grep -q "\"$REQUIRED_APPROVAL\"" && echo "yes" || echo "no")
+          has_release=$(echo "$LABELS" | grep -q "\"$REQUIRED_RELEASE\"" && echo "yes" || echo "no")
+
+          if [ "$has_approval" = "yes" ] && [ "$has_release" = "yes" ]; then
+            echo "Major update has required labels ($REQUIRED_APPROVAL, $REQUIRED_RELEASE). Gate passed."
+            exit 0
+          fi
+
+          echo "ERROR: Major dependency update requires labels:"
+          echo " - $REQUIRED_APPROVAL (aprobación técnica)"
+          echo " - $REQUIRED_RELEASE (semver discipline)"
+          echo ""
+          echo "Agrega ambos labels después de la revisión (y Decision Log si aplica)."
+          exit 1

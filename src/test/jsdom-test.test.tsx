@@ -1,9 +1,9 @@
 /**
- * @vitest-environment jsdom
+ * @vitest-environment happy-dom
  */
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import React from 'react'
+import '@testing-library/jest-dom/vitest'
 
 describe('jsdom test', () => {
   it('debe tener document disponible', () => {
@@ -12,8 +12,8 @@ describe('jsdom test', () => {
   })
 
   it('debe tener window disponible', () => {
-    expect(typeof window).toBe('object')
-    expect(window).toBeDefined()
+    expect(typeof globalThis.window).toBe('object')
+    expect(globalThis.window).toBeDefined()
   })
 
   it('debe poder renderizar un componente simple', () => {

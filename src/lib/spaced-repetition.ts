@@ -3,6 +3,8 @@
  * Basado en: https://www.supermemo.com/en/archives1990-2015/english/ol/sm2
  */
 
+import { safeRound } from '@/app/api/notes/versions/validation-utils'
+
 export interface SM2Result {
   easeFactor: number
   interval: number // días hasta próximo repaso
@@ -23,7 +25,8 @@ export interface SM2Input {
  * @returns Nuevos parámetros calculados
  */
 export function calculateSM2(input: SM2Input): SM2Result {
-  let { quality, easeFactor, interval, reviewCount } = input
+  const { quality } = input
+  let { easeFactor, interval, reviewCount } = input
 
   // Calcular nuevo factor de facilidad
   easeFactor = easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02))
@@ -44,7 +47,7 @@ export function calculateSM2(input: SM2Input): SM2Result {
     } else if (reviewCount === 1) {
       interval = 6
     } else {
-      interval = Math.round(interval * easeFactor)
+      interval = safeRound(interval * easeFactor, 0)
     }
     reviewCount++
   }

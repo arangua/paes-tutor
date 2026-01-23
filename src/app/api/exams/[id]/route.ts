@@ -3,8 +3,9 @@ import { prisma } from '@/lib/prisma'
 import { getCurrentStudentId } from '@/lib/get-session'
 import { handleApiError } from '@/lib/api-helpers'
 import { withRateLimit } from '@/lib/rate-limit-middleware'
-import { logApiRequest } from '@/lib/logger'
+import { logApiRequest, logger } from '@/lib/logger'
 import { getCached, cacheKeys } from '@/lib/cache'
+import { TIME_CONSTANTS } from '@/lib/constants'
 
 // Especificar Node.js runtime
 export const runtime = 'nodejs'
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             },
           })
         },
-        10 * 60 * 1000 // Cache por 10 minutos
+        TIME_CONSTANTS.EXAMS_CACHE_TTL_MS
       )
 
       if (!exam) {
@@ -58,8 +59,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
       return NextResponse.json(exam)
     } catch (error) {
+      let examId = 'unknown'
+      try {
+        const resolvedParams = await params
+        examId = resolvedParams?.id || 'unknown'
+      } catch (paramError) {
+        logger.warn({ error: paramError }, 'Error al obtener params en catch de exams/[id]')
+      }
       return handleApiError(error, 'Error al obtener examen', {
-        path: `/api/exams/${await params.then(p => p.id)}`,
+        path: `/api/exams/${examId}`,
       })
     }
   })

@@ -10,8 +10,15 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
-/coverage
+# testing/coverage
+.nyc_output
+
+# Generated test artifacts (do not commit)
+playwright-report/
+.tmp/
+
+# migration backups
+/.migration-backups
 
 # next.js
 /.next/
@@ -45,3 +52,49 @@ next-env.d.ts
 # PDFs descargados de DEMRE
 /data/pdfs/
 /data/temp/
+
+# Reportes de limpieza de código
+cleanup-report.json
+
+# Base de datos local (SQLite)
+*.db
+paes.db
+dev.db
+
+# Test results
+test-results/
+
+# Artefactos temporales y reportes
+*.txt
+!README.txt
+*.patch
+lint-*.txt
+*-output.txt
+*-check.txt
+*-analysis.txt
+*-before.txt
+*-after.txt
+*-final.txt
+*-errors-list.txt
+*-warnings-list.txt
+build-output.txt
+eslint-src-output.txt
+migration-report*.json
+node-version.txt
+npm-version.txt
+last-commit-before.txt
+
+# --- Temp logs / outputs (local) ---
+# Generic log files (complementa los específicos de npm/yarn arriba)
+*.log
+*.tmp
+*.temp
+
+# ESLint / lint outputs (complementa los patrones específicos arriba)
+eslint-*-output.txt
+
+# Test / tool outputs (local)
+coverage/
+
+# OS / editor noise
+Thumbs.db

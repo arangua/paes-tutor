@@ -12,7 +12,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [20.x]
+        node-version: [24.11.1]
 
     steps:
     - uses: actions/checkout@v4
@@ -32,6 +32,38 @@ jobs:
     - name: Run linter
       run: npm run lint
 
+    - name: Check critical issues (Plan Estándar Máximo)
+      run: npm run check:critical-issues
+      # ✅ Enterprise: Falla el build si hay problemas críticos
+
+    - name: Validate TypeScript types
+      run: npm run validate:types
+      # ✅ Enterprise: Falla el build si hay errores de tipos
+
+    - name: Validate secrets
+      run: npm run validate:secrets
+      # ✅ Enterprise: Falla el build si hay secrets expuestos
+
+    - name: Run guard:no-global-patches
+      run: npm run guard:no-global-patches
+      # ✅ Enterprise: Verifica que no haya patches globales de console/events
+
+    - name: Verify Prisma Configuration
+      run: npm run guard:prisma
+      # ✅ Enterprise: Verifica que Prisma usa engine estándar (sin adapters/Accelerate)
+
+    - name: Test Prisma Integration
+      run: npm run test:prisma
+      # ✅ Enterprise: Tests automatizados para prevenir regresiones de Prisma
+
+    - name: Run guard:contracts
+      run: npm run guard:contracts
+      # ✅ Enterprise: Verifica que los contratos no se degraden (schemas con .strict(), sin z.coerce, etc.)
+
+    - name: Run contract tests
+      run: npm run contracts:test
+      # ✅ Enterprise: Ejecuta tests de ruptura contractual antes de tests generales
+
     - name: Run unit tests
       run: npm run test:run
 
@@ -47,15 +79,16 @@ jobs:
         fail_ci_if_error: false
 
   e2e:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: Use Node.js 20.x
+    - name: Use Node.js 24.11.1
       uses: actions/setup-node@v4
       with:
-        node-version: 20.x
+        node-version: 24.11.1
         cache: 'npm'
 
     - name: Install dependencies
@@ -72,8 +105,14 @@ jobs:
         npx prisma migrate deploy
         npx prisma db seed
 
+    - name: Pre-build validation (Enterprise)
+      run: npm run prebuild
+      # ✅ Enterprise: Ejecuta limpieza, linting y validaciones antes del build
+      continue-on-error: false
+
     - name: Build application
       run: npm run build
+      # ✅ Enterprise: Build solo se ejecuta si pre-build es exitoso
       env:
         NODE_ENV: production
 
@@ -93,15 +132,15 @@ jobs:
   mutation:
     runs-on: ubuntu-latest
     # Ejecutar solo en push a main/develop o en PRs (opcional: puede ser manual)
-    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    if: github.event_name == 'push'
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: Use Node.js 20.x
+    - name: Use Node.js 24.11.1
       uses: actions/setup-node@v4
       with:
-        node-version: 20.x
+        node-version: 24.11.1
         cache: 'npm'
 
     - name: Install dependencies
@@ -110,9 +149,8 @@ jobs:
     - name: Generate Prisma Client
       run: npx prisma generate
 
-    - name: Run mutation tests with maximum logical depth
+    - name: Run mutation tests (gate)
       run: npm run test:mutation
-      continue-on-error: true  # No fallar el CI si mutation score es bajo
       timeout-minutes: 60  # Mutation testing puede tardar mucho tiempo
 
     - name: Upload mutation test report

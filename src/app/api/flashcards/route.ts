@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getCurrentUser } from '@/lib/get-session'
+import { getAuthenticatedUserWithStudent } from '@/lib/get-session'
 import { withRateLimit } from '@/lib/rate-limit-middleware'
 import { z } from 'zod'
 import { calculateSM2, responseToQuality } from '@/lib/spaced-repetition'
@@ -30,27 +30,22 @@ const getFlashcardsQuerySchema = z.object({
     .optional()
     .transform(val => (val ? parseInt(val, 10) : undefined))
     .pipe(z.number().int().min(1).max(100).optional()),
-  flashcardId: z.string().cuid().optional(),
+  flashcardId: z.cuid({ error: 'flashcardId debe ser un CUID válido' }).optional(),
 })
 
-const flashcardIdQuerySchema = z.object({
-  flashcardId: z.string().cuid().min(1),
+const _flashcardIdQuerySchema = z.object({
+  flashcardId: z.cuid({ error: 'flashcardId debe ser un CUID válido' }).min(1),
 })
 
 export async function GET(request: NextRequest) {
   return withRateLimit(request, async () => {
     try {
-      const user = await getCurrentUser()
-      if (!user?.email) {
+      const dbUser = await getAuthenticatedUserWithStudent()
+      if (!dbUser?.email) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
       }
 
-      const dbUser = await prisma.user.findUnique({
-        where: { email: user.email },
-        include: { student: true },
-      })
-
-      if (!dbUser?.student) {
+      if (!dbUser.student) {
         return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 })
       }
 
@@ -73,7 +68,7 @@ export async function GET(request: NextRequest) {
         nextReview?: { lte: Date }
         id?: string
       } = {
-        studentId: user.student.id,
+        studentId: dbUser.student.id,
       }
 
       if (dueOnly) {
@@ -109,8 +104,21 @@ export async function GET(request: NextRequest) {
         take: limit,
       })
 
+      // Obtener estadísticas adicionales
+      const now = new Date()
+      const dueCount = flashcards.filter(f => new Date(f.nextReview) <= now).length
+      const totalCount = await prisma.flashcard.count({
+        where: {
+          studentId: dbUser.student.id,
+        },
+      })
+
       return NextResponse.json({
         flashcards,
+        stats: {
+          total: totalCount,
+          due: dueCount,
+        },
       })
     } catch (error) {
       logger.error({ error, context: 'flashcards/GET' }, 'Error al obtener flashcards')
@@ -122,17 +130,12 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   return withRateLimit(request, async () => {
     try {
-      const user = await getCurrentUser()
-      if (!user?.email) {
+      const dbUser = await getAuthenticatedUserWithStudent()
+      if (!dbUser?.email) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
       }
 
-      const dbUser = await prisma.user.findUnique({
-        where: { email: user.email },
-        include: { student: true },
-      })
-
-      if (!dbUser?.student) {
+      if (!dbUser.student) {
         return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 })
       }
 
@@ -198,17 +201,12 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   return withRateLimit(request, async () => {
     try {
-      const user = await getCurrentUser()
-      if (!user?.email) {
+      const dbUser = await getAuthenticatedUserWithStudent()
+      if (!dbUser?.email) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
       }
 
-      const dbUser = await prisma.user.findUnique({
-        where: { email: user.email },
-        include: { student: true },
-      })
-
-      if (!dbUser?.student) {
+      if (!dbUser.student) {
         return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 })
       }
 
@@ -227,7 +225,7 @@ export async function PUT(request: NextRequest) {
       const flashcard = await prisma.flashcard.findFirst({
         where: {
           id: flashcardId,
-          studentId: user.student.id,
+          studentId: dbUser.student.id,
         },
       })
 
@@ -270,17 +268,12 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   return withRateLimit(request, async () => {
     try {
-      const user = await getCurrentUser()
-      if (!user?.email) {
+      const dbUser = await getAuthenticatedUserWithStudent()
+      if (!dbUser?.email) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
       }
 
-      const dbUser = await prisma.user.findUnique({
-        where: { email: user.email },
-        include: { student: true },
-      })
-
-      if (!dbUser?.student) {
+      if (!dbUser.student) {
         return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 })
       }
 
@@ -294,7 +287,7 @@ export async function DELETE(request: NextRequest) {
       const flashcard = await prisma.flashcard.findFirst({
         where: {
           id: flashcardId,
-          studentId: user.student.id,
+          studentId: dbUser.student.id,
         },
       })
 

@@ -2,7 +2,17 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { BookOpen, FileText, BarChart3, Target, TrendingUp, Award, RotateCcw } from 'lucide-react'
+import {
+  BookOpen,
+  FileText,
+  BarChart3,
+  Target,
+  TrendingUp,
+  RotateCcw,
+  Users,
+  Share2,
+  Trophy,
+} from 'lucide-react'
 import Link from 'next/link'
 
 interface QuickAction {
@@ -43,10 +53,59 @@ const defaultActions: QuickAction[] = [
     variant: 'outline',
   },
   {
+    title: 'Recomendaciones',
+    description: 'Recomendaciones personalizadas de estudio',
+    href: '/recommendations',
+    icon: Target,
+    variant: 'default',
+  },
+  {
     title: 'Repaso Rápido',
     description: 'Repasa preguntas falladas (5-10 preguntas)',
     href: '/review/quick',
     icon: RotateCcw,
+    variant: 'default',
+  },
+  {
+    title: 'Comparación Directa',
+    description: 'Compara tu progreso con el otro estudiante',
+    href: '/comparison',
+    icon: Users,
+    variant: 'default',
+  },
+  {
+    title: 'Exámenes Compartidos',
+    description: 'Ver exámenes compartidos contigo',
+    href: '/shared-exams',
+    icon: Share2,
+    variant: 'outline',
+  },
+  {
+    title: 'Materiales Compartidos',
+    description: 'Ver materiales compartidos contigo',
+    href: '/shared-materials',
+    icon: FileText,
+    variant: 'outline',
+  },
+  {
+    title: 'Flashcards Compartidas',
+    description: 'Ver flashcards compartidas contigo',
+    href: '/shared-flashcards',
+    icon: RotateCcw,
+    variant: 'outline',
+  },
+  {
+    title: 'Notas Compartidas',
+    description: 'Ver notas compartidas contigo',
+    href: '/shared-notes',
+    icon: FileText,
+    variant: 'outline',
+  },
+  {
+    title: 'Desafíos',
+    description: 'Desafía al otro estudiante y compite',
+    href: '/challenges',
+    icon: Trophy,
     variant: 'default',
   },
 ]
@@ -61,7 +120,7 @@ export function QuickActions({
   actions = defaultActions,
   title = 'Accesos Rápidos',
   description = 'Acciones comunes para continuar tu preparación',
-}: QuickActionsProps) {
+}: Readonly<QuickActionsProps>) {
   return (
     <Card>
       <CardHeader>

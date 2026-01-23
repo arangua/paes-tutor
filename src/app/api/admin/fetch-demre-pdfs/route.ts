@@ -4,6 +4,8 @@ import { withRateLimit } from '@/lib/rate-limit-middleware'
 import { logger } from '@/lib/logger'
 import * as cheerio from 'cheerio'
 import axios from 'axios'
+import https from 'https'
+import http from 'http'
 
 export const runtime = 'nodejs'
 
@@ -101,14 +103,17 @@ async function fetchHTML(url: string): Promise<string> {
  */
 async function fetchHTMLAlternative(url: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    const https = require('https')
-    const http = require('http')
     const urlObj = new URL(url)
     const protocol = urlObj.protocol === 'https:' ? https : http
 
-    const options: any = {
+    const portNum = urlObj.port ? parseInt(urlObj.port, 10) : null
+    const safePort = portNum && !isNaN(portNum) && portNum > 0 && portNum <= 65535
+      ? portNum
+      : urlObj.protocol === 'https:' ? 443 : 80
+
+    const options: https.RequestOptions = {
       hostname: urlObj.hostname,
-      port: urlObj.port || (urlObj.protocol === 'https:' ? 443 : 80),
+      port: safePort,
       path: urlObj.pathname + urlObj.search,
       method: 'GET',
       headers: {
@@ -125,7 +130,7 @@ async function fetchHTMLAlternative(url: string): Promise<string> {
     let responseData = Buffer.alloc(0)
     let headersReceived = false
 
-    const req = protocol.request(options, (res: any) => {
+    const req = protocol.request(options, (res: http.IncomingMessage) => {
       headersReceived = true
 
       if (!res.statusCode || res.statusCode < 200 || res.statusCode >= 400) {
@@ -213,7 +218,27 @@ async function extractPDFLinksFromPage(url: string): Promise<PDFLink[]> {
         }
 
         // Intentar extraer información del texto del enlace
-        const title = text || href.split('/').pop() || 'PDF'
+        let title = text
+        if (!title || title.length === 0) {
+          try {
+            const splitResult = typeof href === 'string' ? href.split('/') : []
+            if (Array.isArray(splitResult) && splitResult.length > 0) {
+              const lastElement = splitResult[splitResult.length - 1]
+              if (typeof lastElement === 'string' && lastElement.length > 0) {
+                title = lastElement
+              } else {
+                title = 'PDF'
+              }
+            } else {
+              title = 'PDF'
+            }
+          } catch {
+            title = 'PDF'
+          }
+        }
+        if (!title || title.length === 0) {
+          title = 'PDF'
+        }
 
         pdfLinks.push({
           url: absoluteUrl,
@@ -253,7 +278,20 @@ async function extractPDFLinksFromPage(url: string): Promise<PDFLink[]> {
  * Intenta extraer el nombre de la asignatura del texto
  */
 function extractSubjectFromText(text: string): string | undefined {
-  const textLower = text.toLowerCase()
+  const safeText = typeof text === 'string' ? text : ''
+  if (!safeText) {
+    return undefined
+  }
+
+  let textLower = ''
+  try {
+    textLower = safeText.toLowerCase()
+    if (typeof textLower !== 'string') {
+      textLower = safeText // Fallback
+    }
+  } catch {
+    textLower = safeText // Fallback
+  }
 
   const subjectPatterns: Record<string, string> = {
     lector: 'Competencia Lectora',
@@ -273,9 +311,17 @@ function extractSubjectFromText(text: string): string | undefined {
     historia: 'Historia y Ciencias Sociales',
   }
 
-  for (const [pattern, subject] of Object.entries(subjectPatterns)) {
-    if (textLower.includes(pattern)) {
-      return subject
+  if (typeof textLower === 'string' && textLower.length > 0) {
+    for (const [pattern, subject] of Object.entries(subjectPatterns)) {
+      if (typeof pattern === 'string' && pattern.length > 0) {
+        try {
+          if (textLower.includes(pattern)) {
+            return typeof subject === 'string' ? subject : undefined
+          }
+        } catch {
+          // Continuar con el siguiente patrón
+        }
+      }
     }
   }
 
@@ -286,8 +332,18 @@ function extractSubjectFromText(text: string): string | undefined {
  * Intenta extraer el año del texto
  */
 function extractYearFromText(text: string): string | undefined {
-  const yearMatch = text.match(/\b(20\d{2})\b/)
-  return yearMatch ? yearMatch[1] : undefined
+  if (!text || typeof text !== 'string') {
+    return undefined
+  }
+  try {
+    const yearMatch = text.match(/\b(20\d{2})\b/)
+    if (yearMatch && Array.isArray(yearMatch) && yearMatch.length > 1 && typeof yearMatch[1] === 'string') {
+      return yearMatch[1]
+    }
+  } catch {
+    // Ignorar error de match
+  }
+  return undefined
 }
 
 export async function POST(request: NextRequest) {
@@ -318,8 +374,22 @@ export async function POST(request: NextRequest) {
         }
 
         // Validar que el hostname sea de DEMRE (prevenir SSRF)
-        const hostname = urlObj.hostname.toLowerCase()
-        if (hostname !== 'demre.cl' && !hostname.endsWith('.demre.cl')) {
+        // CORRECCIÓN: Validar que urlObj.hostname sea un string válido antes de usar toLowerCase()
+        const safeHostname = typeof urlObj.hostname === 'string' ? urlObj.hostname : ''
+        if (!safeHostname || safeHostname.length === 0) {
+          return NextResponse.json({ error: 'Hostname inválido' }, { status: 400 })
+        }
+        let hostname = ''
+        try {
+          hostname = safeHostname.toLowerCase()
+          if (typeof hostname !== 'string') {
+            hostname = safeHostname // Fallback
+          }
+        } catch {
+          hostname = safeHostname // Fallback
+        }
+        // CORRECCIÓN: Validar que hostname sea un string válido antes de usar endsWith()
+        if (typeof hostname === 'string' && hostname !== 'demre.cl' && !hostname.endsWith('.demre.cl')) {
           return NextResponse.json(
             { error: 'La URL debe ser del sitio oficial de DEMRE (demre.cl)' },
             { status: 400 }

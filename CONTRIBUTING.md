@@ -173,6 +173,31 @@ describe('myFunction', () => {
 
 ## 🔄 Proceso de Pull Request
 
+### ⚠️ PR Gate Mínimo (Enterprise)
+
+**Reglas obligatorias antes de crear un PR:**
+
+1. ✅ `npm run ci:check` debe pasar antes de PR
+2. ❌ No se aceptan flags locales para estabilizar tests
+3. ✅ Para allowlist: usar `// guard:allow-secret` (solo casos legítimos)
+4. ⚠️ Warning budget solo se actualiza con decisión documentada
+
+**Baselines enforced:** Ver `docs/BASELINE_INMUTABLE.md` para referencia completa.
+
+### 🚀 Release Gate (Enterprise)
+
+**Antes de merge a main (o release), debe pasar `npm run ci:release`** (automático en main / manual según política).
+
+**Qué incluye:**
+- ✅ `ci:check` (todos los guards y tests)
+- ✅ Typecheck (`typecheck` = `tsc --noEmit`)
+- ✅ Lint completo (`lint`)
+- ✅ Build de producción (`build`)
+
+**Workflow:** `.github/workflows/release-gate.yml` se ejecuta automáticamente en push a `main` o manualmente via `workflow_dispatch`.
+
+---
+
 ### Antes de Crear el PR
 
 1. ✅ Todos los tests pasan

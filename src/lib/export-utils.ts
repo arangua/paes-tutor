@@ -3,9 +3,9 @@
  * PDF, Excel, Word
  */
 
-import jsPDF from 'jspdf'
+import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
 import { saveAs } from 'file-saver'
 import {
   Document,
@@ -18,6 +18,9 @@ import {
   TableCell,
   WidthType,
 } from 'docx'
+import { safeRound, safeToISODate, safeDivide, ensureFiniteNumber } from '@/app/api/notes/versions/validation-utils'
+
+type ProgressCallback = (progress: number, current: number, total: number, message: string) => void
 
 /**
  * Helper para obtener la posición Y después de una tabla autoTable
@@ -25,6 +28,77 @@ import {
 function getTableFinalY(doc: jsPDF, currentY: number, spacing: number = 15): number {
   const finalY = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY
   return finalY ? finalY + spacing : currentY + 30
+}
+
+function createProgressUpdater(totalSteps: number, onProgress?: ProgressCallback) {
+  let currentStep = 0
+  return (message: string) => {
+    currentStep++
+    if (onProgress) {
+      const safeCurrent = ensureFiniteNumber(currentStep, 0)
+      const safeTotal = ensureFiniteNumber(totalSteps, 1)
+      const progress = safeRound(safeDivide(safeCurrent, safeTotal, 0) * 100, 0)
+      onProgress(progress, currentStep, totalSteps, message)
+    }
+  }
+}
+
+type AnswerStatusKind = 'correct' | 'omitted' | 'incorrect'
+
+function getAnswerStatusKind(answer: { isCorrect: boolean; isOmitted: boolean }): AnswerStatusKind {
+  if (answer.isCorrect) return 'correct'
+  if (answer.isOmitted) return 'omitted'
+  return 'incorrect'
+}
+
+function getPdfAnswerStatus(kind: AnswerStatusKind): { label: string; color: [number, number, number] } {
+  switch (kind) {
+    case 'correct':
+      return { label: '✓ Correcta', color: [34, 197, 94] }
+    case 'omitted':
+      return { label: '○ Omitida', color: [234, 179, 8] }
+    default:
+      return { label: '✗ Incorrecta', color: [239, 68, 68] }
+  }
+}
+
+function getExcelAnswerStatusLabel(kind: AnswerStatusKind): string {
+  switch (kind) {
+    case 'correct':
+      return 'Correcta'
+    case 'omitted':
+      return 'Omitida'
+    default:
+      return 'Incorrecta'
+  }
+}
+
+function getWordAnswerStatus(kind: AnswerStatusKind): { label: string; color: string } {
+  switch (kind) {
+    case 'correct':
+      return { label: '✓ Correcta', color: '00C853' }
+    case 'omitted':
+      return { label: '○ Omitida', color: 'FFB300' }
+    default:
+      return { label: '✗ Incorrecta', color: 'EF4444' }
+  }
+}
+
+function getOptionPrefix(option: { esCorrecta: boolean; letra: string }, selectedOption?: string) {
+  if (option.esCorrecta) return '✓ '
+  if (option.letra === selectedOption) return '→ '
+  return '  '
+}
+
+function getTrendLabel(trend: AnalyticsData['subjectBreakdown'][number]['trend']) {
+  switch (trend) {
+    case 'improving':
+      return 'Mejorando'
+    case 'declining':
+      return 'En declive'
+    default:
+      return 'Estable'
+  }
 }
 
 // Tipos para exportación
@@ -79,10 +153,16 @@ export interface AnalyticsData {
 /**
  * Exporta resultados de examen a PDF
  */
-export async function exportExamResultsToPDF(data: ExamResultData): Promise<void> {
+export async function exportExamResultsToPDF(
+  data: ExamResultData,
+  onProgress?: ProgressCallback
+): Promise<void> {
   const doc = new jsPDF()
+  const totalSteps = 3 + data.answers.length // Configuración + Resumen + Título sección + cada pregunta
+  const updateProgress = createProgressUpdater(totalSteps, onProgress)
 
   // Configuración
+  updateProgress('Configurando documento PDF...')
   const pageWidth = doc.internal.pageSize.getWidth()
   const margin = 15
   let yPos = margin
@@ -99,6 +179,7 @@ export async function exportExamResultsToPDF(data: ExamResultData): Promise<void
   yPos += 15
 
   // Resumen
+  updateProgress('Generando resumen del examen...')
   doc.setFontSize(14)
   doc.setFont('helvetica', 'bold')
   doc.text('Resumen del Examen', margin, yPos)
@@ -138,6 +219,7 @@ export async function exportExamResultsToPDF(data: ExamResultData): Promise<void
   doc.setFont('helvetica', 'normal')
 
   data.answers.forEach((answer, index) => {
+    updateProgress(`Procesando pregunta ${index + 1} de ${data.answers.length}...`)
     // Verificar si necesitamos nueva página
     if (yPos > doc.internal.pageSize.getHeight() - 60) {
       doc.addPage()
@@ -145,12 +227,10 @@ export async function exportExamResultsToPDF(data: ExamResultData): Promise<void
     }
 
     // Estado de la pregunta
-    const status = answer.isCorrect ? '✓ Correcta' : answer.isOmitted ? '○ Omitida' : '✗ Incorrecta'
-    const statusColor = answer.isCorrect
-      ? [34, 197, 94]
-      : answer.isOmitted
-        ? [234, 179, 8]
-        : [239, 68, 68]
+    const statusKind = getAnswerStatusKind(answer)
+    const pdfStatus = getPdfAnswerStatus(statusKind)
+    const status = pdfStatus.label
+    const statusColor = pdfStatus.color
 
     doc.setFontSize(11)
     doc.setFont('helvetica', 'bold')
@@ -172,7 +252,7 @@ export async function exportExamResultsToPDF(data: ExamResultData): Promise<void
 
     // Opciones
     answer.options.forEach(option => {
-      const prefix = option.esCorrecta ? '✓ ' : option.letra === answer.selectedOption ? '→ ' : '  '
+      const prefix = getOptionPrefix(option, answer.selectedOption)
       const text = `${prefix}${option.letra}. ${option.texto}`
       const lines = doc.splitTextToSize(text, pageWidth - 2 * margin - 10)
       lines.forEach((line: string) => {
@@ -217,71 +297,77 @@ export async function exportExamResultsToPDF(data: ExamResultData): Promise<void
   }
 
   // Guardar
+  updateProgress('Guardando archivo PDF...')
   doc.save(
-    `Resultados_${data.examTitle.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.pdf`
+    `Resultados_${data.examTitle.replace(/[^a-z0-9]/gi, '_')}_${safeToISODate(new Date())}.pdf`
   )
 }
 
 /**
  * Exporta resultados de examen a Excel
  */
-export async function exportExamResultsToExcel(data: ExamResultData): Promise<void> {
-  const workbook = XLSX.utils.book_new()
+export async function exportExamResultsToExcel(
+  data: ExamResultData,
+  onProgress?: ProgressCallback
+): Promise<void> {
+  const workbook = new ExcelJS.Workbook()
+  const totalSteps = 4 // Resumen + Respuestas + Ajustes + Guardar
+  const updateProgress = createProgressUpdater(totalSteps, onProgress)
 
   // Hoja 1: Resumen
-  const summaryData = [
-    ['Resumen del Examen'],
-    [],
-    ['Título', data.examTitle],
-    ['Asignatura', data.subjectName],
-    ['Puntaje', `${data.percentage.toFixed(1)}%`],
-    ['Correctas', data.correctas],
-    ['Incorrectas', data.incorrectas],
-    ['Omitidas', data.omitidas],
-    ['Total Preguntas', data.totalPreguntas],
-    ...(data.puntajePaes ? [['Puntaje PAES', data.puntajePaes]] : []),
-    ['Fecha Inicio', new Date(data.startedAt).toLocaleString('es-CL')],
-    ['Fecha Fin', data.finishedAt ? new Date(data.finishedAt).toLocaleString('es-CL') : 'N/A'],
-  ]
-
-  const summarySheet = XLSX.utils.aoa_to_sheet(summaryData)
-  XLSX.utils.book_append_sheet(workbook, summarySheet, 'Resumen')
+  updateProgress('Generando hoja de resumen...')
+  const summarySheet = workbook.addWorksheet('Resumen')
+  summarySheet.addRow(['Resumen del Examen'])
+  summarySheet.addRow([])
+  summarySheet.addRow(['Título', data.examTitle])
+  summarySheet.addRow(['Asignatura', data.subjectName])
+  summarySheet.addRow(['Puntaje', `${data.percentage.toFixed(1)}%`])
+  summarySheet.addRow(['Correctas', data.correctas])
+  summarySheet.addRow(['Incorrectas', data.incorrectas])
+  summarySheet.addRow(['Omitidas', data.omitidas])
+  summarySheet.addRow(['Total Preguntas', data.totalPreguntas])
+  if (data.puntajePaes) {
+    summarySheet.addRow(['Puntaje PAES', data.puntajePaes])
+  }
+  summarySheet.addRow(['Fecha Inicio', new Date(data.startedAt).toLocaleString('es-CL')])
+  summarySheet.addRow(['Fecha Fin', data.finishedAt ? new Date(data.finishedAt).toLocaleString('es-CL') : 'N/A'])
 
   // Hoja 2: Respuestas detalladas
-  const answersData = [
-    ['#', 'Pregunta', 'Tu Respuesta', 'Respuesta Correcta', 'Estado', 'Explicación'],
-    ...data.answers.map(answer => [
+  updateProgress('Generando hoja de respuestas...')
+  const answersSheet = workbook.addWorksheet('Respuestas')
+  answersSheet.addRow(['#', 'Pregunta', 'Tu Respuesta', 'Respuesta Correcta', 'Estado', 'Explicación'])
+  
+  data.answers.forEach(answer => {
+    const statusKind = getAnswerStatusKind(answer)
+    answersSheet.addRow([
       answer.questionNumber,
       answer.enunciado,
       answer.selectedOption || 'Omitida',
       answer.options.find(o => o.esCorrecta)?.letra || 'N/A',
-      answer.isCorrect ? 'Correcta' : answer.isOmitted ? 'Omitida' : 'Incorrecta',
+      getExcelAnswerStatusLabel(statusKind),
       answer.explicacion || '',
-    ]),
-  ]
-
-  const answersSheet = XLSX.utils.aoa_to_sheet(answersData)
+    ])
+  })
 
   // Ajustar ancho de columnas
-  answersSheet['!cols'] = [
-    { wch: 5 }, // #
-    { wch: 60 }, // Pregunta
-    { wch: 15 }, // Tu Respuesta
-    { wch: 15 }, // Respuesta Correcta
-    { wch: 12 }, // Estado
-    { wch: 50 }, // Explicación
+  answersSheet.columns = [
+    { width: 5 }, // #
+    { width: 60 }, // Pregunta
+    { width: 15 }, // Tu Respuesta
+    { width: 15 }, // Respuesta Correcta
+    { width: 12 }, // Estado
+    { width: 50 }, // Explicación
   ]
 
-  XLSX.utils.book_append_sheet(workbook, answersSheet, 'Respuestas')
-
   // Guardar
-  const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
+  updateProgress('Guardando archivo Excel...')
+  const excelBuffer = await workbook.xlsx.writeBuffer()
   const blob = new Blob([excelBuffer], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // guard:allow-secret
   })
   saveAs(
     blob,
-    `Resultados_${data.examTitle.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`
+    `Resultados_${data.examTitle.replace(/[^a-z0-9]/gi, '_')}_${safeToISODate(new Date())}.xlsx`
   )
 }
 
@@ -434,7 +520,7 @@ export async function exportAnalyticsToPDF(
       s.subject,
       `${s.average.toFixed(1)}%`,
       s.attempts.toString(),
-      s.trend === 'improving' ? 'Mejorando' : s.trend === 'declining' ? 'En declive' : 'Estable',
+      getTrendLabel(s.trend),
     ])
 
     autoTable(doc, {
@@ -462,7 +548,7 @@ export async function exportAnalyticsToPDF(
   }
 
   // Guardar
-  doc.save(`Estadisticas_${new Date().toISOString().split('T')[0]}.pdf`)
+  doc.save(`Estadisticas_${safeToISODate(new Date())}.pdf`)
 }
 
 /**
@@ -472,101 +558,97 @@ export async function exportAnalyticsToExcel(
   data: AnalyticsData,
   studentName?: string
 ): Promise<void> {
-  const workbook = XLSX.utils.book_new()
+  const workbook = new ExcelJS.Workbook()
 
   // Hoja 1: Resumen
-  const summaryData = [
-    ['Estadísticas Avanzadas'],
-    studentName ? ['Estudiante', studentName] : [],
-    ['Fecha', new Date().toLocaleDateString('es-CL')],
-    [],
-    ['Comparación de Rendimiento'],
-    ['Tu Promedio', data.studentAverage],
-    ['Promedio General', data.overallAverage],
-    ['Percentil', data.percentile],
-    [],
-    ['Predicción PAES'],
-    ['Puntaje Predicho', data.paesPrediction.predictedScore],
-    ['Rango Mínimo', data.paesPrediction.estimatedRange.min],
-    ['Rango Máximo', data.paesPrediction.estimatedRange.max],
-    ['Confianza', data.paesPrediction.confidence],
-  ]
-
-  const summarySheet = XLSX.utils.aoa_to_sheet(summaryData)
-  XLSX.utils.book_append_sheet(workbook, summarySheet, 'Resumen')
+  const summarySheet = workbook.addWorksheet('Resumen')
+  summarySheet.addRow(['Estadísticas Avanzadas'])
+  if (studentName) {
+    summarySheet.addRow(['Estudiante', studentName])
+  }
+  summarySheet.addRow(['Fecha', new Date().toLocaleDateString('es-CL')])
+  summarySheet.addRow([])
+  summarySheet.addRow(['Comparación de Rendimiento'])
+  summarySheet.addRow(['Tu Promedio', data.studentAverage])
+  summarySheet.addRow(['Promedio General', data.overallAverage])
+  summarySheet.addRow(['Percentil', data.percentile])
+  summarySheet.addRow([])
+  summarySheet.addRow(['Predicción PAES'])
+  summarySheet.addRow(['Puntaje Predicho', data.paesPrediction.predictedScore])
+  summarySheet.addRow(['Rango Mínimo', data.paesPrediction.estimatedRange.min])
+  summarySheet.addRow(['Rango Máximo', data.paesPrediction.estimatedRange.max])
+  summarySheet.addRow(['Confianza', data.paesPrediction.confidence])
 
   // Hoja 2: Tendencias
   if (data.trends.length > 0) {
-    const trendsData = [
-      ['Fecha', 'Examen', 'Puntaje (%)'],
-      ...data.trends.map(t => [
+    const trendsSheet = workbook.addWorksheet('Tendencias')
+    trendsSheet.addRow(['Fecha', 'Examen', 'Puntaje (%)'])
+    data.trends.forEach(t => {
+      trendsSheet.addRow([
         new Date(t.date).toLocaleDateString('es-CL'),
         t.examTitle,
         t.percentage,
-      ]),
-    ]
-
-    const trendsSheet = XLSX.utils.aoa_to_sheet(trendsData)
-    trendsSheet['!cols'] = [{ wch: 12 }, { wch: 40 }, { wch: 12 }]
-    XLSX.utils.book_append_sheet(workbook, trendsSheet, 'Tendencias')
+      ])
+    })
+    trendsSheet.columns = [{ width: 12 }, { width: 40 }, { width: 12 }]
   }
 
   // Hoja 3: Fortalezas
   if (data.strengths.length > 0) {
-    const strengthsData = [
-      ['Tema', 'Rendimiento (%)'],
-      ...data.strengths.map(s => [s.topic, s.percentage]),
-    ]
-
-    const strengthsSheet = XLSX.utils.aoa_to_sheet(strengthsData)
-    strengthsSheet['!cols'] = [{ wch: 40 }, { wch: 15 }]
-    XLSX.utils.book_append_sheet(workbook, strengthsSheet, 'Fortalezas')
+    const strengthsSheet = workbook.addWorksheet('Fortalezas')
+    strengthsSheet.addRow(['Tema', 'Rendimiento (%)'])
+    data.strengths.forEach(s => {
+      strengthsSheet.addRow([s.topic, s.percentage])
+    })
+    strengthsSheet.columns = [{ width: 40 }, { width: 15 }]
   }
 
   // Hoja 4: Debilidades
   if (data.weaknesses.length > 0) {
-    const weaknessesData = [
-      ['Tema', 'Rendimiento (%)'],
-      ...data.weaknesses.map(w => [w.topic, w.percentage]),
-    ]
-
-    const weaknessesSheet = XLSX.utils.aoa_to_sheet(weaknessesData)
-    weaknessesSheet['!cols'] = [{ wch: 40 }, { wch: 15 }]
-    XLSX.utils.book_append_sheet(workbook, weaknessesSheet, 'Debilidades')
+    const weaknessesSheet = workbook.addWorksheet('Debilidades')
+    weaknessesSheet.addRow(['Tema', 'Rendimiento (%)'])
+    data.weaknesses.forEach(w => {
+      weaknessesSheet.addRow([w.topic, w.percentage])
+    })
+    weaknessesSheet.columns = [{ width: 40 }, { width: 15 }]
   }
 
   // Hoja 5: Desglose por asignatura
   if (data.subjectBreakdown.length > 0) {
-    const subjectData = [
-      ['Asignatura', 'Promedio (%)', 'Intentos', 'Tendencia'],
-      ...data.subjectBreakdown.map(s => [
+    const subjectSheet = workbook.addWorksheet('Por Asignatura')
+    subjectSheet.addRow(['Asignatura', 'Promedio (%)', 'Intentos', 'Tendencia'])
+    data.subjectBreakdown.forEach(s => {
+      subjectSheet.addRow([
         s.subject,
         s.average,
         s.attempts,
-        s.trend === 'improving' ? 'Mejorando' : s.trend === 'declining' ? 'En declive' : 'Estable',
-      ]),
-    ]
-
-    const subjectSheet = XLSX.utils.aoa_to_sheet(subjectData)
-    subjectSheet['!cols'] = [{ wch: 30 }, { wch: 12 }, { wch: 10 }, { wch: 12 }]
-    XLSX.utils.book_append_sheet(workbook, subjectSheet, 'Por Asignatura')
+        getTrendLabel(s.trend),
+      ])
+    })
+    subjectSheet.columns = [{ width: 30 }, { width: 12 }, { width: 10 }, { width: 12 }]
   }
 
   // Guardar
-  const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
+  const excelBuffer = await workbook.xlsx.writeBuffer()
   const blob = new Blob([excelBuffer], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // guard:allow-secret
   })
-  saveAs(blob, `Estadisticas_${new Date().toISOString().split('T')[0]}.xlsx`)
+  saveAs(blob, `Estadisticas_${safeToISODate(new Date())}.xlsx`)
 }
 
 /**
  * Exporta resultados de examen a Word
  */
-export async function exportExamResultsToWord(data: ExamResultData): Promise<void> {
+export async function exportExamResultsToWord(
+  data: ExamResultData,
+  onProgress?: ProgressCallback
+): Promise<void> {
   const children: (Paragraph | Table)[] = []
+  const totalSteps = 3 + data.answers.length // Título + Resumen + Título sección + cada pregunta
+  const updateProgress = createProgressUpdater(totalSteps, onProgress)
 
   // Título
+  updateProgress('Configurando documento Word...')
   children.push(
     new Paragraph({
       text: data.examTitle,
@@ -646,6 +728,7 @@ export async function exportExamResultsToWord(data: ExamResultData): Promise<voi
   children.push(new Paragraph({ text: '' }))
 
   // Preguntas
+  updateProgress('Generando sección de respuestas...')
   children.push(
     new Paragraph({
       text: 'Revisión de Respuestas',
@@ -653,9 +736,12 @@ export async function exportExamResultsToWord(data: ExamResultData): Promise<voi
     })
   )
 
-  data.answers.forEach(answer => {
-    const status = answer.isCorrect ? '✓ Correcta' : answer.isOmitted ? '○ Omitida' : '✗ Incorrecta'
-    const statusColor = answer.isCorrect ? '00C853' : answer.isOmitted ? 'FFB300' : 'EF4444'
+  data.answers.forEach((answer, index) => {
+    updateProgress(`Procesando pregunta ${index + 1} de ${data.answers.length}...`)
+    const statusKind = getAnswerStatusKind(answer)
+    const wordStatus = getWordAnswerStatus(statusKind)
+    const status = wordStatus.label
+    const statusColor = wordStatus.color
 
     children.push(
       new Paragraph({
@@ -676,7 +762,7 @@ export async function exportExamResultsToWord(data: ExamResultData): Promise<voi
     )
 
     answer.options.forEach(option => {
-      const prefix = option.esCorrecta ? '✓ ' : option.letra === answer.selectedOption ? '→ ' : '  '
+      const prefix = getOptionPrefix(option, answer.selectedOption)
       children.push(
         new Paragraph({
           text: `${prefix}${option.letra}. ${option.texto}`,
@@ -720,7 +806,7 @@ export async function exportExamResultsToWord(data: ExamResultData): Promise<voi
   const blob = await Packer.toBlob(doc)
   saveAs(
     blob,
-    `Resultados_${data.examTitle.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.docx`
+    `Resultados_${data.examTitle.replace(/[^a-z0-9]/gi, '_')}_${safeToISODate(new Date())}.docx`
   )
 }
 
@@ -740,13 +826,19 @@ export async function exportExamsListToExcel(
       codigo: string
     }
     createdAt: string
-  }>
+  }>,
+  onProgress?: (progress: number, current: number, total: number, message: string) => void
 ): Promise<void> {
-  const workbook = XLSX.utils.book_new()
+  const totalSteps = 3
+  const updateProgress = createProgressUpdater(totalSteps, onProgress)
 
-  const examsData = [
-    ['ID', 'Título', 'Asignatura', 'Código', 'Tipo', 'Preguntas', 'Tiempo (min)', 'Fecha Creación'],
-    ...exams.map(exam => [
+  updateProgress('Generando lista de exámenes...')
+  const workbook = new ExcelJS.Workbook()
+  const sheet = workbook.addWorksheet('Exámenes')
+
+  sheet.addRow(['ID', 'Título', 'Asignatura', 'Código', 'Tipo', 'Preguntas', 'Tiempo (min)', 'Fecha Creación'])
+  exams.forEach(exam => {
+    sheet.addRow([
       exam.id,
       exam.titulo,
       exam.subject.nombre,
@@ -755,28 +847,26 @@ export async function exportExamsListToExcel(
       exam.totalPreguntas,
       exam.tiempoLimiteMin || 'N/A',
       new Date(exam.createdAt).toLocaleDateString('es-CL'),
-    ]),
-  ]
-
-  const sheet = XLSX.utils.aoa_to_sheet(examsData)
-  sheet['!cols'] = [
-    { wch: 25 }, // ID
-    { wch: 40 }, // Título
-    { wch: 25 }, // Asignatura
-    { wch: 10 }, // Código
-    { wch: 15 }, // Tipo
-    { wch: 10 }, // Preguntas
-    { wch: 12 }, // Tiempo
-    { wch: 15 }, // Fecha
-  ]
-
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Exámenes')
-
-  const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
-  const blob = new Blob([excelBuffer], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    ])
   })
-  saveAs(blob, `Lista_Examenes_${new Date().toISOString().split('T')[0]}.xlsx`)
+
+  sheet.columns = [
+    { width: 25 }, // ID
+    { width: 40 }, // Título
+    { width: 25 }, // Asignatura
+    { width: 10 }, // Código
+    { width: 15 }, // Tipo
+    { width: 10 }, // Preguntas
+    { width: 12 }, // Tiempo
+    { width: 15 }, // Fecha
+  ]
+
+  updateProgress('Guardando archivo Excel...')
+  const excelBuffer = await workbook.xlsx.writeBuffer()
+  const blob = new Blob([excelBuffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // guard:allow-secret
+  })
+  saveAs(blob, `Lista_Examenes_${safeToISODate(new Date())}.xlsx`)
 }
 
 /**
@@ -811,35 +901,32 @@ export async function exportDashboardToExcel(data: {
     correctas: number
   }>
 }): Promise<void> {
-  const workbook = XLSX.utils.book_new()
+  const workbook = new ExcelJS.Workbook()
 
   // Hoja 1: Resumen
-  const summaryData = [
-    ['Resumen del Dashboard'],
-    ['Estudiante', data.studentName],
-    ['Total Intentos', data.totalAttempts],
-    ['Intentos Completados', data.completedAttempts],
-    ['Puntaje Promedio', `${data.avgScore.toFixed(1)}%`],
-    [],
-  ]
-
-  const summarySheet = XLSX.utils.aoa_to_sheet(summaryData)
-  XLSX.utils.book_append_sheet(workbook, summarySheet, 'Resumen')
+  const summarySheet = workbook.addWorksheet('Resumen')
+  summarySheet.addRow(['Resumen del Dashboard'])
+  summarySheet.addRow(['Estudiante', data.studentName])
+  summarySheet.addRow(['Total Intentos', data.totalAttempts])
+  summarySheet.addRow(['Intentos Completados', data.completedAttempts])
+  summarySheet.addRow(['Puntaje Promedio', `${data.avgScore.toFixed(1)}%`])
+  summarySheet.addRow([])
 
   // Hoja 2: Intentos
   if (data.attempts.length > 0) {
-    const attemptsData = [
-      [
-        'Fecha',
-        'Examen',
-        'Asignatura',
-        'Estado',
-        'Puntaje (%)',
-        'Correctas',
-        'Total',
-        'Puntaje PAES',
-      ],
-      ...data.attempts.map(attempt => [
+    const attemptsSheet = workbook.addWorksheet('Intentos')
+    attemptsSheet.addRow([
+      'Fecha',
+      'Examen',
+      'Asignatura',
+      'Estado',
+      'Puntaje (%)',
+      'Correctas',
+      'Total',
+      'Puntaje PAES',
+    ])
+    data.attempts.forEach(attempt => {
+      attemptsSheet.addRow([
         new Date(attempt.createdAt).toLocaleDateString('es-CL'),
         attempt.exam.titulo,
         attempt.exam.subject.nombre,
@@ -848,47 +935,42 @@ export async function exportDashboardToExcel(data: {
         attempt.correctas,
         attempt.totalPreguntas,
         attempt.puntajePaes || 'N/A',
-      ]),
+      ])
+    })
+    attemptsSheet.columns = [
+      { width: 12 },
+      { width: 40 },
+      { width: 25 },
+      { width: 12 },
+      { width: 12 },
+      { width: 10 },
+      { width: 10 },
+      { width: 12 },
     ]
-
-    const attemptsSheet = XLSX.utils.aoa_to_sheet(attemptsData)
-    attemptsSheet['!cols'] = [
-      { wch: 12 },
-      { wch: 40 },
-      { wch: 25 },
-      { wch: 12 },
-      { wch: 12 },
-      { wch: 10 },
-      { wch: 10 },
-      { wch: 12 },
-    ]
-    XLSX.utils.book_append_sheet(workbook, attemptsSheet, 'Intentos')
   }
 
   // Hoja 3: Métricas por Asignatura
   if (data.metrics.length > 0) {
-    const metricsData = [
-      ['Asignatura', 'Código', 'Puntaje (%)', 'Preguntas Correctas', 'Total Preguntas'],
-      ...data.metrics.map(metric => [
+    const metricsSheet = workbook.addWorksheet('Métricas')
+    metricsSheet.addRow(['Asignatura', 'Código', 'Puntaje (%)', 'Preguntas Correctas', 'Total Preguntas'])
+    data.metrics.forEach(metric => {
+      metricsSheet.addRow([
         metric.nombre,
         metric.codigo,
         metric.porcentaje,
         metric.correctas,
         metric.totalPreguntas,
-      ]),
-    ]
-
-    const metricsSheet = XLSX.utils.aoa_to_sheet(metricsData)
-    metricsSheet['!cols'] = [{ wch: 30 }, { wch: 10 }, { wch: 12 }, { wch: 15 }, { wch: 15 }]
-    XLSX.utils.book_append_sheet(workbook, metricsSheet, 'Métricas')
+      ])
+    })
+    metricsSheet.columns = [{ width: 30 }, { width: 10 }, { width: 12 }, { width: 15 }, { width: 15 }]
   }
 
-  const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
+  const excelBuffer = await workbook.xlsx.writeBuffer()
   const blob = new Blob([excelBuffer], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // guard:allow-secret
   })
   saveAs(
     blob,
-    `Dashboard_${data.studentName.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`
+    `Dashboard_${data.studentName.replace(/[^a-z0-9]/gi, '_')}_${safeToISODate(new Date())}.xlsx`
   )
 }

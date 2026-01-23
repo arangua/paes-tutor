@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getCurrentUser } from '@/lib/get-session'
+import { getAuthenticatedUserWithStudent } from '@/lib/get-session'
 import { withRateLimit } from '@/lib/rate-limit-middleware'
 import { z } from 'zod'
 import { logger } from '@/lib/logger'
@@ -13,28 +13,23 @@ const createBookmarkSchema = z.object({
 })
 
 const getBookmarksQuerySchema = z.object({
-  topicId: z.string().cuid().optional(),
-  subjectId: z.string().cuid().optional(),
+  topicId: z.cuid({ error: 'topicId debe ser un CUID válido' }).optional(),
+  subjectId: z.cuid({ error: 'subjectId debe ser un CUID válido' }).optional(),
 })
 
 const deleteBookmarkQuerySchema = z.object({
-  questionId: z.string().cuid().min(1),
+  questionId: z.cuid({ error: 'questionId debe ser un CUID válido' }).min(1),
 })
 
 export async function GET(request: NextRequest) {
   return withRateLimit(request, async () => {
     try {
-      const user = await getCurrentUser()
-      if (!user?.email) {
+      const dbUser = await getAuthenticatedUserWithStudent()
+      if (!dbUser?.email) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
       }
 
-      const dbUser = await prisma.user.findUnique({
-        where: { email: user.email },
-        include: { student: true },
-      })
-
-      if (!dbUser?.student) {
+      if (!dbUser.student) {
         return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 })
       }
 
@@ -44,8 +39,15 @@ export async function GET(request: NextRequest) {
       // Validar query parameters
       const queryValidation = getBookmarksQuerySchema.safeParse(queryParams)
       if (!queryValidation.success) {
+        // ✅ Enterprise: Asegurar que details siempre sea un array serializable
+        const details = Array.isArray(queryValidation.error.errors)
+          ? queryValidation.error.errors.map(err => ({
+              path: err.path.join('.'),
+              message: err.message,
+            }))
+          : []
         return NextResponse.json(
-          { error: 'Parámetros de consulta inválidos', details: queryValidation.error.errors },
+          { error: 'Parámetros de consulta inválidos', details },
           { status: 400 }
         )
       }
@@ -59,7 +61,7 @@ export async function GET(request: NextRequest) {
           subjectId?: string
         }
       } = {
-        studentId: user.student.id,
+        studentId: dbUser.student.id,
       }
 
       if (topicId || subjectId) {
@@ -113,25 +115,27 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   return withRateLimit(request, async () => {
     try {
-      const user = await getCurrentUser()
-      if (!user?.email) {
+      const dbUser = await getAuthenticatedUserWithStudent()
+      if (!dbUser?.email) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
       }
 
-      const dbUser = await prisma.user.findUnique({
-        where: { email: user.email },
-        include: { student: true },
-      })
-
-      if (!dbUser?.student) {
+      if (!dbUser.student) {
         return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 })
       }
 
       const body = await request.json()
       const validation = createBookmarkSchema.safeParse(body)
       if (!validation.success) {
+        // ✅ Enterprise: Asegurar que details siempre sea un array serializable
+        const details = Array.isArray(validation.error.errors)
+          ? validation.error.errors.map(err => ({
+              path: err.path.join('.'),
+              message: err.message,
+            }))
+          : []
         return NextResponse.json(
-          { error: 'Datos inválidos', details: validation.error.errors },
+          { error: 'Datos inválidos', details },
           { status: 400 }
         )
       }
@@ -202,17 +206,12 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   return withRateLimit(request, async () => {
     try {
-      const user = await getCurrentUser()
-      if (!user?.email) {
+      const dbUser = await getAuthenticatedUserWithStudent()
+      if (!dbUser?.email) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
       }
 
-      const dbUser = await prisma.user.findUnique({
-        where: { email: user.email },
-        include: { student: true },
-      })
-
-      if (!dbUser?.student) {
+      if (!dbUser.student) {
         return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 })
       }
 
@@ -222,8 +221,15 @@ export async function DELETE(request: NextRequest) {
       // Validar query parameters
       const queryValidation = deleteBookmarkQuerySchema.safeParse(queryParams)
       if (!queryValidation.success) {
+        // ✅ Enterprise: Asegurar que details siempre sea un array serializable
+        const details = Array.isArray(queryValidation.error.errors)
+          ? queryValidation.error.errors.map(err => ({
+              path: err.path.join('.'),
+              message: err.message,
+            }))
+          : []
         return NextResponse.json(
-          { error: 'ID de pregunta inválido', details: queryValidation.error.errors },
+          { error: 'ID de pregunta inválido', details },
           { status: 400 }
         )
       }

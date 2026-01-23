@@ -7,6 +7,7 @@
 
 import CryptoJS from 'crypto-js'
 import { logger } from './logger'
+import { VALIDATION_CONSTANTS } from './constants'
 
 // Validar que la clave de encriptación esté configurada
 let ENCRYPTION_KEY = process.env.ENCRYPTION_KEY
@@ -23,6 +24,30 @@ if (!ENCRYPTION_KEY) {
     '⚠️ ENCRYPTION_KEY no está definido. Usando clave temporal para desarrollo. Configura ENCRYPTION_KEY en .env.local'
   )
   ENCRYPTION_KEY = 'dev-temp-key-' + Date.now()
+  } else {
+    // Validar longitud mínima recomendada (32 caracteres para AES-256)
+    const MIN_RECOMMENDED_LENGTH = VALIDATION_CONSTANTS.MIN_RECOMMENDED_ENCRYPTION_KEY_LENGTH
+    if (ENCRYPTION_KEY.length < MIN_RECOMMENDED_LENGTH) {
+    logger.warn(
+      {
+        type: 'security',
+        event: 'encryption_key_short',
+        keyLength: ENCRYPTION_KEY.length,
+        recommendedLength: MIN_RECOMMENDED_LENGTH,
+      },
+      `⚠️ ENCRYPTION_KEY es corta (${ENCRYPTION_KEY.length} caracteres). Se recomienda al menos ${MIN_RECOMMENDED_LENGTH} caracteres para mayor seguridad.`
+    )
+  }
+
+  // En producción, validar que no sea la clave por defecto
+  if (process.env.NODE_ENV === 'production') {
+    const DEFAULT_KEY_PATTERN = /^(dev-|test-|default-|temp-)/i
+    if (DEFAULT_KEY_PATTERN.test(ENCRYPTION_KEY)) {
+      throw new Error(
+        'ENCRYPTION_KEY no puede usar un prefijo de desarrollo/test en producción. Configura una clave segura.'
+      )
+    }
+  }
 }
 
 /**
@@ -30,10 +55,11 @@ if (!ENCRYPTION_KEY) {
  * Usa PBKDF2 para derivar una clave de 256 bits
  */
 function getDerivedKey(): string {
-  // ENCRYPTION_KEY siempre está definido aquí (validado arriba)
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  // ENCRYPTION_KEY siempre está definido aquí (validado arriba en el módulo)
+  // El non-null assertion es seguro porque la validación ocurre al cargar el módulo
+   
   const key = ENCRYPTION_KEY!
-  
+
   // Si la clave es muy corta, derivarla usando PBKDF2
   if (key.length < 32) {
     return CryptoJS.PBKDF2(key, 'paes-tutor-salt', {
@@ -62,7 +88,11 @@ export function encrypt(text: string): string {
     return encrypted.toString()
   } catch (error) {
     logger.error(
-      { type: 'encryption', event: 'encrypt_error', error: error instanceof Error ? error.message : String(error) },
+      {
+        type: 'encryption',
+        event: 'encrypt_error',
+        error: error instanceof Error ? error.message : String(error),
+      },
       'Error al encriptar datos sensibles'
     )
     throw new Error('Error al encriptar datos sensibles')
@@ -73,9 +103,14 @@ export function encrypt(text: string): string {
  * Desencripta un texto encriptado usando AES-256
  * @param encryptedText - Texto encriptado en formato base64
  * @returns Texto desencriptado
+ * @throws Error si la desencriptación falla con ambos métodos (AES y legacy)
  */
 export function decrypt(encryptedText: string): string {
-  if (!encryptedText) return ''
+  if (!encryptedText) {
+    throw new Error('No se puede desencriptar: texto encriptado vacío')
+  }
+
+  let aesError: Error | null = null
 
   try {
     // Intentar desencriptar con el nuevo método (AES)
@@ -86,72 +121,168 @@ export function decrypt(encryptedText: string): string {
     })
     const decryptedText = decrypted.toString(CryptoJS.enc.Utf8)
 
-    // Si la desencriptación AES falla (texto vacío), intentar método antiguo (Base64)
-    if (!decryptedText && encryptedText.length > 0) {
-      return decryptLegacy(encryptedText)
+    // Si la desencriptación AES fue exitosa y tiene contenido, retornar
+    if (decryptedText && decryptedText.trim().length > 0) {
+      return decryptedText
     }
 
-    return decryptedText
+    // Si la desencriptación AES falla (texto vacío), intentar método antiguo (Base64)
+    // Esto puede pasar si el dato fue encriptado con el método legacy
+    if (encryptedText.length > 0) {
+      logger.warn(
+        {
+          type: 'encryption',
+          event: 'aes_decrypt_empty',
+          encryptedTextLength: encryptedText.length,
+        },
+        'Desencriptación AES retornó texto vacío, intentando método legacy'
+      )
+      return decryptLegacyInternal(encryptedText)
+    }
+
+    // Si llegamos aquí, el texto encriptado está vacío pero ya validamos arriba
+    throw new Error('Texto encriptado inválido: no se pudo desencriptar con AES')
   } catch (error) {
-    // Si falla, intentar método legacy para compatibilidad
+    // Guardar el error de AES para logging
+    aesError = error instanceof Error ? error : new Error(String(error))
+
+    // Si falla AES, intentar método legacy para compatibilidad
     try {
-      return decryptLegacy(encryptedText)
+      logger.warn(
+        {
+          type: 'encryption',
+          event: 'aes_decrypt_failed',
+          error: aesError.message,
+          encryptedTextLength: encryptedText.length,
+        },
+        'Desencriptación AES falló, intentando método legacy'
+      )
+      return decryptLegacyInternal(encryptedText)
     } catch (legacyError) {
+      // Ambos métodos fallaron
+      const legacyErrorMessage =
+        legacyError instanceof Error ? legacyError.message : String(legacyError)
+
       logger.error(
         {
           type: 'encryption',
           event: 'decrypt_error',
-          error: error instanceof Error ? error.message : String(error),
-          legacyError: legacyError instanceof Error ? legacyError.message : String(legacyError),
+          aesError: aesError.message,
+          legacyError: legacyErrorMessage,
+          encryptedTextLength: encryptedText.length,
         },
         'Error al desencriptar datos: ambos métodos (AES y legacy) fallaron'
       )
-      throw new Error('No se pudo desencriptar el dato. Los métodos AES y legacy fallaron.')
+
+      throw new Error(
+        `No se pudo desencriptar el dato. Método AES falló: ${aesError.message}. Método legacy falló: ${legacyErrorMessage}`
+      )
     }
+  }
+}
+
+function stripTrailingKeyOrNull(decoded: string, key: string | undefined | null): string | null {
+  if (!key) return null
+  if (!decoded.endsWith(key)) return null
+  const result = decoded.slice(0, -key.length)
+  return result || null
+}
+
+function decryptLegacyInternal(encryptedText: string): string {
+  if (!encryptedText) {
+    throw new Error('No se puede desencriptar: texto encriptado vacío')
+  }
+
+  try {
+    const decoded = Buffer.from(encryptedText, 'base64').toString('utf-8')
+
+    if (!decoded) {
+      throw new Error('No se pudo decodificar el texto encriptado desde base64')
+    }
+
+    // Intentar remover la clave del final (método antiguo)
+    const strippedWithCurrentKey = stripTrailingKeyOrNull(decoded, ENCRYPTION_KEY)
+    if (strippedWithCurrentKey) {
+      return strippedWithCurrentKey
+    }
+
+    // Intentar con clave por defecto antigua
+    const oldDefaultKey = 'default-key-change-in-production' // guard:allow-secret
+    const strippedWithOldKey = stripTrailingKeyOrNull(decoded, oldDefaultKey)
+    if (strippedWithOldKey) {
+      return strippedWithOldKey
+    }
+
+    // Si no tiene clave al final, retornar el texto decodificado directamente
+    // pero validar que no esté vacío
+    if (decoded.trim().length === 0) {
+      throw new Error('El texto decodificado está vacío o inválido')
+    }
+
+    return decoded
+  } catch (error) {
+    // Si es un error que ya lanzamos, re-lanzarlo
+    if (error instanceof Error && error.message.includes('No se puede desencriptar')) {
+      throw error
+    }
+
+    // Para otros errores, lanzar un error descriptivo
+    logger.error(
+      {
+        type: 'encryption',
+        event: 'decrypt_legacy_error',
+        error: error instanceof Error ? error.message : String(error),
+        encryptedTextLength: encryptedText.length,
+      },
+      'Error al desencriptar con método legacy'
+    )
+    throw new Error(
+      `No se pudo desencriptar el dato con el método legacy: ${error instanceof Error ? error.message : 'Error desconocido'}`
+    )
   }
 }
 
 /**
  * Método legacy de desencriptación (Base64) para compatibilidad con datos existentes
- * @deprecated Este método se mantiene solo para migración de datos existentes
+ * @deprecated Use decrypt() instead.
  */
-function decryptLegacy(encryptedText: string): string {
-  try {
-    const decoded = Buffer.from(encryptedText, 'base64').toString('utf-8')
-    // Remover la clave del final (método antiguo)
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    if (ENCRYPTION_KEY && decoded.endsWith(ENCRYPTION_KEY)) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      return decoded.slice(0, -ENCRYPTION_KEY.length)
-    }
-    // Intentar con clave por defecto antigua
-    const oldDefaultKey = 'default-key-change-in-production'
-    if (decoded.endsWith(oldDefaultKey)) {
-      return decoded.slice(0, -oldDefaultKey.length)
-    }
-    return decoded
-  } catch {
-    return ''
-  }
+export function decryptLegacy(encryptedText: string): string {
+  return decryptLegacyInternal(encryptedText)
 }
 
 /**
  * Migra datos encriptados del método legacy (Base64) al nuevo método (AES)
  * Útil para actualizar datos existentes en la base de datos
+ * @throws Error si la migración falla
  */
 export function migrateEncryption(oldEncryptedText: string): string {
-  if (!oldEncryptedText) return ''
+  if (!oldEncryptedText) {
+    throw new Error('No se puede migrar: texto encriptado vacío')
+  }
 
   try {
     // Desencriptar con método legacy
-    const decrypted = decryptLegacy(oldEncryptedText)
-    if (decrypted) {
-      // Re-encriptar con nuevo método
-      return encrypt(decrypted)
+    const decrypted = decryptLegacyInternal(oldEncryptedText)
+
+    if (!decrypted || decrypted.trim().length === 0) {
+      throw new Error('El resultado de desencriptación legacy está vacío')
     }
-    return oldEncryptedText
-  } catch {
-    return oldEncryptedText
+
+    // Re-encriptar con nuevo método
+    return encrypt(decrypted)
+  } catch (error) {
+    logger.error(
+      {
+        type: 'encryption',
+        event: 'migrate_encryption_error',
+        error: error instanceof Error ? error.message : String(error),
+        encryptedTextLength: oldEncryptedText.length,
+      },
+      'Error al migrar encriptación de legacy a AES'
+    )
+    throw new Error(
+      `No se pudo migrar la encriptación: ${error instanceof Error ? error.message : 'Error desconocido'}`
+    )
   }
 }
 

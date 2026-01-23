@@ -10,8 +10,6 @@ import { QuestionReview } from '@/components/question-review'
 import { Breadcrumbs } from '@/components/layout/breadcrumbs'
 import {
   CheckCircle2,
-  XCircle,
-  Circle,
   Clock,
   TrendingUp,
   TrendingDown,
@@ -22,7 +20,9 @@ import {
   Target,
   Lightbulb,
   ArrowLeft,
+  Sparkles,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import {
   BarChart,
   Bar,
@@ -30,7 +30,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
   PieChart,
   Pie,
@@ -94,6 +93,9 @@ interface Attempt {
   answers: AttemptAnswer[]
 }
 
+/**
+ * Tipos TypeScript para datos de intentos anteriores
+ */
 interface PreviousAttempt {
   id: string
   porcentaje: number
@@ -105,6 +107,38 @@ interface PreviousAttempt {
   }
 }
 
+/**
+ * Página de análisis detallado de un intento de examen
+ * 
+ * @component
+ * @description
+ * Muestra un análisis completo de un intento de examen con las siguientes funcionalidades:
+ * - Vista completa del intento con pestañas (Resumen, Preguntas, Temas)
+ * - Estadísticas principales: puntaje, correctas, duración, fecha
+ * - Gráfico de distribución de respuestas (pie chart)
+ * - Comparación con intentos anteriores del mismo examen
+ * - Gráficos de rendimiento por tema
+ * - Recomendaciones personalizadas basadas en el rendimiento
+ * - Breadcrumbs para navegación
+ * - Diseño responsive
+ * 
+ * @example
+ * ```tsx
+ * // Navegación desde dashboard o resultados
+ * router.push(`/attempts/${attemptId}`)
+ * ```
+ * 
+ * @remarks
+ * - Valida formato CUID del ID del intento
+ * - Carga datos del intento con todas las relaciones
+ * - Calcula análisis por tema automáticamente
+ * - Genera recomendaciones basadas en rendimiento
+ * - Compara con últimos 5 intentos del mismo examen
+ * - Usa Recharts para visualizaciones
+ * 
+ * @see {@link QuestionReview} Componente de revisión de preguntas
+ * @see {@link Breadcrumbs} Componente de navegación
+ */
 export default function AttemptDetailsPage() {
   const params = useParams()
   const router = useRouter()
@@ -115,6 +149,7 @@ export default function AttemptDetailsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'overview' | 'questions' | 'topics'>('overview')
+  const [isCreatingFlashcards, setIsCreatingFlashcards] = useState(false)
 
   useEffect(() => {
     async function loadData() {
@@ -238,6 +273,46 @@ export default function AttemptDetailsPage() {
     }
 
     return recommendations
+  }
+
+  const handleCreateFlashcardsFromFailed = async () => {
+    if (!attempt || attempt.incorrectas === 0) {
+      toast.error('No hay preguntas falladas para crear flashcards')
+      return
+    }
+
+    setIsCreatingFlashcards(true)
+    try {
+      const res = await fetch('/api/flashcards/auto-create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fromFailedQuestions: true,
+          limit: attempt.incorrectas,
+        }),
+      })
+
+      if (!res.ok) {
+        const { safeJsonParse } = await import('@/lib/api-helpers')
+        const errorData = await safeJsonParse<{ error?: string }>(res, {
+          path: typeof window !== 'undefined' ? window.location.pathname : '/attempts/[id]',
+          operation: 'crear flashcards automáticamente',
+        })
+        throw new Error(errorData.error || 'Error al crear flashcards')
+      }
+
+      const data = await res.json()
+      toast.success(`¡${data.created} flashcards creadas!`, {
+        description: data.skipped > 0 ? `${data.skipped} ya existían` : 'Listas para estudiar',
+      })
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Error desconocido'
+      toast.error('Error al crear flashcards', {
+        description: errorMessage,
+      })
+    } finally {
+      setIsCreatingFlashcards(false)
+    }
   }
 
   const formatDuration = (seconds: number | null) => {
@@ -535,6 +610,47 @@ export default function AttemptDetailsPage() {
                     </li>
                   ))}
                 </ul>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Crear Flashcards desde Preguntas Falladas */}
+          {attempt.incorrectas > 0 && (
+            <Card className="border-orange-200 bg-orange-50/50 dark:bg-orange-950/20 dark:border-orange-900">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-orange-600" />
+                  Crear Flashcards Automáticamente
+                </CardTitle>
+                <CardDescription>
+                  Crea flashcards desde tus {attempt.incorrectas} preguntas falladas para mejorar tu
+                  memorización
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  El sistema creará automáticamente flashcards desde las preguntas que respondiste
+                  incorrectamente. Esto te ayudará a memorizar mejor los conceptos usando repaso
+                  espaciado.
+                </p>
+                <Button
+                  onClick={handleCreateFlashcardsFromFailed}
+                  disabled={isCreatingFlashcards}
+                  variant="default"
+                  className="w-full"
+                >
+                  {isCreatingFlashcards ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Creando flashcards...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Crear {attempt.incorrectas} Flashcards desde Preguntas Falladas
+                    </>
+                  )}
+                </Button>
               </CardContent>
             </Card>
           )}

@@ -1,5 +1,8 @@
+/**
+ * @vitest-environment happy-dom
+ */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { renderHook, waitFor, act } from '@testing-library/react'
+import { renderHook, act } from '@testing-library/react'
 import { useDebounce } from './useDebounce'
 
 describe('useDebounce', () => {

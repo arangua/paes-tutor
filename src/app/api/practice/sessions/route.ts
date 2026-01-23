@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getCurrentUser } from '@/lib/get-session'
+import { getAuthenticatedUserWithStudent } from '@/lib/get-session'
 import { withRateLimit } from '@/lib/rate-limit-middleware'
+import { logger } from '@/lib/logger'
 import { z } from 'zod'
+import { safeRound, safeDivide, ensureFiniteNumber } from '@/app/api/notes/versions/validation-utils'
 
 export const runtime = 'nodejs'
 
@@ -21,18 +23,12 @@ const createSessionSchema = z.object({
 export async function POST(request: NextRequest) {
   return withRateLimit(request, async () => {
     try {
-      const user = await getCurrentUser()
-      if (!user?.email) {
+      const dbUser = await getAuthenticatedUserWithStudent()
+      if (!dbUser?.email) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
       }
 
-      // Obtener estudiante
-      const dbUser = await prisma.user.findUnique({
-        where: { email: user.email },
-        include: { student: true },
-      })
-
-      if (!dbUser?.student) {
+      if (!dbUser.student) {
         return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 })
       }
 
@@ -73,7 +69,11 @@ export async function POST(request: NextRequest) {
         },
       })
 
-      const correctAnswersMap = new Map(questions.map(q => [q.id, q.options[0]?.id]))
+      const correctAnswersMap = new Map(
+        questions
+          .filter(q => q.options && q.options.length > 0 && q.options[0]?.id)
+          .map(q => [q.id, q.options[0].id])
+      )
 
       // Procesar respuestas
       const practiceAnswers = answers.map(answer => {
@@ -98,10 +98,35 @@ export async function POST(request: NextRequest) {
         }
       })
 
-      const porcentaje = totalPreguntas > 0 ? (correctas / totalPreguntas) * 100 : 0
+      // ✅ Enterprise: Calcular porcentaje usando funciones seguras
+      const safeCorrectas = ensureFiniteNumber(correctas, 0)
+      const safeTotalPreguntas = ensureFiniteNumber(totalPreguntas, 0)
+      const porcentaje = safeTotalPreguntas > 0 
+        ? safeRound(safeDivide(safeCorrectas, safeTotalPreguntas, 0) * 100, 2)
+        : 0
 
       // Calcular duración total
-      const duracionSegundos = answers.reduce((sum, a) => sum + (a.tiempoSegundos || 0), 0)
+      // CORRECCIÓN: Validar que answers sea un array válido y que a.tiempoSegundos sea un número finito antes de reducir
+      const duracionSegundos = (() => {
+        if (!Array.isArray(answers)) {
+          logger.warn({ answers }, 'practice/sessions: answers no es un array válido, usando 0')
+          return 0
+        }
+        try {
+          const sum = answers.reduce((sum, a) => {
+            const safeSum = Number.isFinite(sum) ? sum : 0
+            const safeTiempoSegundos = a && typeof a === 'object' && Number.isFinite(a.tiempoSegundos) && a.tiempoSegundos >= 0
+              ? a.tiempoSegundos
+              : 0
+            const result = safeSum + safeTiempoSegundos
+            return Number.isFinite(result) ? result : safeSum
+          }, 0)
+          return Number.isFinite(sum) ? sum : 0
+        } catch (error) {
+          logger.warn({ error, answers }, 'practice/sessions: Error al calcular duracionSegundos, usando 0')
+          return 0
+        }
+      })()
 
       // Crear sesión de práctica
       const practiceSession = await prisma.practiceSession.create({
@@ -167,7 +192,7 @@ async function updatePerformanceMetrics(
 
     const newCorrectas = (existingMetric?.correctas || 0) + correctas
     const newTotal = (existingMetric?.totalPreguntas || 0) + totalPreguntas
-    const newPorcentaje = (newCorrectas / newTotal) * 100
+    const newPorcentaje = newTotal > 0 ? (newCorrectas / newTotal) * 100 : 0
 
     if (existingMetric) {
       await prisma.performanceMetric.update({
@@ -177,7 +202,21 @@ async function updatePerformanceMetrics(
           correctas: newCorrectas,
           porcentaje: newPorcentaje,
           nivel: getNivel(newPorcentaje),
-          tendencia: calculateTendency(existingMetric.porcentaje, newPorcentaje),
+          tendencia: (() => {
+            // CORRECCIÓN: Validar que existingMetric.porcentaje y newPorcentaje sean números finitos antes de calcular tendencia
+            const safeExisting = Number.isFinite(existingMetric.porcentaje) && existingMetric.porcentaje >= 0 && existingMetric.porcentaje <= 100
+              ? existingMetric.porcentaje
+              : 0
+            const safeNew = Number.isFinite(newPorcentaje) && newPorcentaje >= 0 && newPorcentaje <= 100
+              ? newPorcentaje
+              : 0
+            try {
+              return calculateTendency(safeExisting, safeNew)
+            } catch (error) {
+              logger.warn({ error, safeExisting, safeNew }, 'practice/sessions: Error al calcular tendencia, usando stable')
+              return 'stable'
+            }
+          })(),
         },
       })
     } else {

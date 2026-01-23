@@ -1,0 +1,16 @@
+# Default owners (ajusta a tus handles)
+* @arangua
+
+# Dependency config + automation governance
+.github/dependabot.yml @arangua
+.github/workflows/deps-major-label-gate.yml @arangua
+.github/workflows/release-gate.yml @arangua
+
+# Core baselines / governance docs
+docs/BASELINE_INMUTABLE.md @arangua
+docs/ci/** @arangua
+docs/decisions/** @arangua
+
+# Lockfile & package manifests
+package.json @arangua
+package-lock.json @arangua

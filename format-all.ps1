@@ -3,11 +3,41 @@
 
 $ErrorActionPreference = "SilentlyContinue"
 
-Write-Host "Formateando archivos con Prettier..." -ForegroundColor Cyan
+# Asegurar que estamos en el directorio raíz del proyecto
+$scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
+$helperPath = Join-Path $scriptPath "scripts\Ensure-ProjectRoot.ps1"
+if (Test-Path $helperPath) {
+    . $helperPath
+    $projectRoot = Ensure-ProjectRoot -ScriptPath $scriptPath
+} else {
+    # Fallback: buscar package.json manualmente
+    $currentDir = $scriptPath
+    $maxDepth = 10
+    $depth = 0
+    while ($depth -lt $maxDepth) {
+        $packageJsonPath = Join-Path $currentDir "package.json"
+        if (Test-Path $packageJsonPath) {
+            Set-Location $currentDir
+            $projectRoot = $currentDir
+            break
+        }
+        $parentDir = Split-Path $currentDir -Parent
+        if ([string]::IsNullOrEmpty($parentDir) -or $parentDir -eq $currentDir) {
+            break
+        }
+        $currentDir = $parentDir
+        $depth++
+    }
+}
 
-# Cambiar al directorio del proyecto
-$projectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-Set-Location $projectRoot
+# Verificar que package.json existe
+if (-not (Test-Path "package.json")) {
+    Write-Host "❌ Error: package.json no encontrado en el directorio actual: $(Get-Location)" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host "✅ Ejecutando desde: $(Get-Location)" -ForegroundColor Green
+Write-Host "Formateando archivos con Prettier..." -ForegroundColor Cyan
 
 # Directorios a formatear
 $directories = @("src", "scripts", "e2e")

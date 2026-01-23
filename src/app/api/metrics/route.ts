@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getCurrentStudentId } from '@/lib/get-session'
+import { getCurrentStudentId, getSession } from '@/lib/get-session'
 import { validateQuery, handleApiError } from '@/lib/api-helpers'
 import { metricsQuerySchema } from '@/lib/validations'
 import { withRateLimit } from '@/lib/rate-limit-middleware'
-import { logApiRequest } from '@/lib/logger'
+import { logApiRequest, logger } from '@/lib/logger'
+import { circuitBreakers } from '@/app/api/notes/versions/circuit-breaker'
 
 // Especificar Node.js runtime
 export const runtime = 'nodejs'
@@ -19,12 +20,53 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
       }
 
-      const student = await prisma.student.findUnique({
-        where: { id: studentId },
-      })
+      // ✅ Enterprise: Obtener estudiante con circuit breaker
+      let student = await circuitBreakers.database.execute(
+        async () => {
+          return await prisma.student.findUnique({
+            where: { id: studentId },
+          })
+        },
+        async () => {
+          logger.warn({ studentId }, 'Circuit breaker activado para findStudent, retornando null')
+          return null
+        }
+      )
+
+      // Si no se encuentra el estudiante, intentar obtenerlo desde el usuario
+      // Esto puede ocurrir si hay una inconsistencia entre la sesión y la base de datos
+      if (!student) {
+        const session = await getSession()
+        if (session?.user?.email) {
+          const user = await circuitBreakers.database.execute(
+            async () => {
+              return await prisma.user.findUnique({
+                where: { email: session.user.email },
+                include: { student: true },
+              })
+            },
+            async () => {
+              logger.warn({ email: session.user.email }, 'Circuit breaker activado para findUser, retornando null')
+              return null
+            }
+          )
+
+          if (user?.student) {
+            // Usar el estudiante correcto desde el usuario
+            student = user.student
+          }
+        }
+      }
 
       if (!student) {
-        return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 })
+        return NextResponse.json(
+          {
+            error: 'Estudiante no encontrado',
+            message:
+              'El estudiante asociado a tu cuenta no existe en la base de datos. Por favor, contacta al administrador.',
+          },
+          { status: 404 }
+        )
       }
 
       // Validar query parameters
@@ -35,26 +77,34 @@ export async function GET(request: NextRequest) {
 
       const { subjectId, topicId } = validation.data
 
-      // Obtener métricas agrupadas por asignatura
-      const metrics = await prisma.performanceMetric.findMany({
-        where: {
-          studentId: student.id,
-          ...(topicId && { topicId }),
-          ...(subjectId && {
-            topic: {
-              subjectId,
+      // ✅ Enterprise: Obtener métricas con circuit breaker
+      const metrics = await circuitBreakers.database.execute(
+        async () => {
+          return await prisma.performanceMetric.findMany({
+            where: {
+              studentId: student.id,
+              ...(topicId && { topicId }),
+              ...(subjectId && {
+                topic: {
+                  subjectId,
+                },
+              }),
             },
-          }),
-        },
-        include: {
-          topic: {
             include: {
-              subject: true,
+              topic: {
+                include: {
+                  subject: true,
+                },
+              },
             },
-          },
+            orderBy: { porcentaje: 'desc' },
+          })
         },
-        orderBy: { porcentaje: 'desc' },
-      })
+        async () => {
+          logger.warn({ studentId: student.id }, 'Circuit breaker activado para findMetrics, retornando array vacío')
+          return []
+        }
+      )
 
       // Agrupar por asignatura
       interface SubjectMetric {
@@ -69,29 +119,40 @@ export async function GET(request: NextRequest) {
         }>
       }
 
-      const metricsBySubject = metrics.reduce(
-        (acc, metric) => {
-          const subjectCode = metric.topic.subject.codigo
-          if (!acc[subjectCode]) {
-            acc[subjectCode] = {
-              codigo: subjectCode,
-              nombre: metric.topic.subject.nombre,
-              totalPreguntas: 0,
-              correctas: 0,
-              temas: [],
+      const metricsBySubject = metrics
+        .filter(metric => metric.topic && metric.topic.subject)
+        .reduce(
+          (acc, metric) => {
+            const subjectCode = metric.topic?.subject?.codigo || ''
+            if (!acc[subjectCode]) {
+              acc[subjectCode] = {
+                codigo: subjectCode,
+                nombre: metric.topic?.subject?.nombre || '',
+                totalPreguntas: 0,
+                correctas: 0,
+                temas: [],
+              }
             }
-          }
-          acc[subjectCode].totalPreguntas += metric.totalPreguntas
-          acc[subjectCode].correctas += metric.correctas
-          acc[subjectCode].temas.push({
-            nombre: metric.topic.nombre,
-            porcentaje: metric.porcentaje,
-            nivel: metric.nivel,
-          })
-          return acc
-        },
-        {} as Record<string, SubjectMetric>
-      )
+            // CORRECCIÓN: Validar que metric.totalPreguntas y metric.correctas sean números finitos antes de sumar
+            const safeTotalPreguntas = Number.isFinite(metric.totalPreguntas) && metric.totalPreguntas >= 0
+              ? metric.totalPreguntas
+              : 0
+            const safeCorrectas = Number.isFinite(metric.correctas) && metric.correctas >= 0
+              ? metric.correctas
+              : 0
+            const newTotalPreguntas = (Number.isFinite(acc[subjectCode].totalPreguntas) ? acc[subjectCode].totalPreguntas : 0) + safeTotalPreguntas
+            const newCorrectas = (Number.isFinite(acc[subjectCode].correctas) ? acc[subjectCode].correctas : 0) + safeCorrectas
+            acc[subjectCode].totalPreguntas = Number.isFinite(newTotalPreguntas) && newTotalPreguntas >= 0 ? newTotalPreguntas : acc[subjectCode].totalPreguntas
+            acc[subjectCode].correctas = Number.isFinite(newCorrectas) && newCorrectas >= 0 ? newCorrectas : acc[subjectCode].correctas
+            acc[subjectCode].temas.push({
+              nombre: metric.topic?.nombre || '',
+              porcentaje: metric.porcentaje,
+              nivel: metric.nivel,
+            })
+            return acc
+          },
+          {} as Record<string, SubjectMetric>
+        )
 
       // Calcular porcentaje promedio por asignatura
       const result = Object.values(metricsBySubject).map(subject => ({

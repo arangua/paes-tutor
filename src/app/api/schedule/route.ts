@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getCurrentUser } from '@/lib/get-session'
+import { getAuthenticatedUserWithStudent } from '@/lib/get-session'
 import { withRateLimit } from '@/lib/rate-limit-middleware'
 import { z } from 'zod'
 import { logger } from '@/lib/logger'
@@ -29,8 +29,8 @@ const updateScheduleSchema = z.object({
 })
 
 const getSchedulesQuerySchema = z.object({
-  startDate: z.string().datetime().optional(),
-  endDate: z.string().datetime().optional(),
+  startDate: z.datetime({ error: 'Invalid datetime' }).optional(),
+  endDate: z.datetime({ error: 'Invalid datetime' }).optional(),
   completed: z
     .enum(['true', 'false'])
     .optional()
@@ -38,23 +38,18 @@ const getSchedulesQuerySchema = z.object({
 })
 
 const scheduleIdQuerySchema = z.object({
-  scheduleId: z.string().cuid().min(1),
+  scheduleId: z.cuid({ error: 'scheduleId debe ser un CUID válido' }).min(1),
 })
 
 export async function GET(request: NextRequest) {
   return withRateLimit(request, async () => {
     try {
-      const user = await getCurrentUser()
-      if (!user?.email) {
+      const dbUser = await getAuthenticatedUserWithStudent()
+      if (!dbUser?.email) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
       }
 
-      const dbUser = await prisma.user.findUnique({
-        where: { email: user.email },
-        include: { student: true },
-      })
-
-      if (!user?.student) {
+      if (!dbUser?.student) {
         return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 })
       }
 
@@ -80,7 +75,7 @@ export async function GET(request: NextRequest) {
         }
         completed?: boolean
       } = {
-        studentId: user.student.id,
+        studentId: dbUser.student.id,
       }
 
       if (startDate || endDate) {
@@ -141,17 +136,12 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   return withRateLimit(request, async () => {
     try {
-      const user = await getCurrentUser()
-      if (!user?.email) {
+      const dbUser = await getAuthenticatedUserWithStudent()
+      if (!dbUser?.email) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
       }
 
-      const dbUser = await prisma.user.findUnique({
-        where: { email: user.email },
-        include: { student: true },
-      })
-
-      if (!user?.student) {
+      if (!dbUser?.student) {
         return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 })
       }
 
@@ -231,17 +221,12 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   return withRateLimit(request, async () => {
     try {
-      const user = await getCurrentUser()
-      if (!user?.email) {
+      const dbUser = await getAuthenticatedUserWithStudent()
+      if (!dbUser?.email) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
       }
 
-      const dbUser = await prisma.user.findUnique({
-        where: { email: user.email },
-        include: { student: true },
-      })
-
-      if (!user?.student) {
+      if (!dbUser?.student) {
         return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 })
       }
 
@@ -272,7 +257,7 @@ export async function PUT(request: NextRequest) {
       const existingSchedule = await prisma.studySchedule.findFirst({
         where: {
           id: scheduleId,
-          studentId: user.student.id,
+          studentId: dbUser.student.id,
         },
       })
 
@@ -339,17 +324,12 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   return withRateLimit(request, async () => {
     try {
-      const user = await getCurrentUser()
-      if (!user?.email) {
+      const dbUser = await getAuthenticatedUserWithStudent()
+      if (!dbUser?.email) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
       }
 
-      const dbUser = await prisma.user.findUnique({
-        where: { email: user.email },
-        include: { student: true },
-      })
-
-      if (!user?.student) {
+      if (!dbUser?.student) {
         return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 })
       }
 
@@ -370,7 +350,7 @@ export async function DELETE(request: NextRequest) {
       const schedule = await prisma.studySchedule.findFirst({
         where: {
           id: scheduleId,
-          studentId: user.student.id,
+          studentId: dbUser.student.id,
         },
       })
 

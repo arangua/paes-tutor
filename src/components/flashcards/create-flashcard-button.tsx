@@ -14,6 +14,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Loader2, Plus } from 'lucide-react'
 import { toast } from 'sonner'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { getErrorMessage, extractErrorInfo, ERROR_CODES } from '@/lib/error-messages'
+import { trackError } from '@/lib/monitoring'
 
 interface CreateFlashcardButtonProps {
   questionId?: string
@@ -29,7 +32,7 @@ export function CreateFlashcardButton({
   defaultBack = '',
   variant = 'ghost',
   size = 'sm',
-}: CreateFlashcardButtonProps) {
+}: Readonly<CreateFlashcardButtonProps>) {
   const [open, setOpen] = useState(false)
   const [front, setFront] = useState(defaultFront)
   const [back, setBack] = useState(defaultBack)
@@ -54,7 +57,11 @@ export function CreateFlashcardButton({
       })
 
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
+        const { safeJsonParse } = await import('@/lib/api-helpers')
+        const errorData = await safeJsonParse<{ error?: string }>(res, {
+          path: typeof window !== 'undefined' ? window.location.pathname : '/flashcards',
+          operation: 'crear flashcard',
+        })
         throw new Error(errorData.error || 'Error al crear flashcard')
       }
 
@@ -63,9 +70,21 @@ export function CreateFlashcardButton({
       setFront('')
       setBack('')
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Error desconocido'
-      toast.error('Error al crear flashcard', {
-        description: errorMessage,
+      const errorInfo = extractErrorInfo(error)
+      const structuredError = getErrorMessage(ERROR_CODES.DATA_CREATE_FAILED, {
+        item: 'la flashcard',
+        reason: errorInfo.message,
+      })
+
+      trackError(error instanceof Error ? error : new Error(String(error)), {
+        type: 'flashcard_error',
+        action: 'create',
+        questionId,
+      })
+
+      toast.error(structuredError.title, {
+        description: `${structuredError.description} ${structuredError.solution}`,
+        duration: 6000,
       })
     } finally {
       setIsLoading(false)
@@ -74,16 +93,29 @@ export function CreateFlashcardButton({
 
   return (
     <>
-      <Button
-        variant={variant}
-        size={size}
-        onClick={() => setOpen(true)}
-        title="Crear flashcard"
-        aria-label="Crear flashcard"
-      >
-        <Plus className="h-4 w-4 mr-2" />
-        Crear Flashcard
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant={variant}
+            size={size}
+            onClick={() => setOpen(true)}
+            aria-label="Crear flashcard"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Crear Flashcard
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p className="text-sm">
+            <strong>Crear flashcard</strong>
+            <br />
+            <span className="text-muted-foreground text-xs">
+              Como las tarjetas de estudio físicas. Crea preguntas y respuestas para memorizar
+              mejor, igual que Anki o Quizlet.
+            </span>
+          </p>
+        </TooltipContent>
+      </Tooltip>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>

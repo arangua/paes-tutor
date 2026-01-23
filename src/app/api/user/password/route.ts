@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/get-session'
 import { handleApiError } from '@/lib/api-helpers'
-import { withRateLimit, RateLimitType } from '@/lib/rate-limit-middleware'
+import { withRateLimit } from '@/lib/rate-limit-middleware'
 import { logApiRequest } from '@/lib/logger'
 import { validateBody } from '@/lib/api-helpers'
 import { z } from 'zod'
@@ -19,9 +19,9 @@ const changePasswordSchema = z
       .string()
       .min(8, 'La nueva contraseña debe tener al menos 8 caracteres')
       .max(100, 'La contraseña es demasiado larga')
-      .regex(/[A-Z]/, 'La contraseña debe contener al menos una mayúscula')
-      .regex(/[a-z]/, 'La contraseña debe contener al menos una minúscula')
-      .regex(/[0-9]/, 'La contraseña debe contener al menos un número'),
+      .regex(/[A-Z]/, { message: 'La contraseña debe contener al menos una mayúscula' })
+      .regex(/[a-z]/, { message: 'La contraseña debe contener al menos una minúscula' })
+      .regex(/[0-9]/, { message: 'La contraseña debe contener al menos un número' }),
     confirmPassword: z.string(),
   })
   .refine(data => data.newPassword === data.confirmPassword, {

@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
-import { captureError } from '@/lib/monitoring'
+import { trackError } from '@/lib/monitoring'
+import { examResponseSchema } from '@/lib/validations'
+import { validateResponse } from '@/lib/api-helpers'
 
 interface Exam {
   id: string
@@ -47,6 +49,7 @@ export function useExams(options: UseExamsOptions = {}) {
 
   // Cargar exámenes
   useEffect(() => {
+    // eslint-disable-next-line sonarjs/cognitive-complexity
     async function loadExams() {
       try {
         setIsLoading(true)
@@ -66,57 +69,42 @@ export function useExams(options: UseExamsOptions = {}) {
           params.append('offset', options.offset.toString())
         }
 
-        const url = `/api/exams${params.toString() ? `?${params.toString()}` : ''}`
+        const queryString = params.toString()
+        const url = queryString ? `/api/exams?${queryString}` : '/api/exams'
         const res = await fetch(url)
 
         if (!res.ok) {
-          const errorData = await res.json().catch(() => ({}))
-          const statusText =
-            res.status === 401
-              ? 'No autorizado. Por favor, inicia sesión.'
-              : res.status === 404
-                ? 'Exámenes no encontrados'
-                : errorData.error || `Error ${res.status}: Error al cargar exámenes`
+          const { safeJsonParse } = await import('@/lib/api-helpers')
+          const errorData = await safeJsonParse<{ error?: string }>(res, {
+            path: typeof window !== 'undefined' ? window.location.pathname : '/exams',
+            operation: 'cargar exámenes',
+          })
+          let statusText = errorData.error || `Error ${res.status}: Error al cargar exámenes`
+          if (res.status === 401) {
+            statusText = 'No autorizado. Por favor, inicia sesión.'
+          } else if (res.status === 404) {
+            statusText = 'Exámenes no encontrados'
+          }
           throw new Error(statusText)
         }
 
-        const data = await res.json()
+        // Validar respuesta con Zod para type safety en runtime
+        const validation = await validateResponse(res, examResponseSchema, {
+          path: typeof window !== 'undefined' ? window.location.pathname : '/exams',
+          operation: 'cargar exámenes',
+        })
 
-        // Manejar nueva estructura con paginación o estructura antigua
-        let examsData: Exam[]
-        let paginationData: PaginationInfo | null = null
-
-        if (data.exams && data.pagination) {
-          // Nueva estructura con paginación
-          examsData = data.exams
-          paginationData = data.pagination
-        } else if (Array.isArray(data)) {
-          // Estructura antigua (sin paginación) - retrocompatibilidad
-          examsData = data
-        } else {
-          throw new Error('Formato de respuesta inválido del servidor')
+        if (!validation.success) {
+          trackError(new Error(validation.error), {
+            type: 'exams_validation_error',
+            path: typeof window !== 'undefined' ? window.location.pathname : undefined,
+          })
+          throw new Error(validation.error)
         }
 
-        // Validar estructura básica de cada examen
-        const validExams = examsData.filter(
-          (exam: Exam) =>
-            exam?.id && exam?.titulo && exam?.subject?.id && typeof exam.totalPreguntas === 'number'
-        )
+        const { exams: examsData, pagination: paginationData } = validation.data
 
-        if (validExams.length !== examsData.length) {
-          // Warning usando servicio de monitoreo
-          captureError(
-            new Error('Algunos exámenes tienen estructura inválida y fueron filtrados'),
-            {
-              type: 'exams_validation_warning',
-              filteredCount: examsData.length - validExams.length,
-              totalCount: examsData.length,
-              path: typeof window !== 'undefined' ? window.location.pathname : undefined,
-            }
-          )
-        }
-
-        setExams(validExams)
+        setExams(examsData as Exam[])
         setPagination(paginationData)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error desconocido')
@@ -165,7 +153,7 @@ export function useExams(options: UseExamsOptions = {}) {
         uniqueTipos.add(exam.tipo)
       }
     })
-    return Array.from(uniqueTipos).sort()
+    return Array.from(uniqueTipos).sort((a, b) => a.localeCompare(b))
   }, [exams])
 
   return {

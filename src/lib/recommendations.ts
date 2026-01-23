@@ -5,13 +5,17 @@
  * basadas en debilidades, fortalezas y patrones de rendimiento.
  */
 
+import { ensureFiniteNumber, ensureInteger } from '@/app/api/notes/versions/validation-utils'
+
+export type RecommendationPriority = 'high' | 'medium' | 'low'
+
 export interface TopicRecommendation {
   topicId: string
   topicName: string
   subjectName: string
   subjectCode: string
   currentPercentage: number
-  priority: 'high' | 'medium' | 'low'
+  priority: RecommendationPriority
   reason: string
   suggestedActions: string[]
 }
@@ -22,7 +26,7 @@ export interface ExamRecommendation {
   subjectName: string
   subjectCode: string
   reason: string
-  priority: 'high' | 'medium' | 'low'
+  priority: RecommendationPriority
   focusTopics: string[]
 }
 
@@ -85,11 +89,11 @@ export function analyzeTopicRecommendations(metrics: PerformanceMetric[]): Topic
   const mediumTopics = metrics.filter(
     m => m.porcentaje >= 50 && m.porcentaje < 70 && m.totalPreguntas >= 3
   )
-  const strongTopics = metrics.filter(m => m.porcentaje >= 70)
+  // Nota: Los temas fuertes (>= 70%) se omiten implícitamente al construir recomendaciones.
 
   // Temas débiles (alta prioridad)
   weakTopics.forEach(topic => {
-    const priority: 'high' | 'medium' | 'low' = topic.porcentaje < 30 ? 'high' : 'medium'
+    const priority: RecommendationPriority = topic.porcentaje < 30 ? 'high' : 'medium'
 
     recommendations.push({
       topicId: topic.topicId,
@@ -250,9 +254,12 @@ export function generateStudyPlan(
     })
   }
 
-  const estimatedWeeks = Math.max(weeks.length, 2)
+  // ✅ Enterprise: Calcular semanas estimadas usando funciones seguras
+  const safeWeeksLength = ensureFiniteNumber(weeks.length, 0)
+  const estimatedWeeks = Math.max(ensureInteger(safeWeeksLength, 0), 2)
   const estimatedCompletion = new Date()
-  estimatedCompletion.setDate(estimatedCompletion.getDate() + estimatedWeeks * 7)
+  const safeDaysToAdd = ensureInteger(estimatedWeeks * 7, 14) // Fallback a 2 semanas
+  estimatedCompletion.setDate(estimatedCompletion.getDate() + safeDaysToAdd)
 
   return {
     weeklyGoals: weeks,

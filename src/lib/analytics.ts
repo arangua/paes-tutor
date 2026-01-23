@@ -5,6 +5,13 @@
  * incluyendo tendencias, predicciones y comparaciones.
  */
 
+import { safeRound, safeToISODate, safeAverage, ensureFiniteNumber, ensureInteger, safeDivide } from '@/app/api/notes/versions/validation-utils'
+
+export type TrendDirection = 'improving' | 'declining' | 'stable'
+export type StrengthWeaknessCategory = 'strength' | 'weakness' | 'average'
+export type PredictionConfidence = 'high' | 'medium' | 'low'
+export type ComparisonResult = 'above' | 'below' | 'equal'
+
 export interface TrendData {
   date: string
   percentage: number
@@ -17,12 +24,12 @@ export interface StrengthWeakness {
   subject: string
   percentage: number
   totalQuestions: number
-  category: 'strength' | 'weakness' | 'average'
+  category: StrengthWeaknessCategory
 }
 
 export interface PAESPrediction {
   predictedScore: number
-  confidence: 'high' | 'medium' | 'low'
+  confidence: PredictionConfidence
   factors: string[]
   estimatedRange: {
     min: number
@@ -34,7 +41,7 @@ export interface ComparisonData {
   studentAverage: number
   overallAverage: number
   percentile: number
-  comparison: 'above' | 'below' | 'equal'
+  comparison: ComparisonResult
 }
 
 export interface AdvancedAnalytics {
@@ -46,14 +53,14 @@ export interface AdvancedAnalytics {
   subjectBreakdown: Array<{
     subject: string
     average: number
-    trend: 'improving' | 'declining' | 'stable'
+    trend: TrendDirection
     attempts: number
   }>
 }
 
 interface Attempt {
   id: string
-  porcentaje: number
+  porcentaje: number | null
   createdAt: string
   exam: {
     titulo: string
@@ -79,11 +86,11 @@ interface Metric {
 export function analyzeTrends(attempts: Attempt[]): TrendData[] {
   // Ordenar por fecha
   const sortedAttempts = [...attempts]
-    .filter(a => a.porcentaje !== null && a.porcentaje !== undefined)
+    .filter(a => a.porcentaje != null)
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
 
   return sortedAttempts.map(attempt => ({
-    date: new Date(attempt.createdAt).toISOString().split('T')[0],
+    date: safeToISODate(attempt.createdAt) || 'unknown',
     percentage: attempt.porcentaje,
     examTitle: attempt.exam.titulo,
     subjectName: attempt.exam.subject.nombre,
@@ -103,13 +110,16 @@ export function analyzeStrengthsWeaknesses(metrics: Metric[]): {
   metrics.forEach(metric => {
     if (metric.totalPreguntas < 3) return // Ignorar temas con pocas preguntas
 
+    let category: StrengthWeaknessCategory = 'average'
+    if (metric.porcentaje >= 70) category = 'strength'
+    else if (metric.porcentaje < 50) category = 'weakness'
+
     const item: StrengthWeakness = {
       topic: metric.topicName,
       subject: metric.subjectName,
       percentage: metric.porcentaje,
       totalQuestions: metric.totalPreguntas,
-      category:
-        metric.porcentaje >= 70 ? 'strength' : metric.porcentaje < 50 ? 'weakness' : 'average',
+      category,
     }
 
     if (item.category === 'strength') {
@@ -136,7 +146,7 @@ export function predictPAESScore(attempts: Attempt[]): PAESPrediction | null {
 
   // Filtrar intentos completados con puntaje PAES
   const validAttempts = attempts.filter(
-    a => a.porcentaje !== null && a.porcentaje !== undefined && a.porcentaje > 0
+    a => a.porcentaje != null && a.porcentaje > 0
   )
 
   if (validAttempts.length < 3) {
@@ -145,18 +155,19 @@ export function predictPAESScore(attempts: Attempt[]): PAESPrediction | null {
 
   // Calcular promedio de los últimos intentos (últimos 5 o todos si son menos)
   const recentAttempts = validAttempts.slice(-5)
-  const averagePercentage =
-    recentAttempts.reduce((sum, a) => sum + a.porcentaje, 0) / recentAttempts.length
+  const averagePercentage = safeAverage(recentAttempts.map(a => a.porcentaje), 0)
 
-  // Calcular tendencia (mejora o declive)
-  const firstHalf = recentAttempts.slice(0, Math.floor(recentAttempts.length / 2))
-  const secondHalf = recentAttempts.slice(Math.floor(recentAttempts.length / 2))
+  // ✅ Enterprise: Calcular tendencia (mejora o declive) usando funciones seguras
+  const safeLength = ensureFiniteNumber(recentAttempts.length, 0)
+  const halfIndex = ensureInteger(safeLength / 2, 0)
+  const firstHalf = recentAttempts.slice(0, halfIndex)
+  const secondHalf = recentAttempts.slice(halfIndex)
 
   // Validación defensiva: asegurar que ambas mitades tengan al menos un elemento
   let trend = 0
   if (firstHalf.length > 0 && secondHalf.length > 0) {
-    const firstAvg = firstHalf.reduce((sum, a) => sum + a.porcentaje, 0) / firstHalf.length
-    const secondAvg = secondHalf.reduce((sum, a) => sum + a.porcentaje, 0) / secondHalf.length
+    const firstAvg = safeAverage(firstHalf.map(a => a.porcentaje), 0)
+    const secondAvg = safeAverage(secondHalf.map(a => a.porcentaje), 0)
     trend = secondAvg - firstAvg
   }
 
@@ -166,21 +177,27 @@ export function predictPAESScore(attempts: Attempt[]): PAESPrediction | null {
   const maxScore = 850
   const scoreRange = maxScore - baseScore
 
-  const predictedScore = baseScore + (averagePercentage / 100) * scoreRange
+  // ✅ Enterprise: Calcular puntaje predicho usando funciones seguras
+  const safeAveragePercentage = ensureFiniteNumber(averagePercentage, 0)
+  const predictedScore = baseScore + safeDivide(safeAveragePercentage, 100, 0) * scoreRange
 
-  // Ajustar según tendencia
-  const trendAdjustment = (trend / 100) * scoreRange * 0.3 // Factor de ajuste conservador
-  const adjustedScore = predictedScore + trendAdjustment
+  // ✅ Enterprise: Ajustar según tendencia usando funciones seguras
+  const safeTrend = ensureFiniteNumber(trend, 0)
+  const trendAdjustment = safeDivide(safeTrend, 100, 0) * scoreRange * 0.3 // Factor de ajuste conservador
+  const adjustedScore = ensureFiniteNumber(predictedScore + trendAdjustment, predictedScore)
 
-  // Calcular rango de confianza
+  // ✅ Enterprise: Calcular rango de confianza usando funciones seguras
   const variance =
     recentAttempts.reduce((sum, a) => {
-      const diff = a.porcentaje - averagePercentage
-      return sum + diff * diff
-    }, 0) / recentAttempts.length
-
-  const stdDev = Math.sqrt(variance)
-  const margin = (stdDev / 100) * scoreRange
+      const safePorcentaje = ensureFiniteNumber(a.porcentaje, 0)
+      const diff = safePorcentaje - safeAveragePercentage
+      const diffSquared = diff * diff
+      return ensureFiniteNumber(sum + diffSquared, sum)
+    }, 0)
+  const safeVariance = safeDivide(variance, recentAttempts.length, 0)
+  const stdDev = Math.sqrt(ensureFiniteNumber(safeVariance, 0))
+  const safeStdDev = ensureFiniteNumber(stdDev, 0)
+  const margin = safeDivide(safeStdDev, 100, 0) * scoreRange
 
   // Determinar confianza
   let confidence: 'high' | 'medium' | 'low'
@@ -209,12 +226,12 @@ export function predictPAESScore(attempts: Attempt[]): PAESPrediction | null {
   }
 
   return {
-    predictedScore: Math.round(Math.max(150, Math.min(850, adjustedScore))),
+    predictedScore: safeRound(Math.max(150, Math.min(850, adjustedScore)), 0),
     confidence,
     factors,
     estimatedRange: {
-      min: Math.round(Math.max(150, adjustedScore - margin)),
-      max: Math.round(Math.min(850, adjustedScore + margin)),
+      min: safeRound(Math.max(150, adjustedScore - margin), 0),
+      max: safeRound(Math.min(850, adjustedScore + margin), 0),
     },
   }
 }
@@ -228,17 +245,17 @@ export function compareWithAverage(studentAverage: number): ComparisonData {
   const overallAverage = 60
 
   const difference = studentAverage - overallAverage
-  const comparison: 'above' | 'below' | 'equal' =
-    difference > 5 ? 'above' : difference < -5 ? 'below' : 'equal'
+  let comparison: ComparisonResult = 'equal'
+  if (difference > 5) comparison = 'above'
+  else if (difference < -5) comparison = 'below'
 
   // Calcular percentil aproximado (simulado)
   // En producción, esto se calcularía con datos reales
-  let percentile = 50
+  let percentile = 15
   if (studentAverage >= 80) percentile = 90
   else if (studentAverage >= 70) percentile = 75
   else if (studentAverage >= 60) percentile = 50
   else if (studentAverage >= 50) percentile = 30
-  else percentile = 15
 
   return {
     studentAverage,
@@ -254,7 +271,7 @@ export function compareWithAverage(studentAverage: number): ComparisonData {
 export function analyzeSubjectBreakdown(attempts: Attempt[]): Array<{
   subject: string
   average: number
-  trend: 'improving' | 'declining' | 'stable'
+  trend: TrendDirection
   attempts: number
 }> {
   // Agrupar por asignatura
@@ -271,36 +288,39 @@ export function analyzeSubjectBreakdown(attempts: Attempt[]): Array<{
   const breakdown: Array<{
     subject: string
     average: number
-    trend: 'improving' | 'declining' | 'stable'
+    trend: TrendDirection
     attempts: number
   }> = []
 
-  bySubject.forEach((subjectAttempts, subjectCode) => {
+  bySubject.forEach((subjectAttempts, _subjectCode) => {
     if (subjectAttempts.length < 2) return // Necesita al menos 2 intentos
 
-    const sorted = subjectAttempts.sort(
+    const sorted = [...subjectAttempts].sort(
       (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     )
 
-    const average = sorted.reduce((sum, a) => sum + a.porcentaje, 0) / sorted.length
+    const average = safeAverage(sorted.map(a => a.porcentaje), 0)
 
-    // Calcular tendencia
-    const firstHalf = sorted.slice(0, Math.floor(sorted.length / 2))
-    const secondHalf = sorted.slice(Math.floor(sorted.length / 2))
+    // ✅ Enterprise: Calcular tendencia usando funciones seguras
+    const safeLength = ensureFiniteNumber(sorted.length, 0)
+    const halfIndex = ensureInteger(safeLength / 2, 0)
+    const firstHalf = sorted.slice(0, halfIndex)
+    const secondHalf = sorted.slice(halfIndex)
 
     // Validación defensiva: asegurar que ambas mitades tengan al menos un elemento
-    let trend: 'improving' | 'declining' | 'stable' = 'stable'
+    let trend: TrendDirection = 'stable'
     if (firstHalf.length > 0 && secondHalf.length > 0) {
-      const firstAvg = firstHalf.reduce((sum, a) => sum + a.porcentaje, 0) / firstHalf.length
-      const secondAvg = secondHalf.reduce((sum, a) => sum + a.porcentaje, 0) / secondHalf.length
+      const firstAvg = safeAverage(firstHalf.map(a => a.porcentaje), 0)
+      const secondAvg = safeAverage(secondHalf.map(a => a.porcentaje), 0)
 
       const trendDiff = secondAvg - firstAvg
-      trend = trendDiff > 3 ? 'improving' : trendDiff < -3 ? 'declining' : 'stable'
+      if (trendDiff > 3) trend = 'improving'
+      else if (trendDiff < -3) trend = 'declining'
     }
 
     breakdown.push({
       subject: sorted[0].exam.subject.nombre,
-      average: Math.round(average * 10) / 10,
+      average: safeRound(average, 1),
       trend,
       attempts: sorted.length,
     })
@@ -320,8 +340,7 @@ export function generateAdvancedAnalytics(
   const { strengths, weaknesses } = analyzeStrengthsWeaknesses(metrics)
   const paesPrediction = predictPAESScore(attempts)
 
-  const studentAverage =
-    attempts.length > 0 ? attempts.reduce((sum, a) => sum + a.porcentaje, 0) / attempts.length : 0
+  const studentAverage = safeAverage(attempts.map(a => a.porcentaje), 0)
 
   const comparison = attempts.length > 0 ? compareWithAverage(studentAverage) : null
   const subjectBreakdown = analyzeSubjectBreakdown(attempts)

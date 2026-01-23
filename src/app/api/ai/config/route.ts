@@ -129,7 +129,7 @@ export async function GET(request: NextRequest) {
             ? 'No hay servicios de IA configurados. Configura al menos una API key en las variables de entorno (.env)'
             : `${availableServices.length} servicio(s) disponible(s)`,
       })
-    } catch (error) {
+    } catch {
       return NextResponse.json({ error: 'Error al obtener configuración de IA' }, { status: 500 })
     }
   })
@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
         message: 'Configuración actualizada',
         preferredService,
       })
-    } catch (error) {
+    } catch {
       return NextResponse.json({ error: 'Error al actualizar configuración' }, { status: 500 })
     }
   })

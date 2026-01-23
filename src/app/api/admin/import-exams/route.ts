@@ -4,23 +4,23 @@ import { withRateLimit } from '@/lib/rate-limit-middleware'
 import { validateBody } from '@/lib/api-helpers'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
+import type { PrismaClient } from '@prisma/client'
 import fs from 'fs/promises'
 import fsSync from 'fs'
 import path from 'path'
 import https from 'https'
 import http from 'http'
-import axios from 'axios'
 export const runtime = 'nodejs'
 
 // Importación de pdf-parse v2
 // La versión 2 usa una clase PDFParse en lugar de una función directa
-const { PDFParse } = require('pdf-parse')
+import { PDFParse } from 'pdf-parse'
 
 // Schema de validación
 const examImportSchema = z
   .object({
-    pdfUrl: z.string().url().optional(),
-    pdfFile: z.any().optional(), // File object from FormData
+    pdfUrl: z.url({ error: 'Invalid URL' }).optional(),
+    pdfFile: z.custom<File>(val => val instanceof File).optional(), // File object from FormData
     inputType: z.enum(['url', 'file']),
     subjectName: z.string().min(1),
     examTitle: z.string().min(1),
@@ -89,9 +89,14 @@ function downloadFileAlternative(url: string, dest: string): Promise<void> {
     let hasError = false
     let responseStarted = false
 
-    const options: any = {
+    const portNum = urlObj.port ? parseInt(urlObj.port, 10) : null
+    const safePort = portNum && !isNaN(portNum) && portNum > 0 && portNum <= 65535
+      ? portNum
+      : urlObj.protocol === 'https:' ? 443 : 80
+
+    const options: https.RequestOptions = {
       hostname: urlObj.hostname,
-      port: urlObj.port || (urlObj.protocol === 'https:' ? 443 : 80),
+      port: safePort,
       path: urlObj.pathname + urlObj.search,
       method: 'GET',
       headers: {
@@ -105,7 +110,7 @@ function downloadFileAlternative(url: string, dest: string): Promise<void> {
     const req = protocol.request(options)
 
     // Capturar errores de parsing pero intentar continuar
-    req.on('response', (response: any) => {
+    req.on('response', (response: http.IncomingMessage) => {
       responseStarted = true
 
       // Manejar redirecciones
@@ -260,11 +265,25 @@ async function extractTextFromPDF(pdfPath: string): Promise<string> {
  * @param text Texto completo del PDF
  * @returns Mapa de número de pregunta -> letra de respuesta correcta
  */
-function detectCorrectAnswers(text: string): Map<number, string> {
+function _detectCorrectAnswers(text: string): Map<number, string> {
   const answerMap = new Map<number, string>()
 
+  // Validar que text sea un string válido
+  const safeText = typeof text === 'string' ? text : ''
+  if (!safeText) {
+    return answerMap
+  }
+
   // Normalizar el texto
-  const normalizedText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').toUpperCase()
+  let normalizedText = ''
+  try {
+    normalizedText = safeText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').toUpperCase()
+    if (typeof normalizedText !== 'string') {
+      normalizedText = safeText.toUpperCase() // Fallback
+    }
+  } catch {
+    normalizedText = safeText.toUpperCase() // Fallback
+  }
 
   // Buscar sección de respuestas (típicamente al final del documento)
   // Patrones comunes: "RESPUESTAS", "CLAVE DE RESPUESTAS", "RESPUESTAS CORRECTAS"
@@ -275,46 +294,93 @@ function detectCorrectAnswers(text: string): Map<number, string> {
   ]
 
   let answerSection = ''
-  for (const pattern of answerSectionPatterns) {
-    const match = normalizedText.match(pattern)
-    if (match && match[1]) {
-      answerSection = match[1]
-      break
+  if (typeof normalizedText === 'string' && normalizedText.length > 0) {
+    for (const pattern of answerSectionPatterns) {
+      try {
+        const match = normalizedText.match(pattern)
+        if (match && Array.isArray(match) && match.length > 1 && match[1] && typeof match[1] === 'string') {
+          answerSection = match[1]
+          break
+        }
+      } catch {
+        // Continuar con el siguiente patrón
+      }
     }
   }
 
   // Si no se encuentra una sección específica, buscar en el último 30% del texto
   // (las respuestas suelen estar al final)
   if (!answerSection) {
-    const textLength = normalizedText.length
-    const lastSection = normalizedText.substring(Math.floor(textLength * 0.7))
-    answerSection = lastSection
+    const textLength = typeof normalizedText === 'string' && Number.isFinite(normalizedText.length) ? normalizedText.length : 0
+    if (textLength > 0) {
+      const floorResult = Math.floor(textLength * 0.7)
+      if (Number.isFinite(floorResult) && floorResult >= 0 && floorResult <= textLength) {
+        try {
+          const lastSection = normalizedText.substring(floorResult)
+          if (typeof lastSection === 'string') {
+            answerSection = lastSection
+          }
+        } catch {
+          // Usar todo el texto como fallback
+          answerSection = normalizedText
+        }
+      } else {
+        answerSection = normalizedText
+      }
+    } else {
+      answerSection = normalizedText
+    }
   }
 
   // Múltiples patrones para detectar respuestas
   const answerPatterns = [
     // Formato: "1-A", "1-A,", "1-A ", "1 - A"
-    /(\d+)[\s\-\.\)]+([A-E])/g,
+    /(\d+)[\s\-.)]+([A-E])/g,
     // Formato: "1. A", "1) A"
-    /(\d+)[\.\)]\s*([A-E])/g,
+    /(\d+)[.)]\s*([A-E])/g,
     // Formato: "1 A" (con espacio)
     /(\d+)\s+([A-E])(?=\s|,|$)/g,
     // Formato en lista: "1) A", "2) B"
     /^(\d+)\)\s*([A-E])/gm,
   ]
 
-  for (const pattern of answerPatterns) {
-    const matches = Array.from(answerSection.matchAll(pattern))
-    for (const match of matches) {
-      const questionNum = parseInt(match[1], 10)
-      const answerLetter = match[2].toUpperCase()
-
-      // Validar que la letra esté en el rango A-E
-      if (questionNum > 0 && questionNum <= 100 && /^[A-E]$/.test(answerLetter)) {
-        // Si ya existe una respuesta para esta pregunta, mantener la primera encontrada
-        if (!answerMap.has(questionNum)) {
-          answerMap.set(questionNum, answerLetter)
+  if (typeof answerSection === 'string' && answerSection.length > 0) {
+    for (const pattern of answerPatterns) {
+      try {
+        const matches = Array.from(answerSection.matchAll(pattern))
+        if (!Array.isArray(matches)) {
+          continue
         }
+        for (const match of matches) {
+          if (!match || !Array.isArray(match) || match.length < 3 || !match[1] || !match[2]) {
+            continue // Saltar matches inválidos
+          }
+          const match1 = typeof match[1] === 'string' ? match[1] : String(match[1])
+          const match2 = typeof match[2] === 'string' ? match[2] : String(match[2])
+          const questionNum = parseInt(match1, 10)
+          if (isNaN(questionNum) || questionNum <= 0 || !Number.isFinite(questionNum)) {
+            continue // Saltar números inválidos
+          }
+          let answerLetter = ''
+          try {
+            answerLetter = match2.toUpperCase()
+            if (typeof answerLetter !== 'string') {
+              answerLetter = match2 // Fallback
+            }
+          } catch {
+            answerLetter = match2 // Fallback
+          }
+
+          // Validar que la letra esté en el rango A-E
+          if (questionNum <= 100 && typeof answerLetter === 'string' && /^[A-E]$/.test(answerLetter)) {
+            // Si ya existe una respuesta para esta pregunta, mantener la primera encontrada
+            if (!answerMap.has(questionNum)) {
+              answerMap.set(questionNum, answerLetter)
+            }
+          }
+        }
+      } catch {
+        // Continuar con el siguiente patrón
       }
     }
   }
@@ -337,12 +403,26 @@ function parseQuestionsFromText(text: string): Array<{
     fuente: string
   }> = []
 
+  // Validar que text sea un string válido
+  const safeText = typeof text === 'string' ? text : ''
+  if (!safeText) {
+    return questions
+  }
+
   // Normalizar el texto: eliminar espacios múltiples y normalizar saltos de línea
-  const normalizedText = text
-    .replace(/\r\n/g, '\n')
-    .replace(/\r/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .replace(/[ \t]+/g, ' ')
+  let normalizedText = ''
+  try {
+    normalizedText = safeText
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/[ \t]+/g, ' ')
+    if (typeof normalizedText !== 'string') {
+      normalizedText = safeText // Fallback
+    }
+  } catch {
+    normalizedText = safeText // Fallback
+  }
 
   // Múltiples patrones para encontrar preguntas (diferentes formatos posibles)
   const questionPatterns = [
@@ -358,16 +438,28 @@ function parseQuestionsFromText(text: string): Array<{
     /(\d+):\s+([\s\S]+?)(?=\d+:\s|$)/g,
   ]
 
-  let allMatches: Array<{ number: string; text: string }> = []
+  const allMatches: Array<{ number: string; text: string }> = []
 
-  for (const pattern of questionPatterns) {
-    const matches = Array.from(normalizedText.matchAll(pattern))
-    for (const match of matches) {
-      const questionNumber = match[1]
-      const questionText = match[2] || match[3] || ''
-      if (questionText.trim().length > 20) {
-        // Filtrar textos muy cortos
-        allMatches.push({ number: questionNumber, text: questionText.trim() })
+  if (typeof normalizedText === 'string' && normalizedText.length > 0) {
+    for (const pattern of questionPatterns) {
+      try {
+        const matches = Array.from(normalizedText.matchAll(pattern))
+        if (!Array.isArray(matches)) {
+          continue
+        }
+        for (const match of matches) {
+          if (!match || !Array.isArray(match) || match.length < 2) {
+            continue
+          }
+          const questionNumber = typeof match[1] === 'string' ? match[1] : String(match[1] || '')
+          const questionText = (typeof match[2] === 'string' ? match[2] : '') || (typeof match[3] === 'string' ? match[3] : '') || ''
+          if (typeof questionText === 'string' && questionText.trim().length > 20) {
+            // Filtrar textos muy cortos
+            allMatches.push({ number: questionNumber, text: questionText.trim() })
+          }
+        }
+      } catch {
+        // Continuar con el siguiente patrón
       }
     }
   }
@@ -399,53 +491,118 @@ function parseQuestionsFromText(text: string): Array<{
     // Intentar cada patrón de opciones
     let optionMatches: Array<{ letra: string; texto: string }> = []
 
-    for (const optionPattern of optionPatterns) {
-      const matches = Array.from(questionText.matchAll(optionPattern))
-      if (matches.length >= 4) {
-        optionMatches = matches.map(opt => ({
-          letra: opt[1],
-          texto: opt[2].trim(),
-        }))
-        break // Usar el primer patrón que funcione
+    if (typeof questionText === 'string' && questionText.length > 0) {
+      for (const optionPattern of optionPatterns) {
+        try {
+          const matches = Array.from(questionText.matchAll(optionPattern))
+          if (Array.isArray(matches) && matches.length >= 4) {
+            optionMatches = matches
+              .filter(opt => opt && Array.isArray(opt) && opt.length >= 3 && opt[1] && opt[2])
+              .map(opt => ({
+                letra: typeof opt[1] === 'string' ? opt[1] : String(opt[1] || ''),
+                texto: typeof opt[2] === 'string' ? opt[2].trim() : String(opt[2] || '').trim(),
+              }))
+            if (optionMatches.length >= 4) {
+              break // Usar el primer patrón que funcione
+            }
+          }
+        } catch {
+          // Continuar con el siguiente patrón
+        }
       }
     }
 
     if (optionMatches.length >= 4) {
       // Extraer enunciado (todo antes de la primera opción)
-      const firstOptionIndex = questionText.search(/[A-E][\)\.\-\:\s]/)
-      const enunciado =
-        firstOptionIndex > 0
-          ? questionText.substring(0, firstOptionIndex).trim()
-          : questionText.split(/[A-E][\)\.\-\:]/)[0].trim()
+      const safeQuestionText = typeof questionText === 'string' ? questionText : ''
+      if (!safeQuestionText) {
+        continue // Saltar si questionText no es válido
+      }
+      const firstOptionIndex = safeQuestionText.search(/[A-E][).\-:\s]/)
+      let enunciado = ''
+      if (firstOptionIndex > 0 && Number.isFinite(firstOptionIndex)) {
+        try {
+          const substring = safeQuestionText.substring(0, firstOptionIndex)
+          enunciado = typeof substring === 'string' ? substring.trim() : ''
+        } catch {
+          // Fallback a split si substring falla
+          try {
+            const splitResult = safeQuestionText.split(/[A-E][).\-:]/)
+            enunciado = Array.isArray(splitResult) && splitResult.length > 0 && typeof splitResult[0] === 'string'
+              ? splitResult[0].trim()
+              : ''
+          } catch {
+            continue // Saltar si ambos métodos fallan
+          }
+        }
+      } else {
+        try {
+          const splitResult = safeQuestionText.split(/[A-E][).\-:]/)
+          enunciado = Array.isArray(splitResult) && splitResult.length > 0 && typeof splitResult[0] === 'string'
+            ? splitResult[0].trim()
+            : ''
+        } catch {
+          continue // Saltar si split falla
+        }
+      }
 
       // Limpiar el enunciado de números de pregunta residuales
-      const cleanEnunciado = enunciado
-        .replace(/^\d+[\.\)]\s*/, '')
-        .replace(/^\(?\d+\)?\s*/, '')
-        .trim()
+      let cleanEnunciado = ''
+      if (typeof enunciado === 'string' && enunciado.length > 0) {
+        try {
+          cleanEnunciado = enunciado
+            .replace(/^\d+[.)]\s*/, '')
+            .replace(/^\(?\d+\)?\s*/, '')
+            .trim()
+          if (typeof cleanEnunciado !== 'string') {
+            cleanEnunciado = enunciado.trim() // Fallback
+          }
+        } catch {
+          cleanEnunciado = enunciado.trim() // Fallback
+        }
+      }
 
-      if (cleanEnunciado.length > 10) {
+      if (typeof cleanEnunciado === 'string' && cleanEnunciado.length > 10) {
         // Validar que el enunciado tenga sentido
         // IMPORTANTE: Todas las opciones se importan como incorrectas
         // Las respuestas correctas deben marcarse manualmente después de la importación
-        const options = optionMatches.map(opt => {
-          const esCorrecta = false // Siempre false al importar
+        const options = optionMatches
+          .filter(opt => opt && typeof opt === 'object' && opt.letra && opt.texto)
+          .map(opt => {
+            const esCorrecta = false // Siempre false al importar
 
-          return {
-            letra: opt.letra,
-            texto: opt.texto.trim().replace(/\s+/g, ' '),
-            esCorrecta,
-          }
-        })
+            let texto = ''
+            try {
+              const trimmed = typeof opt.texto === 'string' ? opt.texto.trim() : String(opt.texto || '').trim()
+              texto = trimmed.replace(/\s+/g, ' ')
+              if (typeof texto !== 'string') {
+                texto = trimmed // Fallback
+              }
+            } catch {
+              texto = typeof opt.texto === 'string' ? opt.texto.trim() : String(opt.texto || '').trim()
+            }
+
+            return {
+              letra: typeof opt.letra === 'string' ? opt.letra : String(opt.letra || ''),
+              texto,
+              esCorrecta,
+            }
+          })
 
         // Validar que las opciones tengan contenido
-        if (options.every(opt => opt.texto.length > 3)) {
+        const validOptions = Array.isArray(options)
+          ? options.filter(opt => opt && typeof opt === 'object' && typeof opt.texto === 'string' && opt.texto.length > 3)
+          : []
+        if (validOptions.length >= 4) {
           questions.push({
-            enunciado: cleanEnunciado,
-            options,
+            enunciado: typeof cleanEnunciado === 'string' ? cleanEnunciado : '',
+            options: validOptions,
             dificultad: 2,
             explicacion: 'Respuesta correcta: Debe marcarse manualmente después de la importación',
-            fuente: `DEMRE PAES ${new Date().getFullYear()}`,
+            fuente: `DEMRE PAES ${(() => {
+              const year = new Date().getFullYear()
+              return Number.isFinite(year) ? year : new Date().getFullYear()
+            })()}`,
           })
         }
       }
@@ -458,29 +615,93 @@ function parseQuestionsFromText(text: string): Array<{
 async function mapQuestionToTopic(
   question: { enunciado: string },
   subjectId: string,
-  prismaClient: any = prisma
+  prismaClient: PrismaClient = prisma
 ): Promise<string | null> {
   const topics = await prismaClient.topic.findMany({
     where: { subjectId },
   })
 
-  const enunciadoLower = question.enunciado.toLowerCase()
+  const safeEnunciado = typeof question?.enunciado === 'string' ? question.enunciado : ''
+  if (!safeEnunciado) {
+    return Array.isArray(topics) && topics.length > 0 && topics[0]?.id ? topics[0].id : null
+  }
 
-  for (const topic of topics) {
-    const topicKeywords = [
-      topic.nombre.toLowerCase(),
-      topic.ejeTematico.toLowerCase(),
-      ...(topic.descripcion?.toLowerCase().split(' ') || []),
-    ]
+  let enunciadoLower = ''
+  try {
+    enunciadoLower = safeEnunciado.toLowerCase()
+    if (typeof enunciadoLower !== 'string') {
+      enunciadoLower = safeEnunciado // Fallback
+    }
+  } catch {
+    enunciadoLower = safeEnunciado // Fallback
+  }
 
-    for (const keyword of topicKeywords) {
-      if (enunciadoLower.includes(keyword)) {
-        return topic.id
+  if (Array.isArray(topics)) {
+    for (const topic of topics) {
+      if (!topic || typeof topic !== 'object') {
+        continue
+      }
+
+      const topicKeywords: string[] = []
+      
+      // Agregar nombre del tema
+      if (typeof topic.nombre === 'string' && topic.nombre.length > 0) {
+        try {
+          const nombreLower = topic.nombre.toLowerCase()
+          if (typeof nombreLower === 'string') {
+            topicKeywords.push(nombreLower)
+          }
+        } catch {
+          // Ignorar errores en toLowerCase
+        }
+      }
+
+      // Agregar eje temático
+      if (typeof topic.ejeTematico === 'string' && topic.ejeTematico.length > 0) {
+        try {
+          const ejeLower = topic.ejeTematico.toLowerCase()
+          if (typeof ejeLower === 'string') {
+            topicKeywords.push(ejeLower)
+          }
+        } catch {
+          // Ignorar errores en toLowerCase
+        }
+      }
+
+      // Agregar palabras de la descripción
+      if (topic.descripcion && typeof topic.descripcion === 'string' && topic.descripcion.length > 0) {
+        try {
+          const descLower = topic.descripcion.toLowerCase()
+          if (typeof descLower === 'string') {
+            const splitResult = descLower.split(' ')
+            if (Array.isArray(splitResult)) {
+              const validWords = splitResult.filter(word => typeof word === 'string' && word.length > 0)
+              topicKeywords.push(...validWords)
+            }
+          }
+        } catch {
+          // Ignorar errores en toLowerCase o split
+        }
+      }
+
+      // Buscar coincidencias
+      if (typeof enunciadoLower === 'string' && enunciadoLower.length > 0) {
+        for (const keyword of topicKeywords) {
+          if (typeof keyword === 'string' && keyword.length > 0) {
+            try {
+              if (enunciadoLower.includes(keyword)) {
+                return topic.id || null
+              }
+            } catch {
+              // Continuar con el siguiente keyword
+            }
+          }
+        }
       }
     }
   }
 
-  return topics.length > 0 ? topics[0].id : null
+  return Array.isArray(topics) && topics.length > 0 && topics[0]?.id ? topics[0].id : null
 }
 
 async function importExam(examData: z.infer<typeof examImportSchema>) {
@@ -558,10 +779,21 @@ async function importExam(examData: z.infer<typeof examImportSchema>) {
 
     // Log temporal para debugging (primeros 2000 caracteres)
     const { logger } = await import('@/lib/logger')
+    const safeText = typeof text === 'string' ? text : ''
+    const textPreview = safeText.length > 0
+      ? (() => {
+          try {
+            const preview = safeText.substring(0, 2000)
+            return typeof preview === 'string' ? preview : ''
+          } catch {
+            return ''
+          }
+        })()
+      : ''
     logger.debug(
       {
-        textPreview: text.substring(0, 2000),
-        textLength: text.length,
+        textPreview,
+        textLength: typeof safeText === 'string' && Number.isFinite(safeText.length) ? safeText.length : 0,
       },
       'Texto extraído del PDF'
     )
@@ -569,21 +801,31 @@ async function importExam(examData: z.infer<typeof examImportSchema>) {
     // Parsear preguntas
     const parsedQuestions = parseQuestionsFromText(text)
 
+    const safeTextForInfo = typeof text === 'string' ? text : ''
     logger.info(
       {
-        questionCount: parsedQuestions.length,
-        textLength: text.length,
+        questionCount: Array.isArray(parsedQuestions) && Number.isFinite(parsedQuestions.length) ? parsedQuestions.length : 0,
+        textLength: typeof safeTextForInfo === 'string' && Number.isFinite(safeTextForInfo.length) ? safeTextForInfo.length : 0,
       },
       'Preguntas parseadas del PDF'
     )
 
-    if (parsedQuestions.length === 0 && text.length > 100) {
+    const safeTextForDebug = typeof text === 'string' ? text : ''
+    if (parsedQuestions.length === 0 && safeTextForDebug.length > 100) {
       // Intentar encontrar patrones alternativos en el texto
-      logger.debug({ textLength: text.length }, 'Buscando patrones alternativos en el texto')
-      const hasNumbers = /\d+/.test(text)
-      const hasLetters = /[A-E]/.test(text)
-      const hasParentheses = /[A-E]\)/.test(text)
-      const hasDots = /[A-E]\./.test(text)
+      logger.debug({ textLength: safeTextForDebug.length }, 'Buscando patrones alternativos en el texto')
+      let hasNumbers = false
+      let hasLetters = false
+      let hasParentheses = false
+      let hasDots = false
+      try {
+        hasNumbers = /\d+/.test(safeTextForDebug)
+        hasLetters = /[A-E]/.test(safeTextForDebug)
+        hasParentheses = /[A-E]\)/.test(safeTextForDebug)
+        hasDots = /[A-E]\./.test(safeTextForDebug)
+      } catch {
+        // Ignorar errores en tests de regex
+      }
       logger.debug(
         {
           hasNumbers,
@@ -595,20 +837,28 @@ async function importExam(examData: z.infer<typeof examImportSchema>) {
       )
 
       // Mostrar una muestra del texto para debugging
-      const sampleStart = text.indexOf('1')
-      if (sampleStart >= 0) {
-        logger.debug(
-          {
-            sampleText: text.substring(sampleStart, sampleStart + 500),
-            sampleStart,
-          },
-          'Muestra del texto desde primer "1"'
-        )
+      try {
+        const sampleStart = safeTextForDebug.indexOf('1')
+        if (sampleStart >= 0 && Number.isFinite(sampleStart)) {
+          const safeStart = Number.isFinite(sampleStart) && sampleStart >= 0 ? sampleStart : 0
+          const safeEnd = Number.isFinite(safeStart + 500) ? Math.min(safeStart + 500, safeTextForDebug.length) : safeTextForDebug.length
+          const sampleText = safeTextForDebug.substring(safeStart, safeEnd)
+          logger.debug(
+            {
+              sampleText: typeof sampleText === 'string' ? sampleText : '',
+              sampleStart: safeStart,
+            },
+            'Muestra del texto desde primer "1"'
+          )
+        }
+      } catch {
+        // Ignorar errores en indexOf o substring
       }
     }
 
     if (parsedQuestions.length === 0) {
       // Preparar información de debugging
+      const safeTextForDebugInfo = typeof text === 'string' ? text : ''
       const debugInfo: {
         textLength: number
         hasNumbers?: boolean
@@ -620,38 +870,64 @@ async function importExam(examData: z.infer<typeof examImportSchema>) {
         letterPatternMatches?: number
         sampleAroundFirstNumber?: string
       } = {
-        textLength: text.length,
-        hasNumbers: /\d+/.test(text),
-        hasLetters: /[A-E]/.test(text),
-        hasParentheses: /[A-E]\)/.test(text),
-        hasDots: /[A-E]\./.test(text),
-        sampleText: text.substring(0, 1000), // Primeros 1000 caracteres
+        textLength: typeof safeTextForDebugInfo === 'string' && Number.isFinite(safeTextForDebugInfo.length) ? safeTextForDebugInfo.length : 0,
+      }
+
+      try {
+        debugInfo.hasNumbers = /\d+/.test(safeTextForDebugInfo)
+        debugInfo.hasLetters = /[A-E]/.test(safeTextForDebugInfo)
+        debugInfo.hasParentheses = /[A-E]\)/.test(safeTextForDebugInfo)
+        debugInfo.hasDots = /[A-E]\./.test(safeTextForDebugInfo)
+      } catch {
+        // Ignorar errores en tests de regex
+      }
+
+      try {
+        const sampleText = safeTextForDebugInfo.substring(0, 1000) // Primeros 1000 caracteres
+        debugInfo.sampleText = typeof sampleText === 'string' ? sampleText : ''
+      } catch {
+        debugInfo.sampleText = ''
       }
 
       // Buscar cualquier patrón que pueda indicar preguntas
-      const numberPattern = /\d+[\.\)]\s/g
-      const letterPattern = /[A-E][\)\.\-\:]/g
-      const numberMatches = text.match(numberPattern)?.length || 0
-      const letterMatches = text.match(letterPattern)?.length || 0
+      let numberMatches = 0
+      let letterMatches = 0
+      try {
+        const numberPattern = /\d+[.)]\s/g
+        const letterPattern = /[A-E][).\-:]/g
+        const numberMatchResult = safeTextForDebugInfo.match(numberPattern)
+        const letterMatchResult = safeTextForDebugInfo.match(letterPattern)
+        numberMatches = Array.isArray(numberMatchResult) && Number.isFinite(numberMatchResult.length) ? numberMatchResult.length : 0
+        letterMatches = Array.isArray(letterMatchResult) && Number.isFinite(letterMatchResult.length) ? letterMatchResult.length : 0
+      } catch {
+        // Ignorar errores en match
+      }
 
       debugInfo.numberPatternMatches = numberMatches
       debugInfo.letterPatternMatches = letterMatches
 
       // Buscar muestra alrededor del primer número
-      const firstNumberIndex = text.search(/\d+[\.\)]/)
-      if (firstNumberIndex >= 0) {
-        debugInfo.sampleAroundFirstNumber = text.substring(
-          Math.max(0, firstNumberIndex - 50),
-          Math.min(text.length, firstNumberIndex + 500)
-        )
+      try {
+        const firstNumberIndex = safeTextForDebugInfo.search(/\d+[.)]/)
+        if (firstNumberIndex >= 0 && Number.isFinite(firstNumberIndex)) {
+          const safeStart = Math.max(0, firstNumberIndex - 50)
+          const safeEnd = Math.min(safeTextForDebugInfo.length, firstNumberIndex + 500)
+          const sampleAroundFirstNumber = safeTextForDebugInfo.substring(safeStart, safeEnd)
+          debugInfo.sampleAroundFirstNumber = typeof sampleAroundFirstNumber === 'string' ? sampleAroundFirstNumber : ''
+        }
+      } catch {
+        // Ignorar errores en search o substring
       }
 
       logger.error({ debugInfo }, 'No se encontraron preguntas en el PDF')
 
+      const safeTextLength = typeof safeTextForDebugInfo === 'string' && Number.isFinite(safeTextForDebugInfo.length)
+        ? safeTextForDebugInfo.length
+        : 0
       throw new Error(
         `No se encontraron preguntas en el PDF. ` +
           `El formato puede ser diferente o el PDF puede estar protegido. ` +
-          `Texto extraído: ${text.length} caracteres. ` +
+          `Texto extraído: ${safeTextLength} caracteres. ` +
           `Patrones encontrados: números=${numberMatches}, letras=${letterMatches}. ` +
           `Revisa los logs del servidor para más detalles.`
       )
@@ -659,56 +935,62 @@ async function importExam(examData: z.infer<typeof examImportSchema>) {
 
     // Usar transacción para garantizar consistencia: todas las preguntas se crean o ninguna
     // Si falla la creación del examen, todas las preguntas se revierten
-    const { exam, createdQuestions } = await prisma.$transaction(async tx => {
-      // Crear preguntas dentro de la transacción
-      const questions = []
+    // Timeout aumentado a 60s para exámenes grandes (M2 puede tener 50+ preguntas)
+    const { exam, createdQuestions } = await prisma.$transaction(
+      async tx => {
+        // Crear preguntas dentro de la transacción
+        const questions = []
 
-      for (const parsedQ of parsedQuestions) {
-        const topicId = await mapQuestionToTopic(parsedQ, subject.id, tx)
+        for (const parsedQ of parsedQuestions) {
+          const topicId = await mapQuestionToTopic(parsedQ, subject.id, tx)
 
-        const question = await tx.question.create({
+          const question = await tx.question.create({
+            data: {
+              subjectId: subject.id,
+              topicId,
+              enunciado: parsedQ.enunciado,
+              dificultad: parsedQ.dificultad,
+              explicacion: parsedQ.explicacion,
+              fuente: parsedQ.fuente,
+              tipo: 'multiple_choice',
+              options: {
+                create: parsedQ.options.map(opt => ({
+                  letra: opt.letra,
+                  texto: opt.texto,
+                  esCorrecta: opt.esCorrecta,
+                })),
+              },
+            },
+          })
+
+          questions.push(question)
+        }
+
+        // Crear examen con todas las preguntas (dentro de la misma transacción)
+        const examResult = await tx.exam.create({
           data: {
             subjectId: subject.id,
-            topicId,
-            enunciado: parsedQ.enunciado,
-            dificultad: parsedQ.dificultad,
-            explicacion: parsedQ.explicacion,
-            fuente: parsedQ.fuente,
-            tipo: 'multiple_choice',
-            options: {
-              create: parsedQ.options.map(opt => ({
-                letra: opt.letra,
-                texto: opt.texto,
-                esCorrecta: opt.esCorrecta,
+            titulo: examTitle,
+            descripcion: `Examen oficial PAES ${year} - ${subjectName}`,
+            tipo: examType,
+            tiempoLimiteMin: subjectCode === 'LECTORA' ? 90 : subjectCode === 'M1' ? 135 : 120,
+            totalPreguntas: questions.length,
+            fuente: `DEMRE ${year}`,
+            questions: {
+              create: questions.map((q, index) => ({
+                questionId: q.id,
+                orden: index + 1,
               })),
             },
           },
         })
 
-        questions.push(question)
+        return { exam: examResult, createdQuestions: questions }
+      },
+      {
+        timeout: 60000, // 60 segundos (suficiente para exámenes grandes)
       }
-
-      // Crear examen con todas las preguntas (dentro de la misma transacción)
-      const examResult = await tx.exam.create({
-        data: {
-          subjectId: subject.id,
-          titulo: examTitle,
-          descripcion: `Examen oficial PAES ${year} - ${subjectName}`,
-          tipo: examType,
-          tiempoLimiteMin: subjectCode === 'LECTORA' ? 90 : subjectCode === 'M1' ? 135 : 120,
-          totalPreguntas: questions.length,
-          fuente: `DEMRE ${year}`,
-          questions: {
-            create: questions.map((q, index) => ({
-              questionId: q.id,
-              orden: index + 1,
-            })),
-          },
-        },
-      })
-
-      return { exam: examResult, createdQuestions: questions }
-    })
+    )
 
     // Limpiar PDF después de importar exitosamente
     if (pdfPath) {

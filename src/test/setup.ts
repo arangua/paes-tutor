@@ -1,6 +1,173 @@
 import '@testing-library/jest-dom/vitest'
-import { afterEach, vi, beforeAll } from 'vitest'
+import { afterEach, vi, beforeAll, beforeEach } from 'vitest'
 import { cleanup } from '@testing-library/react'
+
+// Declaraciones globales para mocks persistentes
+declare global {
+  var __mockLogger__: {
+    info: ReturnType<typeof vi.fn>
+    warn: ReturnType<typeof vi.fn>
+    error: ReturnType<typeof vi.fn>
+    debug: ReturnType<typeof vi.fn>
+  } | undefined
+  var __mockLogApiRequest__: ReturnType<typeof vi.fn> | undefined
+  var __mockGetAuthenticatedUserWithStudent__: ReturnType<typeof vi.fn> | undefined
+}
+
+// Tipo para HeadersInit (no exportado por next/server)
+type HeadersInit = Headers | Record<string, string> | [string, string][]
+
+// Mock global de get-session ANTES de cualquier otra cosa
+// Esto es crítico porque muchos tests lo usan
+// Nota: Los tests que necesitan la función real deben usar vi.unmock('@/lib/get-session')
+vi.mock('@/lib/get-session', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/get-session')>('@/lib/get-session')
+
+  globalThis.__mockGetAuthenticatedUserWithStudent__ ??= vi.fn()
+
+  return {
+    ...actual,
+    getSession: vi.fn(),
+    getCurrentUser: vi.fn(),
+    getCurrentStudentId: vi.fn(),
+    getAuthenticatedUserWithStudent: (...args: any[]) =>
+      globalThis.__mockGetAuthenticatedUserWithStudent__!(...args),
+  }
+})
+
+// Mock global de logger
+vi.mock('@/lib/logger', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/logger')>('@/lib/logger')
+
+  globalThis.__mockLogger__ ??= {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  }
+  globalThis.__mockLogApiRequest__ ??= vi.fn().mockResolvedValue(undefined)
+
+  return {
+    ...actual,
+    // ✅ lo que rompe ahora
+    logger: globalThis.__mockLogger__,
+    // ✅ si tu código también usa esta función
+    logApiRequest: (...args: any[]) => globalThis.__mockLogApiRequest__!(...args),
+  }
+})
+
+// Mock global de next/server ANTES de cualquier otra cosa
+// Esto es crítico porque next-auth lo importa internamente
+vi.mock('next/server', () => {
+  // Crear clase NextResponse usando composición en lugar de herencia
+  class NextResponse {
+    private _response: Response
+    
+    constructor(body?: BodyInit | null, init?: ResponseInit) {
+      this._response = new Response(body, init)
+    }
+    
+    // Delegar propiedades y métodos de Response
+    get body() { return this._response.body }
+    get bodyUsed() { return this._response.bodyUsed }
+    get headers() { return this._response.headers }
+    get ok() { return this._response.ok }
+    get redirected() { return this._response.redirected }
+    get status() { return this._response.status }
+    get statusText() { return this._response.statusText }
+    get type() { return this._response.type }
+    get url() { return this._response.url }
+    
+    clone() { return this._response.clone() }
+    arrayBuffer() { return this._response.arrayBuffer() }
+    blob() { return this._response.blob() }
+    formData() { return this._response.formData() }
+    json() { return this._response.json() }
+    text() { return this._response.text() }
+    
+    static json(body: unknown, init?: { status?: number; headers?: HeadersInit }) {
+      const response = new NextResponse(JSON.stringify(body), {
+        status: init?.status || 200,
+        headers: {
+          'Content-Type': 'application/json',
+          ...init?.headers,
+        },
+      })
+      return response
+    }
+    
+    static next(init?: { headers?: HeadersInit }) {
+      return new NextResponse(null, {
+        status: 200,
+        headers: init?.headers,
+      })
+    }
+    
+    static redirect(url: string | URL, init?: { status?: number; headers?: HeadersInit }) {
+      return new NextResponse(null, {
+        status: init?.status || 307,
+        headers: {
+          Location: typeof url === 'string' ? url : url.toString(),
+          ...init?.headers,
+        },
+      })
+    }
+    
+    static rewrite(destination: string | URL, init?: { headers?: HeadersInit }) {
+      return new NextResponse(null, {
+        status: 200,
+        headers: {
+          'x-middleware-rewrite': typeof destination === 'string' ? destination : destination.toString(),
+          ...init?.headers,
+        },
+      })
+    }
+  }
+
+  return {
+    NextRequest: class NextRequest {
+      url: string
+      nextUrl: { searchParams: URLSearchParams; pathname: string }
+      headers: Headers
+      cookies: Map<string, string>
+      method: string
+      body: ReadableStream | null
+      constructor(url: string | URL, init?: { method?: string; headers?: HeadersInit; body?: BodyInit }) {
+        const urlObj = typeof url === 'string' ? new URL(url) : url
+        this.url = urlObj.toString()
+        this.nextUrl = {
+          searchParams: urlObj.searchParams,
+          pathname: urlObj.pathname,
+        }
+        this.headers = new Headers(init?.headers)
+        this.cookies = new Map()
+        this.method = init?.method || 'GET'
+        // Guardar el body como string si es BodyInit
+        this.body = init?.body ? (init.body as any) : null
+      }
+      async json() {
+        if (this.body && typeof this.body === 'string') {
+          try {
+            return JSON.parse(this.body)
+          } catch {
+            return {}
+          }
+        }
+        if (this.body && typeof this.body === 'object') {
+          return this.body
+        }
+        return {}
+      }
+      text() {
+        return Promise.resolve('')
+      }
+      formData() {
+        return Promise.resolve(new FormData())
+      }
+    },
+    NextResponse,
+  }
+})
 
 // Configurar localStorage y window para tests
 beforeAll(() => {
@@ -8,18 +175,22 @@ beforeAll(() => {
   const localStorageMock = (() => {
     let store: Record<string, string> = {}
     return {
-      getItem: (key: string) => store[key] || null,
+      // eslint-disable-next-line security/detect-object-injection
+      getItem: (key: string) => store[key] || null, // key controlled by Web Storage API contract (tests)
       setItem: (key: string, value: string) => {
-        store[key] = value.toString()
+        // eslint-disable-next-line security/detect-object-injection
+        store[key] = value.toString() // key controlled by Web Storage API contract (tests)
       },
       removeItem: (key: string) => {
-        delete store[key]
+        // eslint-disable-next-line security/detect-object-injection
+        delete store[key] // key controlled by Web Storage API contract (tests)
       },
       clear: () => {
         store = {}
       },
       length: 0,
-      key: (index: number) => Object.keys(store)[index] || null,
+      // eslint-disable-next-line security/detect-object-injection
+      key: (index: number) => Object.keys(store)[index] || null, // index controlled by loop bounds in tests
     }
   })()
 
@@ -52,45 +223,59 @@ vi.mock('@radix-ui/react-tooltip', async () => {
   const actual = await vi.importActual('@radix-ui/react-tooltip')
   return {
     ...actual,
-    Tooltip: ({ children, ...props }: any) => children,
-    TooltipProvider: ({ children }: any) => children,
-    TooltipTrigger: ({ children }: any) => children,
-    TooltipContent: ({ children }: any) => children,
+    Tooltip: ({ children }: { children?: React.ReactNode }) => children,
+    TooltipProvider: ({ children }: { children?: React.ReactNode }) => children,
+    TooltipTrigger: ({ children }: { children?: React.ReactNode }) => children,
+    TooltipContent: ({ children }: { children?: React.ReactNode }) => children,
   }
 })
 
 // Mocks globales para componentes de UI (para evitar errores de resolución de módulos)
-vi.mock('@/components/ui/button', () => ({
-  Button: ({ children, onClick, ...props }: any) => {
-    const React = require('react')
-    return React.createElement('button', { onClick, ...props }, children)
+vi.mock('@/components/ui/button', async () => {
+  const React = await import('react')
+  return {
+    Button: ({ children, onClick, ...props }: { children?: React.ReactNode; onClick?: () => void; [key: string]: unknown }) => {
+      return React.createElement('button', { onClick, ...props }, children)
+    },
+  }
+})
+
+vi.mock('@/components/ui/card', async () => {
+  const React = await import('react')
+  return {
+    Card: ({ children, ...props }: { children?: React.ReactNode; [key: string]: unknown }) => React.createElement('div', props, children),
+    CardContent: ({ children, ...props }: { children?: React.ReactNode; [key: string]: unknown }) => React.createElement('div', props, children),
+    CardDescription: ({ children, ...props }: { children?: React.ReactNode; [key: string]: unknown }) => React.createElement('div', props, children),
+    CardHeader: ({ children, ...props }: { children?: React.ReactNode; [key: string]: unknown }) => React.createElement('div', props, children),
+    CardTitle: ({ children, ...props }: { children?: React.ReactNode; [key: string]: unknown }) => React.createElement('h3', props, children),
+  }
+})
+
+vi.mock('@/components/ui/progress', async () => {
+  const React = await import('react')
+  return {
+    Progress: ({ value, ...props }: { value?: number; [key: string]: unknown }) => React.createElement('div', props, `${value}%`),
+  }
+})
+
+vi.mock('@/components/ui/badge', async () => {
+  const React = await import('react')
+  return {
+    Badge: ({ children, ...props }: { children?: React.ReactNode; [key: string]: unknown }) => React.createElement('span', props, children),
+  }
+})
+
+// Mock global de env para evitar validación en tests
+// Los tests individuales pueden override este mock si necesitan valores específicos
+vi.mock('@/lib/env/env', () => ({
+  env: {
+    NODE_ENV: 'test',
+    DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
+    NEXTAUTH_SECRET: 'test-secret-key-minimum-32-characters-long-for-validation',
+    ENCRYPTION_KEY: 'test-encryption-key-minimum-32-characters-long',
+    LOG_LEVEL: 'info',
   },
 }))
-
-vi.mock('@/components/ui/card', () => {
-  const React = require('react')
-  return {
-    Card: ({ children, ...props }: any) => React.createElement('div', props, children),
-    CardContent: ({ children, ...props }: any) => React.createElement('div', props, children),
-    CardDescription: ({ children, ...props }: any) => React.createElement('div', props, children),
-    CardHeader: ({ children, ...props }: any) => React.createElement('div', props, children),
-    CardTitle: ({ children, ...props }: any) => React.createElement('h3', props, children),
-  }
-})
-
-vi.mock('@/components/ui/progress', () => {
-  const React = require('react')
-  return {
-    Progress: ({ value, ...props }: any) => React.createElement('div', props, `${value}%`),
-  }
-})
-
-vi.mock('@/components/ui/badge', () => {
-  const React = require('react')
-  return {
-    Badge: ({ children, ...props }: any) => React.createElement('span', props, children),
-  }
-})
 
 // Limpiar después de cada test
 afterEach(() => {
@@ -98,3 +283,20 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
+// Reset global de mocks para evitar flakiness
+// Esto asegura que los mocks no mantengan estado entre tests
+beforeEach(() => {
+  vi.clearAllMocks()
+  
+  // Reset mocks globales específicos
+  globalThis.__mockLogger__?.info.mockReset()
+  globalThis.__mockLogger__?.warn.mockReset()
+  globalThis.__mockLogger__?.error.mockReset()
+  globalThis.__mockLogger__?.debug.mockReset()
+  globalThis.__mockLogApiRequest__?.mockReset()
+  globalThis.__mockLogApiRequest__?.mockResolvedValue(undefined)
+  
+  // ✅ Default seguro para el repositorio completo: NO autenticado
+  globalThis.__mockGetAuthenticatedUserWithStudent__?.mockReset()
+  globalThis.__mockGetAuthenticatedUserWithStudent__?.mockResolvedValue(null)
+})

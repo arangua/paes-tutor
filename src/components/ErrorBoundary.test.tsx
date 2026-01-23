@@ -1,7 +1,7 @@
 /**
- * @vitest-environment jsdom
+ * @vitest-environment happy-dom
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import React from 'react'
 
@@ -22,6 +22,11 @@ vi.mock('@/components/ui/card', () => ({
   CardTitle: ({ children, ...props }: any) => <h3 {...props}>{children}</h3>,
 }))
 
+// Mock de captureError antes de importar ErrorBoundary
+vi.mock('@/lib/monitoring', () => ({
+  captureError: vi.fn(),
+}))
+
 import { ErrorBoundary } from './ErrorBoundary'
 
 // Componente que lanza error para testing
@@ -33,9 +38,25 @@ const ThrowError = ({ shouldThrow = false }: { shouldThrow?: boolean }) => {
 }
 
 describe('ErrorBoundary', () => {
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>
+  let stderrWriteSpy: ReturnType<typeof vi.spyOn> | null = null
+
   beforeEach(() => {
     // Suprimir console.error en tests (React muestra errores en consola)
-    vi.spyOn(console, 'error').mockImplementation(() => {})
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    
+    // Suprimir stderr para evitar que React escriba errores directamente a stderr
+    // Esto es necesario porque React 18+ puede escribir a stderr directamente
+    if (typeof process !== 'undefined' && process.stderr) {
+      stderrWriteSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+    }
+  })
+
+  afterEach(() => {
+    // Restaurar todos los mocks después de cada test
+    consoleErrorSpy?.mockRestore()
+    stderrWriteSpy?.mockRestore()
+    vi.clearAllMocks()
   })
 
   it('debe renderizar children cuando no hay error', () => {
@@ -60,8 +81,8 @@ describe('ErrorBoundary', () => {
   })
 
   it('debe mostrar mensaje de error en desarrollo', () => {
-    const originalEnv = process.env.NODE_ENV
-    process.env.NODE_ENV = 'development'
+    // Mock de process.env.NODE_ENV usando vi.stubEnv
+    vi.stubEnv('NODE_ENV', 'development')
 
     render(
       <ErrorBoundary>
@@ -71,7 +92,7 @@ describe('ErrorBoundary', () => {
 
     expect(screen.getByText(/Test error/i)).toBeInTheDocument()
 
-    process.env.NODE_ENV = originalEnv
+    vi.unstubAllEnvs()
   })
 
   it('debe llamar onError callback si está definido', () => {
@@ -93,9 +114,9 @@ describe('ErrorBoundary', () => {
   })
 
   it('debe permitir resetear el error', () => {
-    // Mock de window.location.reload
+    // Mock de globalThis.window.location.reload
     const reloadSpy = vi.fn()
-    Object.defineProperty(window, 'location', {
+    Object.defineProperty(globalThis, 'location', {
       value: {
         reload: reloadSpy,
       },
@@ -118,18 +139,18 @@ describe('ErrorBoundary', () => {
   })
 
   it('debe redirigir a inicio si se solicita', () => {
-    // Mock de window.location.href
+    // Mock de globalThis.window.location.href
     const hrefSpy = vi.fn()
-    Object.defineProperty(window, 'location', {
+    Object.defineProperty(globalThis, 'location', {
       value: {
         href: '',
       },
       writable: true,
     })
 
-    // Interceptar asignación a window.location.href
-    const originalLocation = window.location
-    Object.defineProperty(window, 'location', {
+    // Interceptar asignación a globalThis.window.location.href
+    const originalLocation = globalThis.location
+    Object.defineProperty(globalThis, 'location', {
       get: () => originalLocation,
       set: value => {
         if (value === '/') {

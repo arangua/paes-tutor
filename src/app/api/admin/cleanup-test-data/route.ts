@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/get-session'
 import { withRateLimit } from '@/lib/rate-limit-middleware'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import type { Prisma } from '@prisma/client'
 
 export const runtime = 'nodejs'
 
@@ -50,7 +51,7 @@ async function cleanupTestData(data: z.infer<typeof cleanupSchema>): Promise<Cle
       // 1. Eliminar intentos (attempts) primero (dependencias)
       if (data.deleteAttempts) {
         try {
-          let whereClause: any = {}
+          const whereClause: Prisma.AttemptWhereInput = {}
 
           if (data.onlyTestData) {
             // Buscar intentos de exámenes de prueba
@@ -58,11 +59,11 @@ async function cleanupTestData(data: z.infer<typeof cleanupSchema>): Promise<Cle
               where: {
                 OR: [
                   { tipo: 'simulacro' },
-                  { titulo: { contains: 'test', mode: 'insensitive' } },
-                  { titulo: { contains: 'prueba', mode: 'insensitive' } },
-                  { titulo: { contains: 'demo', mode: 'insensitive' } },
-                  { descripcion: { contains: 'test', mode: 'insensitive' } },
-                  { descripcion: { contains: 'prueba', mode: 'insensitive' } },
+                  { titulo: { contains: 'test' } },
+                  { titulo: { contains: 'prueba' } },
+                  { titulo: { contains: 'demo' } },
+                  { descripcion: { contains: 'test' } },
+                  { descripcion: { contains: 'prueba' } },
                 ],
               },
               select: { id: true },
@@ -88,7 +89,7 @@ async function cleanupTestData(data: z.infer<typeof cleanupSchema>): Promise<Cle
 
             if (examsByYear.length > 0) {
               // Combinar con el filtro existente de examId (intersección)
-              if (whereClause.examId && whereClause.examId.in) {
+              if (whereClause.examId && typeof whereClause.examId === 'object' && 'in' in whereClause.examId && Array.isArray(whereClause.examId.in)) {
                 // Intersectar: solo intentos de exámenes de prueba Y del año especificado
                 const examIdsSet = new Set(examsByYear.map(e => e.id))
                 const filteredIds = whereClause.examId.in.filter((id: string) => examIdsSet.has(id))
@@ -127,17 +128,17 @@ async function cleanupTestData(data: z.infer<typeof cleanupSchema>): Promise<Cle
       // 2. Eliminar exámenes
       if (data.deleteExams) {
         try {
-          let whereClause: any = {}
+          const whereClause: Prisma.ExamWhereInput = {}
 
           if (data.onlyTestData) {
             whereClause.OR = [
               { tipo: 'simulacro' },
-              { titulo: { contains: 'test', mode: 'insensitive' } },
-              { titulo: { contains: 'prueba', mode: 'insensitive' } },
-              { titulo: { contains: 'demo', mode: 'insensitive' } },
-              { titulo: { contains: 'ejemplo', mode: 'insensitive' } },
-              { descripcion: { contains: 'test', mode: 'insensitive' } },
-              { descripcion: { contains: 'prueba', mode: 'insensitive' } },
+              { titulo: { contains: 'test',  } },
+              { titulo: { contains: 'prueba',  } },
+              { titulo: { contains: 'demo',  } },
+              { titulo: { contains: 'ejemplo',  } },
+              { descripcion: { contains: 'test',  } },
+              { descripcion: { contains: 'prueba',  } },
             ]
           }
 
@@ -176,16 +177,16 @@ async function cleanupTestData(data: z.infer<typeof cleanupSchema>): Promise<Cle
       // 3. Eliminar preguntas
       if (data.deleteQuestions) {
         try {
-          let whereClause: any = {}
+          const whereClause: Prisma.QuestionWhereInput = {}
 
           if (data.onlyTestData) {
             whereClause.OR = [
-              { fuente: { contains: 'test', mode: 'insensitive' } },
-              { fuente: { contains: 'prueba', mode: 'insensitive' } },
-              { fuente: { contains: 'demo', mode: 'insensitive' } },
-              { fuente: { contains: 'ejemplo', mode: 'insensitive' } },
-              { enunciado: { contains: 'test', mode: 'insensitive' } },
-              { enunciado: { contains: 'prueba', mode: 'insensitive' } },
+              { fuente: { contains: 'test',  } },
+              { fuente: { contains: 'prueba',  } },
+              { fuente: { contains: 'demo',  } },
+              { fuente: { contains: 'ejemplo',  } },
+              { enunciado: { contains: 'test',  } },
+              { enunciado: { contains: 'prueba',  } },
             ]
           }
 
@@ -220,15 +221,15 @@ async function cleanupTestData(data: z.infer<typeof cleanupSchema>): Promise<Cle
       // 4. Eliminar temas (topics)
       if (data.deleteTopics) {
         try {
-          let whereClause: any = {}
+          const whereClause: Prisma.TopicWhereInput = {}
 
           if (data.onlyTestData) {
             whereClause.OR = [
-              { nombre: { contains: 'test', mode: 'insensitive' } },
-              { nombre: { contains: 'prueba', mode: 'insensitive' } },
-              { nombre: { contains: 'demo', mode: 'insensitive' } },
-              { ejeTematico: { contains: 'test', mode: 'insensitive' } },
-              { ejeTematico: { contains: 'prueba', mode: 'insensitive' } },
+              { nombre: { contains: 'test',  } },
+              { nombre: { contains: 'prueba',  } },
+              { nombre: { contains: 'demo',  } },
+              { ejeTematico: { contains: 'test',  } },
+              { ejeTematico: { contains: 'prueba',  } },
             ]
           }
 
@@ -263,15 +264,15 @@ async function cleanupTestData(data: z.infer<typeof cleanupSchema>): Promise<Cle
       // 5. Eliminar usuarios de prueba (último, por dependencias)
       if (data.deleteTestUsers) {
         try {
-          let whereClause: any = {}
+          const whereClause: Prisma.UserWhereInput = {}
 
           if (data.onlyTestData) {
             whereClause.OR = [
-              { email: { contains: 'test', mode: 'insensitive' } },
-              { email: { contains: 'demo', mode: 'insensitive' } },
-              { email: { contains: 'prueba', mode: 'insensitive' } },
-              { email: { contains: 'example', mode: 'insensitive' } },
-              { email: { contains: 'ficticio', mode: 'insensitive' } },
+              { email: { contains: 'test',  } },
+              { email: { contains: 'demo',  } },
+              { email: { contains: 'prueba',  } },
+              { email: { contains: 'example',  } },
+              { email: { contains: 'ficticio',  } },
             ]
           }
 

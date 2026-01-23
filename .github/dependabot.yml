@@ -1,0 +1,43 @@
+version: 2
+
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/Santiago"
+    open-pull-requests-limit: 5
+
+    # Política: NO automerge por defecto (governance)
+    # La aprobación es humana, validada por ci:check/ci:release.
+
+    labels:
+      - "deps"
+      - "release-gate-required"
+
+    # Agrupar para reducir ruido
+    groups:
+      # Patch/minor de devDependencies (menos riesgo)
+      dev-deps:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+
+      # Patch/minor de production deps (más riesgo, pero agrupado)
+      prod-deps:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+
+      # Major: separado siempre (requiere evaluación)
+      major-updates:
+        update-types:
+          - "major"
+
+    # Ignorar por defecto cualquier cosa que genere churn innecesario (opcional)
+    # ignore:
+    #   - dependency-name: "eslint"

@@ -1,13 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, startTransition } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { CheckCircle2, XCircle, AlertCircle, Loader2, RotateCcw, Home } from 'lucide-react'
-import { toast } from 'sonner'
 import { captureError } from '@/lib/monitoring'
 
 interface PracticeSession {
@@ -36,7 +35,6 @@ export default function PracticeResultsPage() {
 
   const [session, setSession] = useState<PracticeSession | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     // La sesión se obtiene del estado de navegación o localStorage
@@ -45,7 +43,11 @@ export default function PracticeResultsPage() {
     const sessionData = sessionStorage.getItem(`practice-session-${sessionId}`)
     if (sessionData) {
       try {
-        setSession(JSON.parse(sessionData))
+        // Usar startTransition para evitar renders en cascada
+        const parsedSession = JSON.parse(sessionData)
+        startTransition(() => {
+          setSession(parsedSession)
+        })
       } catch (err) {
         captureError(err instanceof Error ? err : new Error(String(err)), {
           type: 'practice_session_parse_error',
@@ -54,7 +56,10 @@ export default function PracticeResultsPage() {
         })
       }
     }
-    setLoading(false)
+    // Usar startTransition para evitar renders en cascada
+    startTransition(() => {
+      setLoading(false)
+    })
   }, [sessionId])
 
   const formatTime = (seconds: number) => {

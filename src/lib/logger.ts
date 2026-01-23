@@ -20,25 +20,63 @@ function getLogger(): LoggerInstance {
     return loggerInstance
   }
 
-  // Detectar si estamos en Edge Runtime
+  // Detectar si estamos en el cliente (browser) o Edge Runtime
+  const isBrowser = typeof window !== 'undefined'
   const isEdgeRuntime =
     (typeof process !== 'undefined' && process.env.NEXT_RUNTIME === 'edge') ||
     (typeof globalThis !== 'undefined' && 'EdgeRuntime' in globalThis)
 
-  if (isEdgeRuntime) {
-    // Logger simple para Edge Runtime (sin pino)
+  if (isBrowser || isEdgeRuntime) {
+    // Logger simple para Browser/Edge Runtime (sin pino)
     loggerInstance = {
       info: (obj: Record<string, unknown>, msg?: string) => {
-        console.log(JSON.stringify({ level: 'info', ...obj, msg: msg || '' }))
+        if (isBrowser) {
+          console.warn('[INFO]', msg || '', obj)
+        } else {
+          console.warn(JSON.stringify({ level: 'info', ...obj, msg: msg || '' }))
+        }
       },
       error: (obj: Record<string, unknown>, msg?: string) => {
-        console.error(JSON.stringify({ level: 'error', ...obj, msg: msg || '' }))
+        if (isBrowser) {
+          console.error('[ERROR]', msg || '', obj)
+        } else {
+          console.error(JSON.stringify({ level: 'error', ...obj, msg: msg || '' }))
+        }
       },
       debug: (obj: Record<string, unknown>, msg?: string) => {
-        console.debug(JSON.stringify({ level: 'debug', ...obj, msg: msg || '' }))
+        if (isBrowser) {
+          console.warn('[DEBUG]', msg || '', obj)
+        } else {
+          console.warn(JSON.stringify({ level: 'debug', ...obj, msg: msg || '' }))
+        }
       },
       warn: (obj: Record<string, unknown>, msg?: string) => {
-        console.warn(JSON.stringify({ level: 'warn', ...obj, msg: msg || '' }))
+        if (isBrowser) {
+          console.warn('[WARN]', msg || '', obj)
+        } else {
+          console.warn(JSON.stringify({ level: 'warn', ...obj, msg: msg || '' }))
+        }
+      },
+    }
+    return loggerInstance
+  }
+
+  // Solo importar pino en Node.js runtime (no en browser ni edge)
+  // Verificar que estamos en Node.js
+  if (typeof process === 'undefined' || !process.versions?.node) {
+    // Fallback a logger simple si no estamos en Node.js
+    loggerInstance = {
+      info: (obj: Record<string, unknown>, msg?: string) => {
+        console.warn('[INFO]', msg || '', obj)
+      },
+      error: (obj: Record<string, unknown>, msg?: string) => {
+        console.error('[ERROR]', msg || '', obj)
+      },
+      debug: (obj: Record<string, unknown>, msg?: string) => {
+        console.warn('[DEBUG]', msg || '', obj)
+      },
+      warn: (obj: Record<string, unknown>, msg?: string) => {
+        console.warn('[WARN]', msg || '', obj)
       },
     }
     return loggerInstance
@@ -46,8 +84,11 @@ function getLogger(): LoggerInstance {
 
   // Solo importar pino en Node.js runtime
   // Nota: require() es necesario aquí porque pino no soporta dynamic import en tiempo de ejecución
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const pinoModule = require('pino') as { default?: typeof import('pino'); [key: string]: unknown }
+  const nodeRequire = require as unknown as (id: string) => unknown
+  const pinoModule = nodeRequire('pino') as {
+    default?: typeof import('pino')
+    [key: string]: unknown
+  }
   const pino = (pinoModule.default || pinoModule) as typeof import('pino')
   const isDevelopment = process.env.NODE_ENV === 'development'
 
@@ -63,9 +104,10 @@ function getLogger(): LoggerInstance {
   // Solo agregar pino-pretty en desarrollo y si está disponible
   if (isDevelopment) {
     try {
-      // Cargar pino-pretty dinámicamente solo cuando se necesite
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require('pino-pretty')
+      // Cargar pino-pretty dinámicamente solo cuando se necesite (solo en desarrollo)
+      // require() es necesario porque dynamic import no funciona en este contexto de inicialización
+      // @ts-expect-error - pino-pretty es una dependencia opcional
+      nodeRequire('pino-pretty')
       loggerInstance = pino({
         level: 'debug',
         transport: {

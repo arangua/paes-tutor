@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronRight, Home } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getRecordValue } from '@/lib/safe-record'
 
 interface BreadcrumbItem {
   label: string
@@ -15,7 +16,33 @@ interface BreadcrumbsProps {
   className?: string
 }
 
-export function Breadcrumbs({ items, className }: BreadcrumbsProps) {
+function getBreadcrumbLabel(path: string): string {
+  const directLabels: Record<string, string> = {
+    dashboard: 'Dashboard',
+    exams: 'Exámenes',
+    take: 'Realizar Examen',
+    results: 'Resultados',
+    attempts: 'Intentos',
+    profile: 'Perfil',
+    admin: 'Panel de Administración',
+    'import-exams': 'Importar Exámenes',
+    'import-answer-key': 'Importar Clavijero',
+    'import-topics': 'Importar Temarios',
+    'cleanup-test-data': 'Limpiar Datos Ficticios',
+    'ai-tutor': 'Tutor IA',
+  }
+
+  const direct = getRecordValue(directLabels, path) as string | undefined
+  if (direct) return direct
+
+  // Capitalizar primera letra y reemplazar guiones
+  return path
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+export function Breadcrumbs({ items, className }: Readonly<BreadcrumbsProps>) {
   const pathname = usePathname()
 
   // Generar breadcrumbs automáticamente si no se proporcionan
@@ -30,26 +57,7 @@ export function Breadcrumbs({ items, className }: BreadcrumbsProps) {
       currentPath += `/${path}`
 
       // Mapear rutas a labels más amigables
-      let label = path
-      if (path === 'dashboard') label = 'Dashboard'
-      else if (path === 'exams') label = 'Exámenes'
-      else if (path === 'take') label = 'Realizar Examen'
-      else if (path === 'results') label = 'Resultados'
-      else if (path === 'attempts') label = 'Intentos'
-      else if (path === 'profile') label = 'Perfil'
-      else if (path === 'admin') label = 'Panel de Administración'
-      else if (path === 'import-exams') label = 'Importar Exámenes'
-      else if (path === 'import-answer-key') label = 'Importar Clavijero'
-      else if (path === 'import-topics') label = 'Importar Temarios'
-      else if (path === 'cleanup-test-data') label = 'Limpiar Datos Ficticios'
-      else if (path === 'ai-tutor') label = 'Tutor IA'
-      else {
-        // Capitalizar primera letra y reemplazar guiones
-        label = path
-          .split('-')
-          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-          .join(' ')
-      }
+      const label = getBreadcrumbLabel(path)
 
       // No incluir el último item si es un ID (cuid)
       const isId = /^c[a-z0-9]{24}$/.test(path)

@@ -2,15 +2,9 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { signIn } from 'next-auth/react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { AlertCircle, Loader2 } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
 
 function SignInForm() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -24,12 +18,19 @@ function SignInForm() {
     }
   }, [searchParams])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleLogin = async () => {
+    if (loading) return
+    
     setError('')
     setLoading(true)
 
-    // Validación básica de email
+    // Validación básica
+    if (!email || !password) {
+      setError('Por favor completa todos los campos')
+      setLoading(false)
+      return
+    }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email)) {
       setError('Por favor ingresa un email válido')
@@ -39,91 +40,279 @@ function SignInForm() {
 
     try {
       const callbackUrl = searchParams.get('callbackUrl') || '/dashboard'
-      const result = await signIn('credentials', {
-        email,
-        password,
-        redirect: false,
-        callbackUrl,
-      })
+      const normalizedEmail = email.trim().toLowerCase()
+      
+      let result
+      try {
+        result = await signIn('credentials', {
+          email: normalizedEmail,
+          password,
+          redirect: false,
+          callbackUrl,
+        })
+      } catch (signInError) {
+        // Ignorar errores de extensiones del navegador que no afectan la funcionalidad
+        const errorMessage = signInError instanceof Error ? signInError.message : String(signInError)
+        const isExtensionError = 
+          errorMessage.includes('message channel closed') ||
+          errorMessage.includes('message port closed') ||
+          errorMessage.includes('asynchronous response') ||
+          errorMessage.includes('listener indicated')
+        
+        if (isExtensionError) {
+          // Si es error de extensión, verificar si la sesión se estableció
+          await new Promise(resolve => setTimeout(resolve, 1000))
+          const hasCookie = document.cookie.includes('next-auth.session-token') || 
+                           document.cookie.includes('__Secure-next-auth.session-token') // guard:allow-secret
+          
+          if (hasCookie) {
+            window.location.replace(callbackUrl)
+            return
+          }
+        }
+        throw signInError
+      }
 
-      if (result?.error) {
-        setError('Credenciales inválidas')
-      } else if (result?.ok) {
-        router.push(callbackUrl)
-        router.refresh()
+      if (!result) {
+        setError('Error: No se recibió respuesta del servidor.')
+        setLoading(false)
+        return
+      }
+
+      if (result.error) {
+        setError('Credenciales inválidas. Verifica tu email y contraseña.')
+        setLoading(false)
+      } else if (result.ok) {
+        // Verificar que la sesión se estableció correctamente
+        try {
+          const sessionCheck = await fetch('/api/auth/session', {
+            method: 'GET',
+            credentials: 'include',
+          })
+          const sessionData = await sessionCheck.json()
+          
+          if (!sessionData?.user) {
+            setError('Error: La sesión no se estableció correctamente. Por favor intenta nuevamente.')
+            setLoading(false)
+            return
+          }
+        } catch {
+          // Si falla la verificación, redirigir de todas formas
+          // El servidor puede leer cookies HttpOnly aunque no las veamos desde JS
+        }
+        
+        // Redirigir después de confirmar la sesión
+        const redirectUrl = result.url || callbackUrl
+        setTimeout(() => {
+          window.location.replace(redirectUrl)
+        }, 200)
+      } else {
+        setError('Error inesperado. Por favor intenta nuevamente.')
+        setLoading(false)
       }
     } catch (err) {
+      // Ignorar errores de extensiones del navegador
+      const errorMessage = err instanceof Error ? err.message : String(err)
+      const isExtensionError = 
+        errorMessage.includes('message channel closed') ||
+        errorMessage.includes('message port closed') ||
+        errorMessage.includes('Extension context invalidated') ||
+        errorMessage.includes('asynchronous response') ||
+        errorMessage.includes('listener indicated')
+      
+      if (isExtensionError) {
+        // Intentar redirigir si es error de extensión (puede ser que la sesión se estableció)
+        const callbackUrl = searchParams.get('callbackUrl') || '/dashboard'
+        setTimeout(() => {
+          window.location.replace(callbackUrl)
+        }, 500)
+        return
+      }
+      
       setError('Error al iniciar sesión. Por favor intenta nuevamente.')
-    } finally {
       setLoading(false)
     }
   }
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle className="text-2xl">Iniciar Sesión</CardTitle>
-        <CardDescription>Ingresa tus credenciales para acceder a PAES Tutor</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4" suppressHydrationWarning>
-          {error && (
-            <div className="flex items-center gap-2 p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 rounded-md">
-              <AlertCircle className="h-4 w-4" />
-              <span>{error}</span>
-            </div>
-          )}
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
+    <div style={{ 
+      display: 'flex', 
+      minHeight: '100vh', 
+      alignItems: 'center', 
+      justifyContent: 'center',
+      padding: '1rem',
+      background: 'linear-gradient(to bottom right, #f5f5f5, #e5e5e5)'
+    }}>
+      <div style={{
+        width: '100%',
+        maxWidth: '400px',
+        padding: '2rem',
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+      }}>
+        <h1 style={{ 
+          fontSize: '1.875rem', 
+          fontWeight: 'bold', 
+          marginBottom: '0.5rem',
+          color: '#1a1a1a'
+        }}>
+          Iniciar Sesión
+        </h1>
+        <p style={{ 
+          color: '#666', 
+          marginBottom: '1.5rem',
+          fontSize: '0.875rem'
+        }}>
+          Ingresa tus credenciales para acceder a PAES Tutor
+        </p>
+
+        {error && (
+          <div style={{
+            padding: '0.75rem',
+            marginBottom: '1rem',
+            backgroundColor: '#fee',
+            color: '#c00',
+            borderRadius: '6px',
+            border: '1px solid #fcc',
+            fontSize: '0.875rem'
+          }}>
+            {error}
+          </div>
+        )}
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            // No hacer nada aquí, el botón maneja el click
+          }}
+        >
+          <div style={{ marginBottom: '1rem' }}>
+            <label 
+              htmlFor="email" 
+              style={{ 
+                display: 'block', 
+                marginBottom: '0.5rem', 
+                fontWeight: '500',
+                fontSize: '0.875rem',
+                color: '#333'
+              }}
+            >
+              Email
+            </label>
+            <input
               id="email"
+              name="email"
               type="email"
-              placeholder="tu@email.com"
               value={email}
-              onChange={e => setEmail(e.target.value)}
+              onChange={(e) => setEmail(e.target.value)}
               required
               disabled={loading}
-              suppressHydrationWarning
+              placeholder="tu@email.com"
               autoComplete="email"
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                border: '1px solid #ddd',
+                borderRadius: '6px',
+                fontSize: '1rem',
+                boxSizing: 'border-box'
+              }}
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Contraseña</Label>
-            <Input
+
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label 
+              htmlFor="password" 
+              style={{ 
+                display: 'block', 
+                marginBottom: '0.5rem', 
+                fontWeight: '500',
+                fontSize: '0.875rem',
+                color: '#333'
+              }}
+            >
+              Contraseña
+            </label>
+            <input
               id="password"
+              name="password"
               type="password"
-              placeholder="••••••••"
               value={password}
-              onChange={e => setPassword(e.target.value)}
+              onChange={(e) => setPassword(e.target.value)}
               required
               disabled={loading}
-              suppressHydrationWarning
+              placeholder="••••••••"
               autoComplete="current-password"
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                border: '1px solid #ddd',
+                borderRadius: '6px',
+                fontSize: '1rem',
+                boxSizing: 'border-box'
+              }}
             />
           </div>
-          <Button type="submit" className="w-full" disabled={loading}>
+
+          <button
+            type="button"
+            onClick={handleLogin}
+            disabled={loading}
+            style={{
+              width: '100%',
+              padding: '0.75rem',
+              backgroundColor: loading ? '#ccc' : '#0066cc',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '1rem',
+              fontWeight: '500',
+              cursor: loading ? 'not-allowed' : 'pointer'
+            }}
+          >
             {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
-          </Button>
+          </button>
         </form>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 
 export default function SignInPage() {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      setMounted(prev => prev ? prev : true)
+    })
+  }, [])
+
+  if (!mounted) {
+    return (
+      <div style={{
+        display: 'flex',
+        minHeight: '100vh',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div>Cargando...</div>
+      </div>
+    )
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-4">
-      <Suspense
-        fallback={
-          <Card className="w-full max-w-md">
-            <CardContent className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-            </CardContent>
-          </Card>
-        }
-      >
-        <SignInForm />
-      </Suspense>
-    </div>
+    <Suspense fallback={
+      <div style={{
+        display: 'flex',
+        minHeight: '100vh',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div>Cargando...</div>
+      </div>
+    }>
+      <SignInForm />
+    </Suspense>
   )
 }

@@ -1,0 +1,2214 @@
+openapi: 3.1.0
+info:
+  title: PAES Tutor API
+  description: |
+    API REST para la plataforma de preparación PAES Tutor.
+    
+    Esta API proporciona endpoints para:
+    - Gestión de exámenes y preguntas
+    - Seguimiento de intentos y progreso
+    - Materiales de estudio
+    - Recomendaciones personalizadas
+    - Búsqueda global
+    - Análisis y métricas
+    
+    ## Autenticación
+    
+    La API utiliza NextAuth.js para autenticación. Los endpoints protegidos requieren
+    una sesión válida mediante cookies HTTP-only.
+    
+    ## Rate Limiting
+    
+    Los endpoints están protegidos con rate limiting usando Upstash Redis:
+    - Endpoints públicos: 100 requests/minuto
+    - Endpoints autenticados: 200 requests/minuto
+    - Endpoints de escritura: 50 requests/minuto
+    
+    ## Validación
+    
+    Todas las solicitudes y respuestas son validadas usando Zod schemas para garantizar
+    type safety y seguridad.
+  version: 1.0.0
+  contact:
+    name: PAES Tutor Support
+    email: support@paestutor.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:3000/api
+    description: Servidor de desarrollo local
+  - url: https://paestutor.com/api
+    description: Servidor de producción
+
+tags:
+  - name: Exámenes
+    description: Endpoints para gestionar exámenes y preguntas
+  - name: Intentos
+    description: Endpoints para gestionar intentos de exámenes
+  - name: Estudiantes
+    description: Endpoints para información del estudiante
+  - name: Materiales
+    description: Endpoints para materiales de estudio
+  - name: Búsqueda
+    description: Endpoints para búsqueda global
+  - name: Recomendaciones
+    description: Endpoints para recomendaciones personalizadas
+  - name: Analytics
+    description: Endpoints para análisis y métricas
+  - name: Notas
+    description: Endpoints para gestión de notas de estudio
+
+paths:
+  /exams:
+    get:
+      tags:
+        - Exámenes
+      summary: Obtener lista de exámenes
+      description: |
+        Retorna una lista paginada de exámenes disponibles.
+        Soporta filtrado por asignatura y tipo.
+      operationId: getExams
+      parameters:
+        - name: subjectId
+          in: query
+          description: ID de la asignatura para filtrar
+          required: false
+          schema:
+            type: string
+        - name: tipo
+          in: query
+          description: Tipo de examen para filtrar
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Número máximo de resultados (1-100)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          description: Número de resultados a omitir para paginación
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Lista de exámenes obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  exams:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Exam'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /exams/{id}:
+    get:
+      tags:
+        - Exámenes
+      summary: Obtener un examen específico
+      description: Retorna los detalles completos de un examen, incluyendo preguntas y opciones.
+      operationId: getExamById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID del examen
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Examen obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExamDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /student:
+    get:
+      tags:
+        - Estudiantes
+      summary: Obtener información del estudiante
+      description: |
+        Retorna la información del estudiante autenticado.
+        Puede incluir intentos recientes y métricas según los parámetros.
+      operationId: getStudent
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: include
+          in: query
+          description: Campos adicionales a incluir (attempts, metrics)
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [attempts, metrics]
+      responses:
+        '200':
+          description: Información del estudiante obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Student'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /metrics:
+    get:
+      tags:
+        - Analytics
+      summary: Obtener métricas del estudiante
+      description: Retorna métricas de rendimiento del estudiante autenticado.
+      operationId: getMetrics
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: subjectId
+          in: query
+          description: ID de la asignatura para filtrar métricas
+          required: false
+          schema:
+            type: string
+        - name: topicId
+          in: query
+          description: ID del tema para filtrar métricas
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Métricas obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Metrics'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /search:
+    get:
+      tags:
+        - Búsqueda
+      summary: Búsqueda global
+      description: |
+        Realiza una búsqueda global en exámenes, materiales, temas e intentos.
+        Retorna resultados ordenados por relevancia.
+      operationId: globalSearch
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Término de búsqueda
+          schema:
+            type: string
+            minLength: 1
+        - name: types
+          in: query
+          description: Tipos de contenido a buscar (exam, material, topic, attempt)
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [exam, material, topic, attempt]
+        - name: limit
+          in: query
+          description: Número máximo de resultados
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        '200':
+          description: Resultados de búsqueda obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SearchResult'
+                  suggestions:
+                    type: array
+                    items:
+                      type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /recommendations:
+    get:
+      tags:
+        - Recomendaciones
+      summary: Obtener recomendaciones personalizadas
+      description: |
+        Retorna recomendaciones personalizadas basadas en el historial
+        y rendimiento del estudiante.
+      operationId: getRecommendations
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: limit
+          in: query
+          description: Número máximo de recomendaciones
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 20
+            default: 5
+      responses:
+        '200':
+          description: Recomendaciones obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Recommendation'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /materials:
+    get:
+      tags:
+        - Materiales
+      summary: Obtener materiales de estudio
+      description: Retorna una lista de materiales de estudio disponibles.
+      operationId: getMaterials
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: subjectId
+          in: query
+          description: ID de la asignatura para filtrar
+          required: false
+          schema:
+            type: string
+        - name: topicId
+          in: query
+          description: ID del tema para filtrar
+          required: false
+          schema:
+            type: string
+        - name: tipo
+          in: query
+          description: Tipo de material
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Número máximo de resultados
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          description: Número de resultados a omitir
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Materiales obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Material'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /notes/versions:
+    get:
+      tags:
+        - Notas
+      summary: Obtener versiones de una nota
+      description: |
+        Retorna las versiones históricas de una nota de estudio, incluyendo la versión actual.
+        Soporta filtrado por búsqueda, importancia, nombre personalizado y rango de fechas.
+        Incluye estadísticas de uso y paginación basada en cursor o offset.
+      operationId: getNoteVersions
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: noteId
+          in: query
+          required: true
+          description: ID de la nota
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Número máximo de versiones a retornar (1-50)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+        - name: offset
+          in: query
+          description: Número de versiones a omitir (para paginación basada en offset)
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: cursor
+          in: query
+          description: Cursor para paginación basada en cursor (más eficiente)
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: search
+          in: query
+          description: Búsqueda en título, contenido, nombre personalizado o tags
+          required: false
+          schema:
+            type: string
+        - name: isImportant
+          in: query
+          description: Filtrar por importancia (true/false)
+          required: false
+          schema:
+            type: boolean
+        - name: hasName
+          in: query
+          description: Filtrar por si tiene nombre personalizado (true/false)
+          required: false
+          schema:
+            type: boolean
+        - name: dateFrom
+          in: query
+          description: Fecha desde (ISO 8601)
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: dateTo
+          in: query
+          description: Fecha hasta (ISO 8601)
+          required: false
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Versiones obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteVersionsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags:
+        - Notas
+      summary: Restaurar una versión de nota
+      description: |
+        Restaura una versión histórica de una nota, creando automáticamente
+        un backup de la versión actual antes de restaurar.
+      operationId: restoreNoteVersion
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - noteId
+                - versionId
+              properties:
+                noteId:
+                  type: string
+                  description: ID de la nota
+                versionId:
+                  type: string
+                  description: ID de la versión a restaurar
+      responses:
+        '200':
+          description: Versión restaurada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  note:
+                    $ref: '#/components/schemas/StudyNote'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      tags:
+        - Notas
+      summary: Actualizar metadata de una versión
+      description: |
+        Actualiza los metadatos de una versión (nombre personalizado, color, importancia).
+        No se puede actualizar la versión actual.
+      operationId: updateVersionMetadata
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - noteId
+                - versionId
+              properties:
+                noteId:
+                  type: string
+                  description: ID de la nota
+                versionId:
+                  type: string
+                  description: ID de la versión a actualizar
+                name:
+                  type: string
+                  maxLength: 100
+                  description: Nombre personalizado para la versión
+                color:
+                  type: string
+                  pattern: '^#[0-9A-Fa-f]{6}$'
+                  description: Color de etiqueta en formato hexadecimal
+                isImportant:
+                  type: boolean
+                  description: Marcar como versión importante
+      responses:
+        '200':
+          description: Versión actualizada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  version:
+                    $ref: '#/components/schemas/NoteVersion'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags:
+        - Notas
+      summary: Eliminar versión(es) de una nota
+      description: |
+        Elimina una o múltiples versiones de una nota.
+        Soporta eliminación individual o en lote.
+      operationId: deleteNoteVersions
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  required:
+                    - noteId
+                    - versionId
+                  properties:
+                    noteId:
+                      type: string
+                    versionId:
+                      type: string
+                - type: object
+                  required:
+                    - noteId
+                    - versionIds
+                  properties:
+                    noteId:
+                      type: string
+                    versionIds:
+                      type: array
+                      items:
+                        type: string
+                      minItems: 1
+      responses:
+        '200':
+          description: Versión(es) eliminada(s) exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  deletedCount:
+                    type: integer
+                    description: Número de versiones eliminadas (solo en eliminación en lote)
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /webhooks:
+    get:
+      tags:
+        - Notas
+      summary: Listar webhooks del estudiante
+      description: |
+        Retorna la lista de webhooks configurados por el estudiante.
+        Incluye estadísticas de deliveries recientes.
+      operationId: listWebhooks
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: noteId
+          in: query
+          description: Filtrar webhooks por nota específica
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lista de webhooks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  webhooks:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Webhook'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags:
+        - Notas
+      summary: Crear un nuevo webhook
+      description: |
+        Crea un nuevo webhook para recibir notificaciones de eventos de versiones.
+        Requiere URL válida y al menos un evento a escuchar.
+      operationId: createWebhook
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - url
+                - events
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  maxLength: 2048
+                  description: URL del webhook (HTTPS en producción)
+                secret:
+                  type: string
+                  maxLength: 256
+                  description: Secreto opcional para firmar payloads (HMAC)
+                events:
+                  type: array
+                  items:
+                    type: string
+                    enum: ['version.created', 'version.restored', 'version.updated', 'version.deleted', 'version.marked_important', 'version.named', '*']
+                  minItems: 1
+                  maxItems: 20
+                  description: Eventos a escuchar ('*' para todos)
+                noteId:
+                  type: string
+                  description: ID de nota específica (opcional, null para global)
+                description:
+                  type: string
+                  maxLength: 500
+                  description: Descripción del webhook
+      responses:
+        '201':
+          description: Webhook creado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  webhook:
+                    $ref: '#/components/schemas/Webhook'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      tags:
+        - Notas
+      summary: Actualizar un webhook
+      description: Actualiza la configuración de un webhook existente.
+      operationId: updateWebhook
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: string
+                  description: ID del webhook a actualizar
+                url:
+                  type: string
+                  format: uri
+                  maxLength: 2048
+                secret:
+                  type: string
+                  maxLength: 256
+                  nullable: true
+                events:
+                  type: array
+                  items:
+                    type: string
+                  minItems: 1
+                  maxItems: 20
+                active:
+                  type: boolean
+                description:
+                  type: string
+                  maxLength: 500
+                  nullable: true
+      responses:
+        '200':
+          description: Webhook actualizado exitosamente
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags:
+        - Notas
+      summary: Eliminar un webhook
+      description: Elimina un webhook existente.
+      operationId: deleteWebhook
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Webhook eliminado exitosamente
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /webhooks/deliveries:
+    get:
+      tags:
+        - Notas
+      summary: Obtener historial de deliveries de webhooks
+      description: Retorna el historial de intentos de entrega de webhooks.
+      operationId: getWebhookDeliveries
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: webhookId
+          in: query
+          description: Filtrar por ID de webhook
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: Filtrar por estado (success, failed, retrying)
+          required: false
+          schema:
+            type: string
+            enum: [success, failed, retrying]
+        - name: limit
+          in: query
+          description: Número máximo de resultados
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: Historial de deliveries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deliveries:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WebhookDelivery'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /notes/versions/semantic-search:
+    post:
+      tags:
+        - Notas
+      summary: Búsqueda semántica de versiones
+      description: |
+        Busca versiones por significado usando embeddings de IA (OpenAI).
+        Requiere API key de OpenAI configurada.
+      operationId: semanticSearchVersions
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - noteId
+                - query
+              properties:
+                noteId:
+                  type: string
+                  description: ID de la nota
+                query:
+                  type: string
+                  minLength: 1
+                  maxLength: 500
+                  description: Consulta de búsqueda semántica
+                limit:
+                  type: integer
+                  minimum: 1
+                  maximum: 50
+                  default: 20
+                  description: Número máximo de resultados
+                threshold:
+                  type: number
+                  minimum: 0
+                  maximum: 1
+                  default: 0.5
+                  description: Umbral mínimo de similitud (0-1)
+      responses:
+        '200':
+          description: Resultados de búsqueda semántica
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  query:
+                    type: string
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NoteVersion'
+                  totalFound:
+                    type: integer
+                  threshold:
+                    type: number
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /notes/versions/timeline:
+    get:
+      tags:
+        - Notas
+      summary: Obtener timeline de versiones
+      description: |
+        Retorna versiones organizadas en timeline/calendario.
+        Soporta agrupación por día, semana, mes o año.
+      operationId: getVersionsTimeline
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: noteId
+          in: query
+          description: Filtrar por nota específica (opcional, todas si no se especifica)
+          required: false
+          schema:
+            type: string
+        - name: view
+          in: query
+          description: Vista de agrupación
+          required: false
+          schema:
+            type: string
+            enum: [day, week, month, year]
+            default: month
+        - name: startDate
+          in: query
+          description: Fecha de inicio (ISO 8601)
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: endDate
+          in: query
+          description: Fecha de fin (ISO 8601)
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: includeCurrent
+          in: query
+          description: Incluir versión actual
+          required: false
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: Timeline de versiones
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  view:
+                    type: string
+                  groups:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        period:
+                          type: string
+                        periodLabel:
+                          type: string
+                        date:
+                          type: string
+                          format: date-time
+                        versions:
+                          type: array
+                          items:
+                            $ref: '#/components/schemas/NoteVersion'
+                        count:
+                          type: integer
+                  totalVersions:
+                    type: integer
+                  dateRange:
+                    type: object
+                    properties:
+                      start:
+                        type: string
+                        format: date-time
+                        nullable: true
+                      end:
+                        type: string
+                        format: date-time
+                        nullable: true
+                  stats:
+                    type: object
+                    properties:
+                      totalNotes:
+                        type: integer
+                      versionsWithNames:
+                        type: integer
+                      importantVersions:
+                        type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /notes/versions/metrics:
+    get:
+      tags:
+        - Notas
+      summary: Obtener métricas de performance del sistema de versiones
+      description: |
+        Retorna métricas de performance como tiempos de respuesta, tasa de caché,
+        estadísticas de uso y distribución de versiones por tamaño.
+      operationId: getVersionMetrics
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: noteId
+          in: query
+          description: Filtrar por nota específica (opcional)
+          required: false
+          schema:
+            type: string
+        - name: period
+          in: query
+          description: Período de análisis
+          required: false
+          schema:
+            type: string
+            enum: [24h, 7d, 30d, all]
+            default: 7d
+      responses:
+        '200':
+          description: Métricas de versiones
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalVersions:
+                    type: integer
+                  totalRestores:
+                    type: integer
+                  averageVersionsPerNote:
+                    type: number
+                  cacheHitRate:
+                    type: number
+                  compressionRate:
+                    type: number
+                  importantVersionsCount:
+                    type: integer
+                  namedVersionsCount:
+                    type: integer
+                  versionsBySize:
+                    type: object
+                    properties:
+                      small:
+                        type: integer
+                      medium:
+                        type: integer
+                      large:
+                        type: integer
+                      veryLarge:
+                        type: integer
+                  versionsByPeriod:
+                    type: array
+                    items:
+                      type: object
+                  restoreFrequency:
+                    type: array
+                    items:
+                      type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /notes/versions/analytics:
+    get:
+      tags:
+        - Notas
+      summary: Obtener analytics de versiones
+      description: |
+        Retorna analytics detallados de uso de versiones incluyendo versiones más restauradas,
+        frecuencia de restauración y tendencias de uso.
+      operationId: getVersionAnalytics
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: noteId
+          in: query
+          required: true
+          description: ID de la nota
+          schema:
+            type: string
+        - name: period
+          in: query
+          description: Período de análisis
+          required: false
+          schema:
+            type: string
+            enum: [7d, 30d, 90d, all]
+            default: 30d
+      responses:
+        '200':
+          description: Analytics de versiones
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mostRestoredVersions:
+                    type: array
+                    items:
+                      type: object
+                  restoreFrequency:
+                    type: array
+                    items:
+                      type: object
+                  usageTrends:
+                    type: array
+                    items:
+                      type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /notes/versions/compare:
+    get:
+      tags:
+        - Notas
+      summary: Comparar dos versiones (GET)
+      description: |
+        Compara dos versiones de una nota usando parámetros de query.
+        Retorna un diff detallado incluyendo cambios en título, contenido y tags.
+      operationId: compareVersionsGet
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: noteId
+          in: query
+          required: true
+          description: ID de la nota
+          schema:
+            type: string
+        - name: versionId1
+          in: query
+          required: true
+          description: ID de la primera versión (o noteId para versión actual)
+          schema:
+            type: string
+        - name: versionId2
+          in: query
+          required: true
+          description: ID de la segunda versión (o noteId para versión actual)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Comparación de versiones exitosa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionComparison'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags:
+        - Notas
+      summary: Comparar dos versiones (POST)
+      description: |
+        Compara dos versiones de una nota usando body JSON.
+        Retorna un diff detallado incluyendo cambios en título, contenido y tags.
+      operationId: compareVersionsPost
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - noteId
+                - versionId1
+                - versionId2
+              properties:
+                noteId:
+                  type: string
+                  description: ID de la nota
+                versionId1:
+                  type: string
+                  description: ID de la primera versión (o noteId para versión actual)
+                versionId2:
+                  type: string
+                  description: ID de la segunda versión (o noteId para versión actual)
+      responses:
+        '200':
+          description: Comparación de versiones exitosa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionComparison'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /notes/versions/export:
+    get:
+      tags:
+        - Notas
+      summary: Exportar una versión
+      description: |
+        Exporta una versión de nota en diferentes formatos (TXT, MD, PDF, JSON).
+        El contenido se descomprime automáticamente si está comprimido.
+      operationId: exportVersion
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: noteId
+          in: query
+          required: true
+          description: ID de la nota
+          schema:
+            type: string
+        - name: versionId
+          in: query
+          required: true
+          description: ID de la versión a exportar (o noteId para versión actual)
+          schema:
+            type: string
+        - name: format
+          in: query
+          description: Formato de exportación
+          required: false
+          schema:
+            type: string
+            enum: [txt, md, pdf, json]
+            default: txt
+      responses:
+        '200':
+          description: Archivo exportado exitosamente
+          content:
+            text/plain:
+              schema:
+                type: string
+                description: Contenido en formato TXT
+            text/markdown:
+              schema:
+                type: string
+                description: Contenido en formato Markdown
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+                description: Archivo PDF
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportedVersion'
+          headers:
+            Content-Disposition:
+              description: Nombre del archivo sugerido
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /notes/versions/export-bulk:
+    post:
+      tags:
+        - Notas
+      summary: Exportar múltiples versiones
+      description: |
+        Exporta múltiples versiones de una nota en formato de documento (DOCX, RTF, JSON, ZIP).
+        Útil para crear documentos con historial completo de versiones.
+      operationId: exportBulkVersions
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - noteId
+                - versionIds
+              properties:
+                noteId:
+                  type: string
+                  description: ID de la nota
+                versionIds:
+                  type: array
+                  items:
+                    type: string
+                  minItems: 1
+                  description: IDs de las versiones a exportar (puede incluir noteId para versión actual)
+                format:
+                  type: string
+                  enum: [docx, odt, rtf, json, zip]
+                  default: docx
+                  description: Formato de exportación
+      responses:
+        '200':
+          description: Archivo exportado exitosamente
+          content:
+            application/vnd.openxmlformats-officedocument.wordprocessingml.document:
+              schema:
+                type: string
+                format: binary
+                description: Documento DOCX
+            application/vnd.oasis.opendocument.text:
+              schema:
+                type: string
+                format: binary
+                description: Documento ODT
+            application/rtf:
+              schema:
+                type: string
+                format: binary
+                description: Documento RTF
+            application/json:
+              schema:
+                type: object
+                properties:
+                  versions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ExportedVersion'
+                  exportedAt:
+                    type: string
+                    format: date-time
+            application/zip:
+              schema:
+                type: string
+                format: binary
+                description: Archivo ZIP con versiones individuales
+          headers:
+            Content-Disposition:
+              description: Nombre del archivo sugerido
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /notes/versions/export-diff:
+    post:
+      tags:
+        - Notas
+      summary: Exportar diff entre dos versiones
+      description: |
+        Exporta las diferencias entre dos versiones en formato de texto, HTML o PDF.
+        Útil para revisar cambios entre versiones de forma visual.
+      operationId: exportVersionDiff
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - noteId
+                - versionId1
+                - versionId2
+              properties:
+                noteId:
+                  type: string
+                  description: ID de la nota
+                versionId1:
+                  type: string
+                  description: ID de la primera versión (o noteId para versión actual)
+                versionId2:
+                  type: string
+                  description: ID de la segunda versión (o noteId para versión actual)
+                format:
+                  type: string
+                  enum: [txt, html, pdf]
+                  default: txt
+                  description: Formato de exportación
+      responses:
+        '200':
+          description: Diff exportado exitosamente
+          content:
+            text/plain:
+              schema:
+                type: string
+                description: Diff en formato texto plano
+            text/html:
+              schema:
+                type: string
+                description: Diff en formato HTML con colores
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+                description: Diff en formato PDF
+          headers:
+            Content-Disposition:
+              description: Nombre del archivo sugerido
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: next-auth.session-token
+      description: Cookie de sesión de NextAuth.js
+
+  schemas:
+    Exam:
+      type: object
+      required:
+        - id
+        - titulo
+        - tipo
+        - totalPreguntas
+        - createdAt
+        - subject
+      properties:
+        id:
+          type: string
+          description: ID único del examen
+        titulo:
+          type: string
+          description: Título del examen
+        descripcion:
+          type: string
+          nullable: true
+          description: Descripción del examen
+        tipo:
+          type: string
+          description: Tipo de examen
+        tiempoLimiteMin:
+          type: integer
+          nullable: true
+          description: Tiempo límite en minutos
+        totalPreguntas:
+          type: integer
+          description: Número total de preguntas
+        fuente:
+          type: string
+          nullable: true
+          description: Fuente del examen
+        createdAt:
+          type: string
+          format: date-time
+          description: Fecha de creación
+        subject:
+          $ref: '#/components/schemas/Subject'
+
+    ExamDetail:
+      allOf:
+        - $ref: '#/components/schemas/Exam'
+        - type: object
+          properties:
+            questions:
+              type: array
+              items:
+                $ref: '#/components/schemas/Question'
+
+    Question:
+      type: object
+      required:
+        - id
+        - texto
+        - tipo
+        - options
+      properties:
+        id:
+          type: string
+        texto:
+          type: string
+        tipo:
+          type: string
+          enum: [multiple_choice, true_false, fill_blank]
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/Option'
+        topic:
+          $ref: '#/components/schemas/Topic'
+
+    Option:
+      type: object
+      required:
+        - id
+        - texto
+        - esCorrecta
+      properties:
+        id:
+          type: string
+        texto:
+          type: string
+        esCorrecta:
+          type: boolean
+
+    Subject:
+      type: object
+      required:
+        - id
+        - nombre
+        - codigo
+      properties:
+        id:
+          type: string
+        nombre:
+          type: string
+        codigo:
+          type: string
+
+    Topic:
+      type: object
+      required:
+        - id
+        - nombre
+      properties:
+        id:
+          type: string
+        nombre:
+          type: string
+        subject:
+          $ref: '#/components/schemas/Subject'
+
+    Student:
+      type: object
+      required:
+        - id
+        - nombre
+        - createdAt
+      properties:
+        id:
+          type: string
+        nombre:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        attempts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attempt'
+
+    Attempt:
+      type: object
+      required:
+        - id
+        - estado
+        - totalPreguntas
+        - createdAt
+      properties:
+        id:
+          type: string
+        estado:
+          type: string
+          enum: [en_progreso, completado, cancelado]
+        porcentaje:
+          type: number
+          nullable: true
+        correctas:
+          type: integer
+        totalPreguntas:
+          type: integer
+        puntajePaes:
+          type: number
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        exam:
+          $ref: '#/components/schemas/Exam'
+
+    Metrics:
+      type: object
+      required:
+        - totalAttempts
+        - avgScore
+        - completedAttempts
+      properties:
+        totalAttempts:
+          type: integer
+        avgScore:
+          type: number
+        completedAttempts:
+          type: integer
+        subjectPerformance:
+          type: array
+          items:
+            type: object
+            properties:
+              subjectId:
+                type: string
+              subjectName:
+                type: string
+              avgScore:
+                type: number
+              attempts:
+                type: integer
+
+    Material:
+      type: object
+      required:
+        - id
+        - titulo
+        - tipo
+        - createdAt
+      properties:
+        id:
+          type: string
+        titulo:
+          type: string
+        descripcion:
+          type: string
+          nullable: true
+        tipo:
+          type: string
+        url:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        subject:
+          $ref: '#/components/schemas/Subject'
+        topic:
+          $ref: '#/components/schemas/Topic'
+
+    SearchResult:
+      type: object
+      required:
+        - id
+        - type
+        - title
+        - url
+        - relevance
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [exam, material, topic, attempt]
+        title:
+          type: string
+        description:
+          type: string
+        url:
+          type: string
+        relevance:
+          type: number
+          minimum: 0
+          maximum: 1
+
+    Recommendation:
+      type: object
+      required:
+        - id
+        - type
+        - title
+        - reason
+        - priority
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [exam, material, topic]
+        title:
+          type: string
+        description:
+          type: string
+        reason:
+          type: string
+        priority:
+          type: integer
+          minimum: 1
+          maximum: 5
+
+    Pagination:
+      type: object
+      required:
+        - total
+        - limit
+        - offset
+        - hasMore
+      properties:
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        hasMore:
+          type: boolean
+        nextCursor:
+          type: string
+          format: date-time
+          nullable: true
+          description: Cursor para la siguiente página (paginación basada en cursor)
+
+    StudyNote:
+      type: object
+      required:
+        - id
+        - title
+        - content
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          description: ID único de la nota
+        title:
+          type: string
+          description: Título de la nota
+        content:
+          type: string
+          description: Contenido de la nota
+        tags:
+          type: string
+          nullable: true
+          description: Tags separados por comas
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    NoteVersion:
+      type: object
+      required:
+        - id
+        - title
+        - content
+        - createdAt
+        - createdBy
+        - isCompressed
+      properties:
+        id:
+          type: string
+          description: ID único de la versión
+        title:
+          type: string
+          description: Título de la versión
+        content:
+          type: string
+          description: Contenido de la versión (descomprimido si estaba comprimida)
+        tags:
+          type: string
+          nullable: true
+          description: Tags separados por comas
+        name:
+          type: string
+          nullable: true
+          description: Nombre personalizado de la versión
+        color:
+          type: string
+          nullable: true
+          pattern: '^#[0-9A-Fa-f]{6}$'
+          description: Color de etiqueta en formato hexadecimal
+        isImportant:
+          type: boolean
+          description: Indica si la versión está marcada como importante
+        isCompressed:
+          type: boolean
+          description: Indica si el contenido original estaba comprimido
+        createdAt:
+          type: string
+          format: date-time
+          description: Fecha de creación de la versión
+        createdBy:
+          type: string
+          description: ID del estudiante que creó la versión
+
+    NoteVersionsResponse:
+      type: object
+      required:
+        - versions
+        - currentVersionId
+        - total
+        - statistics
+        - pagination
+      properties:
+        versions:
+          type: array
+          items:
+            $ref: '#/components/schemas/NoteVersion'
+          description: Array de versiones (incluye versión actual como primera)
+        currentVersionId:
+          type: string
+          description: ID de la versión actual
+        total:
+          type: integer
+          description: Número total de versiones en la respuesta
+        statistics:
+          type: object
+          required:
+            - totalVersions
+            - lastUpdated
+          properties:
+            totalVersions:
+              type: integer
+              description: Número total de versiones históricas (incluyendo actual)
+            averageDaysBetweenVersions:
+              type: number
+              nullable: true
+              description: Promedio de días entre versiones
+            daysSinceLastUpdate:
+              type: number
+              description: Días desde la última actualización
+            lastUpdated:
+              type: string
+              format: date-time
+              description: Fecha de la última actualización
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    Webhook:
+      type: object
+      required:
+        - id
+        - url
+        - events
+        - active
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          description: ID único del webhook
+        url:
+          type: string
+          format: uri
+          maxLength: 2048
+          description: URL del webhook
+        events:
+          type: array
+          items:
+            type: string
+          description: Eventos que escucha el webhook
+        active:
+          type: boolean
+          description: Indica si el webhook está activo
+        noteId:
+          type: string
+          nullable: true
+          description: ID de nota específica (null para webhook global)
+        description:
+          type: string
+          nullable: true
+          maxLength: 500
+          description: Descripción del webhook
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        totalDeliveries:
+          type: integer
+          description: Total de deliveries realizados
+        recentStats:
+          type: object
+          properties:
+            success:
+              type: integer
+            failed:
+              type: integer
+            total:
+              type: integer
+
+    WebhookDelivery:
+      type: object
+      required:
+        - id
+        - event
+        - status
+        - attempts
+        - lastAttempt
+      properties:
+        id:
+          type: string
+        webhookId:
+          type: string
+        event:
+          type: string
+          description: Tipo de evento disparado
+        status:
+          type: string
+          enum: [success, failed, retrying]
+        statusCode:
+          type: integer
+          nullable: true
+          description: Código de estado HTTP de la respuesta
+        response:
+          type: string
+          nullable: true
+          maxLength: 1000
+          description: Cuerpo de la respuesta (parcial)
+        attempts:
+          type: integer
+          description: Número de intentos realizados
+        lastAttempt:
+          type: string
+          format: date-time
+        nextRetry:
+          type: string
+          format: date-time
+          nullable: true
+          description: Próximo intento de reenvío
+        deliveredAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Fecha de entrega exitosa
+
+    VersionComparison:
+      type: object
+      required:
+        - diff
+        - version1
+        - version2
+      properties:
+        diff:
+          type: object
+          required:
+            - title
+            - content
+            - tags
+            - hasChanges
+            - summary
+          properties:
+            title:
+              type: object
+              properties:
+                old:
+                  type: string
+                new:
+                  type: string
+                changed:
+                  type: boolean
+            content:
+              type: object
+              properties:
+                old:
+                  type: string
+                new:
+                  type: string
+                changed:
+                  type: boolean
+                diff:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        enum: [equal, added, removed]
+                      text:
+                        type: string
+                stats:
+                  type: object
+                  properties:
+                    totalLines:
+                      type: integer
+                    addedLines:
+                      type: integer
+                    removedLines:
+                      type: integer
+                    unchangedLines:
+                      type: integer
+                    changePercentage:
+                      type: number
+            tags:
+              type: object
+              properties:
+                old:
+                  type: string
+                  nullable: true
+                new:
+                  type: string
+                  nullable: true
+                changed:
+                  type: boolean
+            hasChanges:
+              type: boolean
+            summary:
+              type: object
+              properties:
+                totalChanges:
+                  type: integer
+                fieldsChanged:
+                  type: array
+                  items:
+                    type: string
+        version1:
+          type: object
+          properties:
+            id:
+              type: string
+            title:
+              type: string
+            content:
+              type: string
+            tags:
+              type: string
+              nullable: true
+            name:
+              type: string
+              nullable: true
+            createdAt:
+              type: string
+              format: date-time
+            isImportant:
+              type: boolean
+        version2:
+          type: object
+          properties:
+            id:
+              type: string
+            title:
+              type: string
+            content:
+              type: string
+            tags:
+              type: string
+              nullable: true
+            name:
+              type: string
+              nullable: true
+            createdAt:
+              type: string
+              format: date-time
+            isImportant:
+              type: boolean
+
+    ExportedVersion:
+      type: object
+      required:
+        - id
+        - title
+        - content
+        - createdAt
+        - exportedAt
+      properties:
+        id:
+          type: string
+          description: ID de la versión
+        title:
+          type: string
+          description: Título de la versión
+        content:
+          type: string
+          description: Contenido de la versión (descomprimido)
+        tags:
+          type: string
+          nullable: true
+          description: Tags separados por comas
+        name:
+          type: string
+          nullable: true
+          description: Nombre personalizado de la versión
+        color:
+          type: string
+          nullable: true
+          pattern: '^#[0-9A-Fa-f]{6}$'
+          description: Color de etiqueta en formato hexadecimal
+        isImportant:
+          type: boolean
+          description: Indica si la versión está marcada como importante
+        createdAt:
+          type: string
+          format: date-time
+          description: Fecha de creación de la versión
+        exportedAt:
+          type: string
+          format: date-time
+          description: Fecha de exportación
+        noteId:
+          type: string
+          description: ID de la nota a la que pertenece
+
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Mensaje de error descriptivo
+        code:
+          type: string
+          description: Código de error único
+        details:
+          type: object
+          description: Detalles adicionales del error
+
+  responses:
+    BadRequest:
+      description: Solicitud inválida
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: 'Parámetros de consulta inválidos'
+            code: 'INVALID_QUERY_PARAMS'
+
+    Unauthorized:
+      description: No autenticado o sesión inválida
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: 'No autorizado. Por favor, inicia sesión.'
+            code: 'UNAUTHORIZED'
+
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: 'Recurso no encontrado'
+            code: 'NOT_FOUND'
+
+    TooManyRequests:
+      description: Demasiadas solicitudes (rate limit excedido)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: 'Demasiadas solicitudes. Por favor, intenta de nuevo más tarde.'
+            code: 'RATE_LIMIT_EXCEEDED'
+
+    InternalServerError:
+      description: Error interno del servidor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: 'Error interno del servidor'
+            code: 'INTERNAL_SERVER_ERROR'
+

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { apiRateLimit } from './rate-limit'
 import { logger } from './logger'
 
-export type RateLimitType = 'general' | 'auth' | 'read' | 'write' | 'sensitive'
+export type RateLimitType = 'general' | 'auth' | 'read' | 'write' | 'sensitive' | 'challenge' | 'expensive'
 
 export async function withRateLimit(
   request: NextRequest,
@@ -11,10 +11,19 @@ export async function withRateLimit(
 ) {
   // Obtener identificador (IP o userId)
   const forwarded = request.headers.get('x-forwarded-for')
-  const ip = forwarded ? forwarded.split(',')[0] : request.headers.get('x-real-ip') || 'unknown'
+  const ip: string = forwarded ? forwarded.split(',')[0] : request.headers.get('x-real-ip') || 'unknown'
 
-  // Intentar obtener userId de la sesión si está disponible
-  const identifier = ip
+  // Intentar obtener userId de la sesión si está disponible (para rate limiting más preciso)
+  let identifier: string = ip
+  try {
+    const { getCurrentUser } = await import('./get-session')
+    const user = await getCurrentUser()
+    if (user?.id) {
+      identifier = `user:${user.id}`
+    }
+  } catch {
+    // Si falla, usar IP como fallback
+  }
 
   try {
     let result
@@ -30,6 +39,12 @@ export async function withRateLimit(
         break
       case 'sensitive':
         result = await apiRateLimit.sensitive(identifier)
+        break
+      case 'challenge':
+        result = await apiRateLimit.challenge(identifier)
+        break
+      case 'expensive':
+        result = await apiRateLimit.expensive(identifier)
         break
       default:
         result = await apiRateLimit.general(identifier)

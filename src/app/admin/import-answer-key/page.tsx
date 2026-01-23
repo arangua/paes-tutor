@@ -14,7 +14,6 @@ import {
 } from '@/components/ui/select'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Loader2, Upload, CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
-import Link from 'next/link'
 import { Breadcrumbs } from '@/components/layout/breadcrumbs'
 
 const SUBJECTS = [
@@ -234,6 +233,7 @@ export default function ImportAnswerKeyPage() {
             <div className="flex items-center gap-4">
               <Input
                 id="pdfFile"
+                name="pdfFile"
                 type="file"
                 accept=".pdf,application/pdf"
                 onChange={handleFileChange}
@@ -250,7 +250,7 @@ export default function ImportAnswerKeyPage() {
               </div>
             )}
             <p className="text-sm text-muted-foreground">
-              El PDF debe contener las respuestas correctas en formato como "1-A", "2-B", etc.
+              El PDF debe contener las respuestas correctas en formato como &quot;1-A&quot;, &quot;2-B&quot;, etc.
               Tamaño máximo: 50 MB.
             </p>
           </div>
@@ -309,8 +309,8 @@ export default function ImportAnswerKeyPage() {
                   examen.
                 </li>
                 <li>
-                  El formato del clavijero debe ser similar a: "1-A, 2-B, 3-C..." o "Respuestas:
-                  1-A, 2-B..."
+                  El formato del clavijero debe ser similar a: &quot;1-A, 2-B, 3-C...&quot; o &quot;Respuestas:
+                  1-A, 2-B...&quot;
                 </li>
               </ul>
             </AlertDescription>

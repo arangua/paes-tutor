@@ -1,18 +1,41 @@
-import 'dotenv/config'
+import { config } from 'dotenv'
+import { resolve } from 'node:path'
 import { PrismaClient } from '@prisma/client'
-import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
+import { PrismaPg } from '@prisma/adapter-pg'
+import { Pool } from 'pg'
 import bcrypt from 'bcryptjs'
 
-// Crear el adapter con la URL de la base de datos
-const adapter = new PrismaBetterSqlite3({
-  url: 'file:./paes.db'
-})
+// Cargar .env.local explícitamente
+config({ path: resolve(process.cwd(), '.env.local') })
 
-// Crear PrismaClient con el adapter
-// Nota: El adapter de Prisma puede causar problemas de inferencia de tipos en TypeScript
-// pero funciona correctamente en runtime. Usamos 'any' para evitar errores de tipos.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const prisma = new PrismaClient({ adapter }) as any
+// ⛔ GUARD CRÍTICO: Validar DATABASE_URL antes de crear PrismaClient
+const databaseUrl = process.env.DATABASE_URL
+if (!databaseUrl) {
+  throw new Error(
+    'DATABASE_URL no está configurada. Debe configurar una URL de PostgreSQL (Neon) en .env.local'
+  )
+}
+
+if (databaseUrl.startsWith('file:')) {
+  throw new Error(
+    `❌ SQLite detectado en DATABASE_URL. Este proyecto solo usa PostgreSQL (Neon).\n` +
+    `   DATABASE_URL actual: ${databaseUrl.substring(0, 50)}...\n` +
+    `   Configure DATABASE_URL con una URL de PostgreSQL en .env.local`
+  )
+}
+
+if (!databaseUrl.startsWith('postgresql://') && !databaseUrl.startsWith('postgres://')) {
+  throw new Error(
+    `❌ DATABASE_URL no es una URL de PostgreSQL válida.\n` +
+    `   DATABASE_URL actual: ${databaseUrl.substring(0, 50)}...\n` +
+    `   Debe comenzar con 'postgresql://' o 'postgres://'`
+  )
+}
+
+// Crear PrismaClient con adapter para PostgreSQL (requerido en Prisma 7.2.0)
+const pool = new Pool({ connectionString: databaseUrl })
+const adapter = new PrismaPg(pool)
+const prisma = new PrismaClient({ adapter })
 
 async function main() {
   console.log('🌱 Iniciando seed...')
@@ -59,7 +82,7 @@ async function main() {
   console.log('📧 Email: matias@paestutor.com')
   console.log('🔑 Password: password123')
 
-  // Definir asignaturas PAES
+  // Definir asignaturas PAES (idempotente: upsert)
   const asignaturas = [
     { codigo: 'LECTORA', nombre: 'Competencia Lectora', tipo: 'obligatoria' },
     { codigo: 'M1', nombre: 'Matemática M1', tipo: 'obligatoria' },
@@ -71,11 +94,16 @@ async function main() {
   ]
 
   for (const asig of asignaturas) {
-    await prisma.subject.create({
-      data: asig
+    await prisma.subject.upsert({
+      where: { codigo: asig.codigo },
+      update: {
+        nombre: asig.nombre,
+        tipo: asig.tipo,
+      },
+      create: asig
     })
   }
-  console.log('✅ Asignaturas creadas:', asignaturas.length)
+  console.log('✅ Asignaturas garantizadas (upsert):', asignaturas.length)
 
   // Definir temas por asignatura
   const temasPorAsignatura: Record<string, { nombre: string; ejeTematico: string }[]> = {
@@ -744,11 +772,7 @@ async function main() {
   }
 
   // Crear métricas de rendimiento iniciales
-  const allTopics = await prisma.topic.findMany({
-    where: {
-      subjectId: { in: [lectoraSubject.id, m1Subject.id] }
-    }
-  })
+  // Nota: allTopics se obtiene implícitamente a través de los intentos
 
   // Obtener todos los intentos del estudiante
   const attempts = await prisma.attempt.findMany({

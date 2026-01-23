@@ -13,6 +13,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { getErrorMessage, extractErrorInfo, ERROR_CODES } from '@/lib/error-messages'
+import { trackError } from '@/lib/monitoring'
 import {
   Loader2,
   Upload,
@@ -39,6 +41,16 @@ interface ExamToImport {
   examTitle: string
   examType: string
   year: string
+}
+
+/**
+ * Interfaz para resultados de importación de exámenes
+ */
+interface ImportResult {
+  success: boolean
+  examTitle: string
+  message: string
+  details?: string // Solo presente cuando success es true
 }
 
 const SUBJECTS = [
@@ -113,9 +125,9 @@ export default function ImportExamsPage() {
 
   const updateExam = (index: number, field: keyof ExamToImport, value: string) => {
     const updated = [...exams]
-    const currentExam = updated[index]
+    const currentExam = updated.at(index)
     // Asegurar que todos los campos siempre tengan valores definidos
-    updated[index] = {
+    const updatedExam: ExamToImport = {
       pdfUrl: field === 'pdfUrl' ? value || '' : currentExam?.pdfUrl || '',
       pdfFile: currentExam?.pdfFile || null,
       inputType: currentExam?.inputType || 'url',
@@ -124,55 +136,138 @@ export default function ImportExamsPage() {
       examType: field === 'examType' ? value || 'oficial' : currentExam?.examType || 'oficial',
       year: field === 'year' ? value || '' : currentExam?.year || '',
     }
+    updated.splice(index, 1, updatedExam)
 
     // Auto-generar título si está vacío
     if (field === 'subjectName' || field === 'year' || field === 'examType') {
-      if (updated[index].subjectName && updated[index].year) {
+      if (updatedExam.subjectName && updatedExam.year && updatedExam.examType) {
         const typeLabel =
-          EXAM_TYPES.find(t => t.value === updated[index].examType)?.label || 'Examen'
-        updated[index].examTitle =
-          `PAES ${updated[index].year} - ${updated[index].subjectName} (${typeLabel})`
+          EXAM_TYPES.find(t => t.value === updatedExam.examType)?.label || 'Examen'
+        updatedExam.examTitle =
+          `PAES ${updatedExam.year} - ${updatedExam.subjectName} (${typeLabel})`
+        updated.splice(index, 1, updatedExam)
       }
     }
 
     setExams(updated)
   }
 
-  const handleImport = async () => {
-    // Validar
+  // Helper: Validar PDF (URL o archivo)
+  const validatePDF = (exam: ExamToImport, index: number): string[] => {
     const errors: string[] = []
-    exams.forEach((exam, index) => {
-      if (exam.inputType === 'url') {
-        if (!exam.pdfUrl) {
-          errors.push(`Examen ${index + 1}: URL del PDF requerida`)
-        } else {
-          // Validar formato de URL
-          try {
-            new URL(exam.pdfUrl)
-          } catch {
-            errors.push(`Examen ${index + 1}: URL del PDF inválida`)
-          }
-        }
+    if (exam.inputType === 'url') {
+      if (!exam.pdfUrl) {
+        errors.push(`Examen ${index + 1}: URL del PDF requerida`)
       } else {
-        if (!exam.pdfFile) {
-          errors.push(`Examen ${index + 1}: Archivo PDF requerido`)
-        } else if (exam.pdfFile.type !== 'application/pdf') {
-          errors.push(`Examen ${index + 1}: El archivo debe ser un PDF`)
+        try {
+          new URL(exam.pdfUrl)
+        } catch {
+          errors.push(`Examen ${index + 1}: URL del PDF inválida`)
         }
       }
-      if (!exam.subjectName) errors.push(`Examen ${index + 1}: Asignatura requerida`)
-      if (!exam.examTitle) errors.push(`Examen ${index + 1}: Título requerido`)
-      if (!exam.year) {
-        errors.push(`Examen ${index + 1}: Año requerido`)
-      } else {
-        // Validar que el año sea numérico y razonable
-        const year = parseInt(exam.year)
-        if (isNaN(year) || year < 2000 || year > 2100) {
-          errors.push(`Examen ${index + 1}: Año inválido (debe ser entre 2000 y 2100)`)
-        }
+    } else {
+      if (!exam.pdfFile) {
+        errors.push(`Examen ${index + 1}: Archivo PDF requerido`)
+      } else if (exam.pdfFile.type !== 'application/pdf') {
+        errors.push(`Examen ${index + 1}: El archivo debe ser un PDF`)
       }
-    })
+    }
+    return errors
+  }
 
+  // Helper: Validar campos básicos del examen
+  const validateExamFields = (exam: ExamToImport, index: number): string[] => {
+    const errors: string[] = []
+    if (!exam.subjectName) errors.push(`Examen ${index + 1}: Asignatura requerida`)
+    if (!exam.examTitle) errors.push(`Examen ${index + 1}: Título requerido`)
+    if (!exam.year) {
+      errors.push(`Examen ${index + 1}: Año requerido`)
+    } else {
+      const year = parseInt(exam.year)
+      if (isNaN(year) || year < 2000 || year > 2100) {
+        errors.push(`Examen ${index + 1}: Año inválido (debe ser entre 2000 y 2100)`)
+      }
+    }
+    return errors
+  }
+
+  // Helper: Validar un solo examen
+  const validateSingleExam = (exam: ExamToImport, index: number): string[] => {
+    return [...validatePDF(exam, index), ...validateExamFields(exam, index)]
+  }
+
+  // Helper: Validar exámenes antes de importar
+  const validateExams = (examsToValidate: ExamToImport[]): string[] => {
+    const errors: string[] = []
+    examsToValidate.forEach((exam, index) => {
+      errors.push(...validateSingleExam(exam, index))
+    })
+    return errors
+  }
+
+  // Helper: Construir FormData para envío con archivos
+  const buildFormData = (examsToSend: ExamToImport[]): FormData => {
+    const formData = new FormData()
+    examsToSend.forEach((exam, index) => {
+      formData.append(`exams[${index}][inputType]`, exam.inputType)
+      if (exam.inputType === 'url') {
+        formData.append(`exams[${index}][pdfUrl]`, exam.pdfUrl)
+      } else if (exam.pdfFile) {
+        formData.append(`exams[${index}][pdfFile]`, exam.pdfFile)
+      }
+      formData.append(`exams[${index}][subjectName]`, exam.subjectName)
+      formData.append(`exams[${index}][examTitle]`, exam.examTitle)
+      formData.append(`exams[${index}][examType]`, exam.examType)
+      formData.append(`exams[${index}][year]`, exam.year)
+    })
+    return formData
+  }
+
+  // Helper: Extraer mensaje de error de respuesta HTTP
+  const getErrorMessageFromResponse = (response: Response, data: { error?: string }): string => {
+    if (response.status === 401) {
+      return 'No tienes permiso para importar exámenes. Debes ser administrador.'
+    }
+    if (response.status === 400) {
+      return data.error || 'Los datos enviados son inválidos. Verifica el formato de los exámenes.'
+    }
+    if (response.status >= 500) {
+      return 'Error del servidor al procesar los exámenes. Por favor, intenta nuevamente más tarde.'
+    }
+    return data.error || 'Error al importar exámenes'
+  }
+
+  // Helper: Mostrar resultados de importación
+  const showImportResults = (results: ImportResult[]) => {
+    setResults(results)
+    const successCount = results.filter((r) => r.success).length
+    const failCount = results.length - successCount
+
+    if (successCount > 0) {
+      toast.success(`${successCount} examen(es) importado(s) correctamente`, {
+        description: failCount > 0 ? `${failCount} examen(es) fallaron` : undefined,
+        duration: 5000,
+      })
+    }
+    if (failCount > 0 && successCount === 0) {
+      toast.error('Error al importar exámenes', {
+        description: 'Ningún examen se pudo importar. Revisa los errores detallados abajo.',
+        duration: 6000,
+      })
+    }
+  }
+
+  // Helper: Procesar respuesta de importación
+  const processImportResponse = async (response: Response): Promise<ImportResult[]> => {
+    const data = await response.json()
+    if (!response.ok) {
+      throw new Error(getErrorMessageFromResponse(response, data))
+    }
+    return data.results || []
+  }
+
+  const handleImport = async () => {
+    const errors = validateExams(exams)
     if (errors.length > 0) {
       setResults([
         {
@@ -189,123 +284,49 @@ export default function ImportExamsPage() {
     setResults([])
 
     try {
-      // Verificar si hay archivos para subir
+      toast.loading(`Iniciando importación de ${exams.length} examen(es)...`, { id: 'import-progress' })
+      
       const hasFiles = exams.some(exam => exam.inputType === 'file' && exam.pdfFile)
+      let response: Response
 
       if (hasFiles) {
-        // Usar FormData para enviar archivos
-        const formData = new FormData()
-
-        exams.forEach((exam, index) => {
-          formData.append(`exams[${index}][inputType]`, exam.inputType)
-          if (exam.inputType === 'url') {
-            formData.append(`exams[${index}][pdfUrl]`, exam.pdfUrl)
-          } else if (exam.pdfFile) {
-            formData.append(`exams[${index}][pdfFile]`, exam.pdfFile)
-          }
-          formData.append(`exams[${index}][subjectName]`, exam.subjectName)
-          formData.append(`exams[${index}][examTitle]`, exam.examTitle)
-          formData.append(`exams[${index}][examType]`, exam.examType)
-          formData.append(`exams[${index}][year]`, exam.year)
-        })
-
-        const response = await fetch('/api/admin/import-exams', {
+        const formData = buildFormData(exams)
+        response = await fetch('/api/admin/import-exams', {
           method: 'POST',
           body: formData,
         })
-
-        const data = await response.json()
-
-        if (!response.ok) {
-          let errorMessage = data.error || 'Error al importar exámenes'
-          if (response.status === 401) {
-            errorMessage = 'No tienes permiso para importar exámenes. Debes ser administrador.'
-          } else if (response.status === 400) {
-            errorMessage =
-              data.error || 'Los datos enviados son inválidos. Verifica el formato de los exámenes.'
-          } else if (response.status >= 500) {
-            errorMessage =
-              'Error del servidor al procesar los exámenes. Por favor, intenta nuevamente más tarde.'
-          }
-          throw new Error(errorMessage)
-        }
-
-        const results = data.results || []
-        setResults(results)
-
-        // Mostrar resumen con toast
-        const successCount = results.filter((r: any) => r.success).length
-        const failCount = results.length - successCount
-
-        if (successCount > 0) {
-          toast.success(`${successCount} examen(es) importado(s) correctamente`, {
-            description: failCount > 0 ? `${failCount} examen(es) fallaron` : undefined,
-            duration: 5000,
-          })
-        }
-        if (failCount > 0 && successCount === 0) {
-          toast.error('Error al importar exámenes', {
-            description: 'Ningún examen se pudo importar. Revisa los errores detallados abajo.',
-            duration: 6000,
-          })
-        }
       } else {
-        // Solo URLs, usar JSON
-        const response = await fetch('/api/admin/import-exams', {
+        response = await fetch('/api/admin/import-exams', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ exams }),
         })
-
-        const data = await response.json()
-
-        if (!response.ok) {
-          let errorMessage = data.error || 'Error al importar exámenes'
-          if (response.status === 401) {
-            errorMessage = 'No tienes permiso para importar exámenes. Debes ser administrador.'
-          } else if (response.status === 400) {
-            errorMessage =
-              data.error || 'Los datos enviados son inválidos. Verifica el formato de los exámenes.'
-          } else if (response.status >= 500) {
-            errorMessage =
-              'Error del servidor al procesar los exámenes. Por favor, intenta nuevamente más tarde.'
-          }
-          throw new Error(errorMessage)
-        }
-
-        const results = data.results || []
-        setResults(results)
-
-        // Mostrar resumen con toast
-        const successCount = results.filter((r: any) => r.success).length
-        const failCount = results.length - successCount
-
-        if (successCount > 0) {
-          toast.success(`${successCount} examen(es) importado(s) correctamente`, {
-            description: failCount > 0 ? `${failCount} examen(es) fallaron` : undefined,
-            duration: 5000,
-          })
-        }
-        if (failCount > 0 && successCount === 0) {
-          toast.error('Error al importar exámenes', {
-            description: 'Ningún examen se pudo importar. Revisa los errores detallados abajo.',
-            duration: 6000,
-          })
-        }
       }
+
+      const results = await processImportResponse(response)
+      showImportResults(results)
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Error desconocido'
-      toast.error('Error al importar', {
-        description: errorMessage,
+      const errorInfo = extractErrorInfo(error)
+      const structuredError = getErrorMessage(ERROR_CODES.DATA_IMPORT_FAILED, {
+        reason: errorInfo.message,
+      })
+
+      trackError(error instanceof Error ? error : new Error(String(error)), {
+        type: 'exam_import_error',
+        path: typeof window !== 'undefined' ? window.location.pathname : undefined,
+      })
+
+      toast.error(structuredError.title, {
+        description: `${structuredError.description} ${structuredError.solution}`,
         duration: 6000,
       })
       setResults([
         {
           success: false,
           examTitle: 'Error',
-          message: errorMessage,
+          message: structuredError.description,
         },
       ])
     } finally {
@@ -361,7 +382,7 @@ export default function ImportExamsPage() {
     }
   }
 
-  const usePDF = (pdf: { url: string; title: string; subject?: string; year?: string }) => {
+  const handleUsePDF = (pdf: { url: string; title: string; subject?: string; year?: string }) => {
     // Agregar o actualizar el primer examen con los datos del PDF
     const updated = [...exams]
     updated[0] = {
@@ -378,8 +399,8 @@ export default function ImportExamsPage() {
 
   const handleFileChange = (index: number, file: File | null) => {
     const updated = [...exams]
-    const currentExam = updated[index]
-    updated[index] = {
+    const currentExam = updated.at(index)
+    updated.splice(index, 1, {
       pdfFile: file,
       pdfUrl: '', // Limpiar URL si se selecciona archivo
       inputType: 'file',
@@ -388,14 +409,14 @@ export default function ImportExamsPage() {
       examTitle: currentExam?.examTitle || '',
       examType: currentExam?.examType || 'oficial',
       year: currentExam?.year || '',
-    }
+    })
     setExams(updated)
   }
 
   const handleInputTypeChange = (index: number, type: 'url' | 'file') => {
     const updated = [...exams]
-    const currentExam = updated[index]
-    updated[index] = {
+    const currentExam = updated.at(index)
+    updated.splice(index, 1, {
       inputType: type,
       pdfUrl: type === 'url' ? currentExam?.pdfUrl || '' : '',
       pdfFile: type === 'file' ? currentExam?.pdfFile || null : null,
@@ -404,7 +425,7 @@ export default function ImportExamsPage() {
       examTitle: currentExam?.examTitle || '',
       examType: currentExam?.examType || 'oficial',
       year: currentExam?.year || '',
-    }
+    })
     setExams(updated)
   }
 
@@ -520,7 +541,7 @@ export default function ImportExamsPage() {
                   <div
                     key={index}
                     className="flex items-center justify-between p-2 border rounded hover:bg-muted cursor-pointer transition-colors"
-                    onClick={() => usePDF(pdf)}
+                    onClick={() => handleUsePDF(pdf)}
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{pdf.title}</p>
@@ -534,7 +555,7 @@ export default function ImportExamsPage() {
                       size="sm"
                       onClick={e => {
                         e.stopPropagation()
-                        usePDF(pdf)
+                        handleUsePDF(pdf)
                       }}
                       className="ml-2"
                     >
@@ -552,7 +573,7 @@ export default function ImportExamsPage() {
           {!fetchingPDFs && !searchError && availablePDFs.length === 0 && demreUrl && (
             <div className="text-sm text-muted-foreground text-center py-4">
               <p>
-                Haz clic en "Buscar PDFs" para encontrar los exámenes disponibles en esta página.
+                Haz clic en &quot;Buscar PDFs&quot; para encontrar los exámenes disponibles en esta página.
               </p>
             </div>
           )}
@@ -586,10 +607,10 @@ export default function ImportExamsPage() {
               </li>
               <li>Encuentra el PDF del examen que quieres importar</li>
               <li>
-                Copia la URL del PDF (clic derecho en el enlace → "Copiar dirección del enlace")
+                Copia la URL del PDF (clic derecho en el enlace → &quot;Copiar dirección del enlace&quot;)
               </li>
-              <li>Selecciona "URL" en el formulario de abajo y pega la URL</li>
-              <li>Completa los demás campos y haz clic en "Importar Exámenes"</li>
+              <li>Selecciona &quot;URL&quot; en el formulario de abajo y pega la URL</li>
+              <li>Completa los demás campos y haz clic en &quot;Importar Exámenes&quot;</li>
             </ol>
           </div>
           <div>
@@ -609,9 +630,9 @@ export default function ImportExamsPage() {
                 </a>
               </li>
               <li>Descarga el PDF del examen a tu computadora</li>
-              <li>Selecciona "Archivo Local" en el formulario de abajo</li>
-              <li>Haz clic en "Seleccionar archivo" y elige el PDF descargado</li>
-              <li>Completa los demás campos y haz clic en "Importar Exámenes"</li>
+              <li>Selecciona &quot;Archivo Local&quot; en el formulario de abajo</li>
+              <li>Haz clic en &quot;Seleccionar archivo&quot; y elige el PDF descargado</li>
+              <li>Completa los demás campos y haz clic en &quot;Importar Exámenes&quot;</li>
             </ol>
             <p className="mt-2 text-xs text-muted-foreground">
               💡 Esta opción evita problemas con headers mal formateados del servidor de DEMRE
@@ -645,6 +666,7 @@ export default function ImportExamsPage() {
                   <label className="flex items-center space-x-2 cursor-pointer">
                     <input
                       type="radio"
+                      id={`inputType-url-${index}`}
                       name={`inputType-${index}`}
                       value="url"
                       checked={exam?.inputType === 'url'}
@@ -656,6 +678,7 @@ export default function ImportExamsPage() {
                   <label className="flex items-center space-x-2 cursor-pointer">
                     <input
                       type="radio"
+                      id={`inputType-file-${index}`}
                       name={`inputType-${index}`}
                       value="file"
                       checked={exam?.inputType === 'file'}
@@ -686,6 +709,7 @@ export default function ImportExamsPage() {
                   <Label htmlFor={`pdfFile-${index}`}>Archivo PDF *</Label>
                   <Input
                     id={`pdfFile-${index}`}
+                    name={`pdfFile-${index}`}
                     type="file"
                     accept=".pdf"
                     onChange={e => {

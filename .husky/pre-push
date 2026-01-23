@@ -1,0 +1,37 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Ejecutando validaciones pre-push (Enterprise)..."
+echo ""
+
+# ✅ Enterprise: Ejecutar tests unitarios
+echo "🧪 Ejecutando tests unitarios..."
+npm run test:run || {
+  echo "❌ Tests unitarios fallaron. Push bloqueado."
+  exit 1
+}
+
+# ✅ Enterprise: Verificar cobertura mínima
+echo "📊 Verificando cobertura de tests..."
+npm run test:coverage || {
+  echo "❌ Cobertura de tests insuficiente. Push bloqueado."
+  exit 1
+}
+
+# ✅ Enterprise: Verificar que el build funciona
+echo "🏗️  Verificando build de producción..."
+npm run build || {
+  echo "❌ Build de producción falló. Push bloqueado."
+  exit 1
+}
+
+# ✅ Enterprise: Verificar issues críticos
+echo "🔍 Verificando issues críticos..."
+npm run check:critical-issues || {
+  echo "❌ Se encontraron issues críticos. Push bloqueado."
+  exit 1
+}
+
+echo ""
+echo "✅ Todas las validaciones pre-push pasaron correctamente."
+

@@ -6,9 +6,6 @@ import {
   BookOpen,
   Home,
   BarChart3,
-  FileText,
-  User,
-  Settings,
   PlayCircle,
   Star,
   Cards,
@@ -78,7 +75,7 @@ interface SidebarProps {
   className?: string
 }
 
-export function Sidebar({ className }: SidebarProps) {
+export function Sidebar({ className }: Readonly<SidebarProps>) {
   const pathname = usePathname()
 
   return (

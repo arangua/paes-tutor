@@ -4,7 +4,8 @@ import { getCurrentStudentId } from '@/lib/get-session'
 import { handleApiError } from '@/lib/api-helpers'
 import { withRateLimit } from '@/lib/rate-limit-middleware'
 import { logApiRequest } from '@/lib/logger'
-import { getCached, cacheKeys, invalidateCachePattern } from '@/lib/cache'
+import { getCached, cacheKeys } from '@/lib/cache'
+import { TIME_CONSTANTS } from '@/lib/constants'
 
 // Especificar Node.js runtime
 export const runtime = 'nodejs'
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             },
           })
         },
-        10 * 60 * 1000 // Cache por 10 minutos
+        TIME_CONSTANTS.MATERIALS_CACHE_TTL_MS
       )
 
       if (!material) {

@@ -18,7 +18,6 @@ import {
   PlayCircle,
   CheckCircle2,
 } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { WelcomeTour } from '@/components/help/welcome-tour'
 
 const FEATURES = [
@@ -40,10 +39,18 @@ const FEATURES = [
   },
   {
     icon: Target,
-    title: 'Preparación',
-    description: 'Materiales de estudio y recomendaciones personalizadas',
+    title: 'Recomendaciones',
+    description: 'Recomendaciones personalizadas basadas en tu rendimiento',
     color: 'text-purple-600',
     bgColor: 'bg-purple-50 dark:bg-purple-900/20',
+    href: '/recommendations',
+  },
+  {
+    icon: FileText,
+    title: 'Materiales',
+    description: 'Recursos educativos organizados por asignatura',
+    color: 'text-indigo-600',
+    bgColor: 'bg-indigo-50 dark:bg-indigo-900/20',
     href: '/materials',
   },
   {
@@ -97,12 +104,17 @@ const QUICK_STEPS = [
 
 export default function Home() {
   const [showTour, setShowTour] = useState(false)
+  // Inicializar como false para que servidor y cliente rendericen lo mismo
   const [hasSeenTour, setHasSeenTour] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
 
+  // Cargar estado desde localStorage solo después del montaje
   useEffect(() => {
-    // Verificar si el usuario ya vio el tour
-    const seen = localStorage.getItem('paes-tutor-tour-seen')
-    setHasSeenTour(!!seen)
+    queueMicrotask(() => {
+      setIsMounted(prev => prev ? prev : true)
+      const seen = localStorage.getItem('paes-tutor-tour-seen')
+      setHasSeenTour(prev => prev === !!seen ? prev : !!seen)
+    })
   }, [])
 
   const handleStartTour = () => {
@@ -141,6 +153,12 @@ export default function Home() {
               {/* CTA Buttons */}
               <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
                 <Button asChild size="lg" className="text-lg px-8 py-6">
+                  <Link href="/auth/signin">
+                    <Award className="mr-2 h-5 w-5" />
+                    Iniciar Sesión
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" size="lg" className="text-lg px-8 py-6">
                   <Link href="/dashboard">
                     <Award className="mr-2 h-5 w-5" />
                     Ir al Dashboard
@@ -152,17 +170,19 @@ export default function Home() {
                     Ver Exámenes
                   </Link>
                 </Button>
-                {!hasSeenTour && (
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    className="text-lg px-8 py-6"
-                    onClick={handleStartTour}
-                  >
-                    <PlayCircle className="mr-2 h-5 w-5" />
-                    Tour Guiado
-                  </Button>
-                )}
+                <div suppressHydrationWarning>
+                  {(!isMounted || !hasSeenTour) && (
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      className="text-lg px-8 py-6"
+                      onClick={handleStartTour}
+                    >
+                      <PlayCircle className="mr-2 h-5 w-5" />
+                      Tour Guiado
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
 

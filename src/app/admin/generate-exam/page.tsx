@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -18,11 +18,10 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Breadcrumbs } from '@/components/layout/breadcrumbs'
 import { SkeletonLoader } from '@/components/ui/skeleton-loader'
-import { captureError } from '@/lib/monitoring'
+import { trackError } from '@/lib/monitoring'
 import {
   Loader2,
   Sparkles,
-  BookOpen,
   AlertCircle,
   CheckCircle2,
   Info,
@@ -69,8 +68,8 @@ export default function GenerateExamPage() {
         if (!res.ok) throw new Error('Error al cargar asignaturas')
         const data = await res.json()
         setSubjects(data.subjects || [])
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Error desconocido')
+      } catch (error) {
+        setError(error instanceof Error ? error.message : 'Error desconocido')
       } finally {
         setLoadingData(false)
       }
@@ -93,7 +92,7 @@ export default function GenerateExamPage() {
         setTopics(data.topics || [])
         setSelectedTopics([]) // Resetear selección de temas
       } catch (err) {
-        captureError(err instanceof Error ? err : new Error(String(err)), {
+        trackError(err instanceof Error ? err : new Error(String(err)), {
           type: 'admin_generate_exam_error',
           action: 'load_topics',
           subjectId: selectedSubject,
@@ -110,8 +109,11 @@ export default function GenerateExamPage() {
     if (!tiempoLimiteMin && numQuestions) {
       setTiempoLimiteMin(Math.ceil(numQuestions * 1.5))
     }
+     
+    // Solo recalcular cuando cambia numQuestions, tiempoLimiteMin no debe estar en deps
+    // para evitar loops infinitos cuando el usuario establece manualmente el tiempo
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [numQuestions]) // Solo recalcular cuando cambia numQuestions
+  }, [numQuestions])
 
   const handleTopicToggle = (topicId: string) => {
     setSelectedTopics(prev =>
@@ -163,8 +165,8 @@ export default function GenerateExamPage() {
         setFuente('')
         setSelectedTopics([])
       }, 3000)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido')
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Error desconocido')
     } finally {
       setLoading(false)
     }
@@ -285,7 +287,7 @@ export default function GenerateExamPage() {
                 <Label htmlFor="difficulty">Dificultad</Label>
                 <Select
                   value={difficulty}
-                  onValueChange={v => setDifficulty(v as '1' | '2' | '3' | '4' | '5' | 'all')}
+                  onValueChange={v => setDifficulty(v as 'baja' | 'media' | 'alta' | 'mixta')}
                 >
                   <SelectTrigger id="difficulty">
                     <SelectValue />
@@ -303,7 +305,7 @@ export default function GenerateExamPage() {
                 <Label htmlFor="tipo">Tipo de Examen</Label>
                 <Select
                   value={tipo}
-                  onValueChange={v => setTipo(v as 'obligatorio' | 'electivo' | 'all')}
+                  onValueChange={v => setTipo(v as 'objetiva' | 'desarrollo' | 'mixta')}
                 >
                   <SelectTrigger id="tipo">
                     <SelectValue />

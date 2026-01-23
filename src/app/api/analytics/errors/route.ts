@@ -1,25 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getCurrentUser } from '@/lib/get-session'
+import { getAuthenticatedUserWithStudent } from '@/lib/get-session'
 import { withRateLimit } from '@/lib/rate-limit-middleware'
 import { logger } from '@/lib/logger'
+import { safeRound } from '@/app/api/notes/versions/validation-utils'
 
 export const runtime = 'nodejs'
 
 export async function GET(request: NextRequest) {
   return withRateLimit(request, async () => {
     try {
-      const user = await getCurrentUser()
-      if (!user?.email) {
+      const dbUser = await getAuthenticatedUserWithStudent()
+      if (!dbUser?.email) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
       }
 
-      const dbUser = await prisma.user.findUnique({
-        where: { email: user.email },
-        include: { student: true },
-      })
-
-      if (!dbUser?.student) {
+      if (!dbUser.student) {
         return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 })
       }
 
@@ -99,7 +95,7 @@ export async function GET(request: NextRequest) {
         const subject = question.subject
 
         // Agrupar por tema
-        if (topic) {
+        if (topic && subject) {
           const key = topic.id
           if (!errorsByTopic.has(key)) {
             errorsByTopic.set(key, {
@@ -113,8 +109,10 @@ export async function GET(request: NextRequest) {
               questions: [],
             })
           }
-          const topicData = errorsByTopic.get(key)!
-          topicData.errorCount++
+          const topicData = errorsByTopic.get(key)
+          if (topicData) {
+            topicData.errorCount++
+          }
 
           // Agregar pregunta al tema si no existe
           const existingQuestion = topicData.questions.find(q => q.questionId === question.id)
@@ -137,25 +135,99 @@ export async function GET(request: NextRequest) {
             enunciado: question.enunciado,
             topicId: topic?.id || null,
             topicName: topic?.nombre || null,
-            subjectName: subject.nombre,
+            subjectName: subject?.nombre || '',
             errorCount: 0,
           })
         }
-        const questionData = errorsByQuestion.get(questionKey)!
-        questionData.errorCount++
+        const questionData = errorsByQuestion.get(questionKey)
+        if (questionData) {
+          questionData.errorCount++
+        }
       })
 
       // Convertir a arrays y ordenar
-      const topicsArray = Array.from(errorsByTopic.values())
-        .map(topic => ({
-          ...topic,
-          questions: topic.questions.sort((a, b) => b.vecesFallada - a.vecesFallada),
-        }))
-        .sort((a, b) => b.errorCount - a.errorCount)
+      // CORRECCIÓN: Validar que errorsByTopic.values() retorne un iterable válido y que topic.questions sea un array válido antes de ordenar
+      const topicsArray = (() => {
+        try {
+          const values = Array.from(errorsByTopic.values())
+          if (!Array.isArray(values)) {
+            return []
+          }
+          return values
+            .map(topic => {
+              if (!topic || typeof topic !== 'object') {
+                return null
+              }
+              const safeQuestions = Array.isArray(topic.questions) ? topic.questions : []
+              const sortedQuestions = (() => {
+                try {
+                  // CORRECCIÓN: Validar que safeQuestions sea un array válido antes de usar sort()
+                  if (!Array.isArray(safeQuestions)) {
+                    logger.warn({ topic, safeQuestions }, 'analytics/errors: safeQuestions no es un array válido antes de sort(), usando array vacío')
+                    return []
+                  }
+                  const sorted = safeQuestions.sort((a, b) => {
+                    if (!a || !b || typeof a !== 'object' || typeof b !== 'object') {
+                      return 0
+                    }
+                    const safeAVeces = Number.isFinite(a.vecesFallada) && a.vecesFallada >= 0 ? a.vecesFallada : 0
+                    const safeBVeces = Number.isFinite(b.vecesFallada) && b.vecesFallada >= 0 ? b.vecesFallada : 0
+                    const diff = safeBVeces - safeAVeces
+                    return Number.isFinite(diff) ? diff : 0
+                  })
+                  // CORRECCIÓN: Validar que sort() retorne un array válido
+                  if (!Array.isArray(sorted)) {
+                    logger.warn({ safeQuestions, sorted }, 'analytics/errors: sort() retornó resultado inválido, usando safeQuestions original')
+                    return safeQuestions
+                  }
+                  return sorted
+                } catch (error) {
+                  logger.warn({ error, safeQuestions }, 'analytics/errors: Error al ejecutar sort() en safeQuestions, usando array original')
+                  return safeQuestions
+                }
+              })()
+              return {
+                ...topic,
+                questions: sortedQuestions,
+              }
+            })
+            .filter(topic => topic !== null)
+            .sort((a, b) => {
+              if (!a || !b || typeof a !== 'object' || typeof b !== 'object') {
+                return 0
+              }
+              const safeAErrorCount = Number.isFinite(a.errorCount) && a.errorCount >= 0 ? a.errorCount : 0
+              const safeBErrorCount = Number.isFinite(b.errorCount) && b.errorCount >= 0 ? b.errorCount : 0
+              const diff = safeBErrorCount - safeAErrorCount
+              return Number.isFinite(diff) ? diff : 0
+            })
+        } catch (error) {
+          logger.warn({ error, errorsByTopic }, 'analytics/errors: Error al convertir errorsByTopic a array, retornando array vacío')
+          return []
+        }
+      })()
 
-      const questionsArray = Array.from(errorsByQuestion.values()).sort(
-        (a, b) => b.errorCount - a.errorCount
-      )
+      // CORRECCIÓN: Validar que errorsByQuestion.values() retorne un iterable válido y que errorCount sean números finitos antes de ordenar
+      const questionsArray = (() => {
+        try {
+          const values = Array.from(errorsByQuestion.values())
+          if (!Array.isArray(values)) {
+            return []
+          }
+          return values.sort((a, b) => {
+            if (!a || !b || typeof a !== 'object' || typeof b !== 'object') {
+              return 0
+            }
+            const safeAErrorCount = Number.isFinite(a.errorCount) && a.errorCount >= 0 ? a.errorCount : 0
+            const safeBErrorCount = Number.isFinite(b.errorCount) && b.errorCount >= 0 ? b.errorCount : 0
+            const diff = safeBErrorCount - safeAErrorCount
+            return Number.isFinite(diff) ? diff : 0
+          })
+        } catch (error) {
+          logger.warn({ error, errorsByQuestion }, 'analytics/errors: Error al convertir errorsByQuestion a array, retornando array vacío')
+          return []
+        }
+      })()
 
       // Obtener top 10 errores más comunes
       const topErrors = questionsArray.slice(0, 10)
@@ -183,22 +255,118 @@ export async function GET(request: NextRequest) {
             topicCount: 0,
           })
         }
-        const subjectData = errorsBySubject.get(key)!
-        subjectData.errorCount += topic.errorCount
-        subjectData.topicCount++
+        const subjectData = errorsBySubject.get(key)
+        if (subjectData) {
+          const safeErrorCount = Number.isFinite(topic.errorCount) && topic.errorCount >= 0 ? topic.errorCount : 0
+          subjectData.errorCount += safeErrorCount
+          subjectData.topicCount++
+        }
       })
 
-      const subjectsArray = Array.from(errorsBySubject.values()).sort(
-        (a, b) => b.errorCount - a.errorCount
-      )
+      // CORRECCIÓN: Validar que errorsBySubject.values() retorne un iterable válido y que errorCount sean números finitos antes de ordenar
+      const subjectsArray = (() => {
+        try {
+          const values = Array.from(errorsBySubject.values())
+          if (!Array.isArray(values)) {
+            return []
+          }
+          return values.sort((a, b) => {
+            if (!a || !b || typeof a !== 'object' || typeof b !== 'object') {
+              return 0
+            }
+            const safeAErrorCount = Number.isFinite(a.errorCount) && a.errorCount >= 0 ? a.errorCount : 0
+            const safeBErrorCount = Number.isFinite(b.errorCount) && b.errorCount >= 0 ? b.errorCount : 0
+            const diff = safeBErrorCount - safeAErrorCount
+            return Number.isFinite(diff) ? diff : 0
+          })
+        } catch (error) {
+          logger.warn({ error, errorsBySubject }, 'analytics/errors: Error al convertir errorsBySubject a array, retornando array vacío')
+          return []
+        }
+      })()
 
       // Calcular tendencia (comparar últimos 30 días con anteriores)
-      const thirtyDaysAgo = new Date()
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+      // CORRECCIÓN: Validar que new Date() y setDate() retornen valores válidos
+      let thirtyDaysAgo: Date
+      try {
+        const tempDate = new Date()
+        if (tempDate instanceof Date && !Number.isNaN(tempDate.getTime())) {
+          const currentDate = tempDate.getDate()
+          if (Number.isFinite(currentDate)) {
+            const newDate = currentDate - 30
+            if (Number.isFinite(newDate)) {
+              tempDate.setDate(newDate)
+              if (tempDate instanceof Date && !Number.isNaN(tempDate.getTime())) {
+                thirtyDaysAgo = tempDate
+              } else {
+                logger.warn({ tempDate }, 'analytics/errors: setDate() resultó en fecha inválida, usando fecha actual menos 30 días')
+                thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+              }
+            } else {
+              thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+            }
+          } else {
+            thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+          }
+        } else {
+          thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+        }
+      } catch (error) {
+        logger.warn({ error }, 'analytics/errors: Error al calcular thirtyDaysAgo, usando fecha actual menos 30 días')
+        thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+      }
 
-      const recentErrors = incorrectAnswers.filter(a => a.attempt.startedAt >= thirtyDaysAgo).length
+      // CORRECCIÓN: Validar que incorrectAnswers sea un array válido y que a.attempt y startedAt sean válidos antes de filtrar
+      const safeIncorrectAnswers = Array.isArray(incorrectAnswers) ? incorrectAnswers : []
+      const recentErrors = safeIncorrectAnswers.filter(a => {
+        if (!a || typeof a !== 'object' || !a.attempt || typeof a.attempt !== 'object') {
+          return false
+        }
+        const startedAt = a.attempt.startedAt
+        if (!startedAt) return false
+        try {
+          const startedDate = startedAt instanceof Date ? startedAt : new Date(startedAt)
+          if (!(startedDate instanceof Date) || Number.isNaN(startedDate.getTime())) {
+            return false
+          }
+          if (!(thirtyDaysAgo instanceof Date) || Number.isNaN(thirtyDaysAgo.getTime())) {
+            return false
+          }
+          const startedTime = startedDate.getTime()
+          const thresholdTime = thirtyDaysAgo.getTime()
+          if (!Number.isFinite(startedTime) || !Number.isFinite(thresholdTime)) {
+            return false
+          }
+          return startedTime >= thresholdTime
+        } catch {
+          return false
+        }
+      }).length
 
-      const olderErrors = incorrectAnswers.filter(a => a.attempt.startedAt < thirtyDaysAgo).length
+      const olderErrors = safeIncorrectAnswers.filter(a => {
+        if (!a || typeof a !== 'object' || !a.attempt || typeof a.attempt !== 'object') {
+          return false
+        }
+        const startedAt = a.attempt.startedAt
+        if (!startedAt) return false
+        try {
+          const startedDate = startedAt instanceof Date ? startedAt : new Date(startedAt)
+          if (!(startedDate instanceof Date) || Number.isNaN(startedDate.getTime())) {
+            return false
+          }
+          if (!(thirtyDaysAgo instanceof Date) || Number.isNaN(thirtyDaysAgo.getTime())) {
+            return false
+          }
+          const startedTime = startedDate.getTime()
+          const thresholdTime = thirtyDaysAgo.getTime()
+          if (!Number.isFinite(startedTime) || !Number.isFinite(thresholdTime)) {
+            return false
+          }
+          return startedTime < thresholdTime
+        } catch {
+          return false
+        }
+      }).length
 
       const totalAttempts = await prisma.attempt.count({
         where: {
@@ -240,8 +408,8 @@ export async function GET(request: NextRequest) {
           uniqueQuestions: questionsArray.length,
           topicsAffected: topicsArray.length,
           trend,
-          recentErrorRate: Math.round(recentErrorRate * 10) / 10,
-          olderErrorRate: Math.round(olderErrorRate * 10) / 10,
+          recentErrorRate: safeRound(recentErrorRate, 1),
+          olderErrorRate: safeRound(olderErrorRate, 1),
         },
         topErrors,
         errorsByTopic: topicsArray,

@@ -86,16 +86,6 @@ export default function ErrorAnalysisPage() {
     }
   }
 
-  const getTrendColor = (trend: string) => {
-    switch (trend) {
-      case 'mejorando':
-        return 'text-green-600'
-      case 'empeorando':
-        return 'text-red-600'
-      default:
-        return 'text-yellow-600'
-    }
-  }
 
   if (loading) {
     return (
@@ -231,21 +221,21 @@ export default function ErrorAnalysisPage() {
 
         <Card
           className={`border-2 hover:shadow-lg transition-all duration-300 bg-gradient-to-br ${
-            data.summary.trend === 'mejorando'
-              ? 'from-green-50 to-green-100/50 dark:from-green-950/30 dark:to-green-900/20'
-              : data.summary.trend === 'empeorando'
-                ? 'from-red-50 to-red-100/50 dark:from-red-950/30 dark:to-red-900/20'
-                : 'from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/20'
+            (() => {
+              if (data.summary.trend === 'mejorando') return 'from-green-50 to-green-100/50 dark:from-green-950/30 dark:to-green-900/20'
+              if (data.summary.trend === 'empeorando') return 'from-red-50 to-red-100/50 dark:from-red-950/30 dark:to-red-900/20'
+              return 'from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/20'
+            })()
           }`}
         >
           <CardHeader className="pb-3">
             <CardTitle
               className={`text-sm font-medium flex items-center gap-2 ${
-                data.summary.trend === 'mejorando'
-                  ? 'text-green-700 dark:text-green-400'
-                  : data.summary.trend === 'empeorando'
-                    ? 'text-red-700 dark:text-red-400'
-                    : 'text-blue-700 dark:text-blue-400'
+                (() => {
+                  if (data.summary.trend === 'mejorando') return 'text-green-700 dark:text-green-400'
+                  if (data.summary.trend === 'empeorando') return 'text-red-700 dark:text-red-400'
+                  return 'text-blue-700 dark:text-blue-400'
+                })()
               }`}
             >
               Tendencia
@@ -255,21 +245,21 @@ export default function ErrorAnalysisPage() {
           <CardContent>
             <div
               className={`text-4xl font-bold capitalize ${
-                data.summary.trend === 'mejorando'
-                  ? 'text-green-900 dark:text-green-100'
-                  : data.summary.trend === 'empeorando'
-                    ? 'text-red-900 dark:text-red-100'
-                    : 'text-blue-900 dark:text-blue-100'
+                (() => {
+                  if (data.summary.trend === 'mejorando') return 'text-green-900 dark:text-green-100'
+                  if (data.summary.trend === 'empeorando') return 'text-red-900 dark:text-red-100'
+                  return 'text-blue-900 dark:text-blue-100'
+                })()
               }`}
             >
               {data.summary.trend}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {data.summary.recentErrorRate < data.summary.olderErrorRate
-                ? 'Mejor que antes'
-                : data.summary.recentErrorRate > data.summary.olderErrorRate
-                  ? 'Peor que antes'
-                  : 'Sin cambios'}
+              {(() => {
+                if (data.summary.recentErrorRate < data.summary.olderErrorRate) return 'Mejor que antes'
+                if (data.summary.recentErrorRate > data.summary.olderErrorRate) return 'Peor que antes'
+                return 'Sin cambios'
+              })()}
             </p>
           </CardContent>
         </Card>

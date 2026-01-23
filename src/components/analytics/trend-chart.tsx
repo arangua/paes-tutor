@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
+import { safeRound, safeAverage } from '@/app/api/notes/versions/validation-utils'
 import {
   LineChart,
   Line,
@@ -25,13 +26,13 @@ interface TrendChartProps {
   className?: string
 }
 
-export function TrendChart({ data, className }: TrendChartProps) {
+export function TrendChart({ data, className }: Readonly<TrendChartProps>) {
   // Preparar datos para el gráfico
   const chartData = useMemo(() => {
     return data.map((item, index) => ({
       name: `Intento ${index + 1}`,
       date: new Date(item.date).toLocaleDateString('es-CL', { month: 'short', day: 'numeric' }),
-      porcentaje: Math.round(item.percentage * 10) / 10,
+      porcentaje: safeRound(item.percentage, 1),
       fullDate: item.date,
     }))
   }, [data])
@@ -44,11 +45,11 @@ export function TrendChart({ data, className }: TrendChartProps) {
       }
 
       const lastThree = chartData.slice(Math.max(0, index - 2), index + 1)
-      const avg = lastThree.reduce((sum, d) => sum + d.porcentaje, 0) / lastThree.length
+      const avg = safeAverage(lastThree.map(d => d.porcentaje), 0)
 
       return {
         ...item,
-        promedio: Math.round(avg * 10) / 10,
+        promedio: safeRound(avg, 1),
       }
     })
   }, [chartData])

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { formatDuration as formatDurationSafe } from '@/lib/utils'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -11,7 +12,6 @@ import {
   XCircle,
   Circle,
   Clock,
-  Award,
   TrendingUp,
   BookOpen,
   Loader2,
@@ -19,6 +19,7 @@ import {
   BarChart3,
   Printer,
 } from 'lucide-react'
+import { CreateChallengeButton } from '@/components/challenges/create-challenge-button'
 import { ExportButton } from '@/components/export/export-button'
 import {
   exportExamResultsToPDF,
@@ -27,6 +28,11 @@ import {
   type ExamResultData,
 } from '@/lib/export-utils'
 import { toast } from 'sonner'
+import { useProgressTracker } from '@/hooks/useProgressTracker'
+import { ProgressDialog } from '@/components/ui/progress-dialog'
+
+// ✅ Enterprise: Lazy loading de componentes pesados que no son críticos para el render inicial
+// Los componentes de exportación y desafíos solo se cargan cuando el usuario interactúa con ellos
 
 interface Attempt {
   id: string
@@ -74,6 +80,38 @@ interface Attempt {
   }>
 }
 
+/**
+ * Página de resultados inmediatos después de completar un examen
+ * 
+ * @component
+ * @description
+ * Muestra los resultados de un examen completado con las siguientes funcionalidades:
+ * - Resumen de puntaje y estadísticas (correctas, incorrectas, omitidas)
+ * - Puntaje PAES (si aplica) con indicador de estimación
+ * - Revisión completa de todas las preguntas con explicaciones
+ * - Indicadores visuales (correcta/incorrecta/omitida)
+ * - Opciones de exportación (PDF, Excel, Word)
+ * - Botón para crear desafío basado en el examen
+ * - Navegación a análisis detallado
+ * 
+ * @example
+ * ```tsx
+ * // Navegación desde página de examen
+ * router.push(`/exams/${examId}/results?attemptId=${attemptId}`)
+ * ```
+ * 
+ * @remarks
+ * - Requiere attemptId como query parameter
+ * - Valida que el intento esté completado
+ * - Soporta exportación de resultados en múltiples formatos
+ * - Integra con sistema de desafíos
+ * - Muestra progreso de exportación cuando se exporta
+ * 
+ * @see {@link exportExamResultsToPDF} Para exportación a PDF
+ * @see {@link exportExamResultsToExcel} Para exportación a Excel
+ * @see {@link exportExamResultsToWord} Para exportación a Word
+ * @see {@link CreateChallengeButton} Para crear desafíos
+ */
 export default function ExamResultsPage() {
   const params = useParams()
   const searchParams = useSearchParams()
@@ -84,6 +122,8 @@ export default function ExamResultsPage() {
   const [attempt, setAttempt] = useState<Attempt | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  const exportProgress = useProgressTracker()
 
   useEffect(() => {
     async function loadResults() {
@@ -133,12 +173,8 @@ export default function ExamResultsPage() {
     loadResults()
   }, [attemptId])
 
-  const formatDuration = (seconds: number | null) => {
-    if (!seconds) return 'N/A'
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}m ${secs}s`
-  }
+  // ✅ Enterprise: Usar función segura centralizada para formateo de tiempo
+  const formatDurationLocal = formatDurationSafe
 
   const getScoreColor = (porcentaje: number) => {
     if (porcentaje >= 70) return 'text-green-600'
@@ -146,11 +182,12 @@ export default function ExamResultsPage() {
     return 'text-red-600'
   }
 
-  const getScoreBadgeVariant = (porcentaje: number): 'default' | 'secondary' | 'destructive' => {
-    if (porcentaje >= 70) return 'default'
-    if (porcentaje >= 50) return 'secondary'
-    return 'destructive'
-  }
+  // getScoreBadgeVariant no se usa actualmente
+  // const _getScoreBadgeVariant = (porcentaje: number): 'default' | 'secondary' | 'destructive' => {
+  //   if (porcentaje >= 70) return 'default'
+  //   if (porcentaje >= 50) return 'secondary'
+  //   return 'destructive'
+  // }
 
   const handlePrint = () => {
     window.print()
@@ -197,15 +234,17 @@ export default function ExamResultsPage() {
       return
     }
     try {
-      toast.loading('Exportando a PDF...', { id: 'export-pdf' })
-      await exportExamResultsToPDF(data)
+      exportProgress.start(3 + data.answers.length, 'Iniciando exportación a PDF...')
+      await exportExamResultsToPDF(data, (progress, current, total, message) => {
+        exportProgress.updateProgress(current, total, message)
+      })
+      exportProgress.complete()
       toast.success('Exportación exitosa', {
-        id: 'export-pdf',
         description: 'El archivo PDF se ha descargado correctamente.',
       })
     } catch (error) {
+      exportProgress.fail(error instanceof Error ? error : new Error('Error desconocido'))
       toast.error('Error al exportar', {
-        id: 'export-pdf',
         description:
           error instanceof Error
             ? error.message
@@ -223,15 +262,17 @@ export default function ExamResultsPage() {
       return
     }
     try {
-      toast.loading('Exportando a Excel...', { id: 'export-excel' })
-      await exportExamResultsToExcel(data)
+      exportProgress.start(4, 'Iniciando exportación a Excel...')
+      await exportExamResultsToExcel(data, (progress, current, total, message) => {
+        exportProgress.updateProgress(current, total, message)
+      })
+      exportProgress.complete()
       toast.success('Exportación exitosa', {
-        id: 'export-excel',
         description: 'El archivo Excel se ha descargado correctamente.',
       })
     } catch (error) {
+      exportProgress.fail(error instanceof Error ? error : new Error('Error desconocido'))
       toast.error('Error al exportar', {
-        id: 'export-excel',
         description:
           error instanceof Error
             ? error.message
@@ -249,15 +290,17 @@ export default function ExamResultsPage() {
       return
     }
     try {
-      toast.loading('Exportando a Word...', { id: 'export-word' })
-      await exportExamResultsToWord(data)
+      exportProgress.start(3 + data.answers.length, 'Iniciando exportación a Word...')
+      await exportExamResultsToWord(data, (progress, current, total, message) => {
+        exportProgress.updateProgress(current, total, message)
+      })
+      exportProgress.complete()
       toast.success('Exportación exitosa', {
-        id: 'export-word',
         description: 'El archivo Word se ha descargado correctamente.',
       })
     } catch (error) {
+      exportProgress.fail(error instanceof Error ? error : new Error('Error desconocido'))
       toast.error('Error al exportar', {
-        id: 'export-word',
         description:
           error instanceof Error
             ? error.message
@@ -298,7 +341,18 @@ export default function ExamResultsPage() {
 
   return (
     <>
-      <style jsx global>{`
+      <ProgressDialog
+        open={exportProgress.isActive}
+        title="Exportando resultados"
+        description="Por favor espera mientras se genera el archivo..."
+        progress={exportProgress.progress}
+        current={exportProgress.current}
+        total={exportProgress.total}
+        message={exportProgress.message}
+        estimatedTimeRemaining={exportProgress.estimatedTimeRemaining}
+      />
+      <style dangerouslySetInnerHTML={{
+        __html: `
         @media print {
           body {
             background: white;
@@ -313,7 +367,7 @@ export default function ExamResultsPage() {
             page-break-inside: avoid;
           }
         }
-      `}</style>
+      `}} />
       <div className="container mx-auto py-6 px-4 max-w-4xl">
         {/* Header con resumen */}
         <Card className="mb-6">
@@ -366,7 +420,7 @@ export default function ExamResultsPage() {
               <div className="text-center p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
                 <div className="text-2xl font-bold text-blue-600 flex items-center justify-center gap-1">
                   <Clock className="h-5 w-5" />
-                  {formatDuration(attempt.duracionSegundos)}
+                  {formatDurationLocal(attempt.duracionSegundos)}
                 </div>
                 <p className="text-xs text-muted-foreground">Duración</p>
               </div>
@@ -386,7 +440,6 @@ export default function ExamResultsPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             {attempt.answers.map((answer, idx) => {
-              const correctOption = answer.question.options.find(opt => opt.esCorrecta)
               const isCorrect = answer.esCorrecta === true
               const isOmitted = answer.omitida
 
@@ -493,6 +546,7 @@ export default function ExamResultsPage() {
               Ver Análisis Detallado
             </Button>
           )}
+          <CreateChallengeButton examId={examId} examTitle={attempt.exam.titulo} />
           <Button onClick={() => router.push(`/exams/${examId}/take`)}>
             <TrendingUp className="h-4 w-4 mr-2" />
             Intentar Nuevamente

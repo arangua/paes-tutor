@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Loader2, Star, BookOpen, Filter, Trash2 } from 'lucide-react'
+import { Star, BookOpen, Filter, Trash2 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
 import { captureError } from '@/lib/monitoring'
@@ -123,7 +123,7 @@ export default function BookmarksPage() {
       } else {
         throw new Error('Error al eliminar favorito')
       }
-    } catch (err) {
+    } catch {
       toast.error('Error al eliminar favorito')
     }
   }
@@ -306,7 +306,6 @@ export default function BookmarksPage() {
 
       <div className="space-y-4">
         {filteredBookmarks.map(bookmark => {
-          const correctOption = bookmark.question.options.find(opt => opt.esCorrecta)
           return (
             <Card key={bookmark.id} className="hover:border-primary transition-colors">
               <CardHeader>
