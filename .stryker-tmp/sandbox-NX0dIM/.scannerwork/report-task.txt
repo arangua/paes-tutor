@@ -1,7 +1,0 @@
-organization=arangua
-projectKey=paes-tutor
-serverUrl=https://sonarcloud.io
-serverVersion=8.0.0.77984
-dashboardUrl=https://sonarcloud.io/dashboard?id=paes-tutor
-ceTaskId=AZtLqFyLpyj7Ov1zheUf
-ceTaskUrl=https://sonarcloud.io/api/ce/task?id=AZtLqFyLpyj7Ov1zheUf
