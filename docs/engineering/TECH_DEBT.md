@@ -48,6 +48,8 @@ Cada entrada debe seguir este formato:
   - Endpoint de restauración implementado
   - Restauración funcional con tabla de versiones
   - Tests de restauración pasando
+- **Status:** RESUELTO
+- **Comentario:** La restauración de versiones ya está implementada y funcionando. Incluye handlers, transacciones, modelos de base de datos, validaciones y tests.
 
 ### TECH-DEBT-003: Mejorar invalidación de caché por patrón en Redis
 
