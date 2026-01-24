@@ -26,6 +26,8 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
+    "test:db": "vitest run",
+    "test:db:studynote": "vitest run src/lib/study-notes/__tests__/study-note-versioning.test.ts",
     "test:prisma": "vitest run src/lib/__tests__/prisma.test.ts prisma/__tests__/schema-validation.test.ts",
     "test:run:silent": "powershell -ExecutionPolicy Bypass -File scripts/run-tests-silent.ps1",
     "test:run:optimized": "powershell -ExecutionPolicy Bypass -File scripts/run-tests-optimized.ps1",

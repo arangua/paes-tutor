@@ -3,6 +3,10 @@ import react from '@vitejs/plugin-react'
 import tsconfigPaths from 'vite-tsconfig-paths'
 import path from 'node:path'
 import os from 'os'
+import * as dotenv from 'dotenv'
+
+// Cargar .env.test para tests (sin afectar producción)
+dotenv.config({ path: '.env.test' })
 
 // Normaliza separadores Windows -> POSIX para comparar estable
 function normalizeId(id: string) {
@@ -27,6 +31,23 @@ const excludeStrykerPlugin = () => ({
     return null
   },
 })
+
+// Plugin para excluir tests de DB del mock de Prisma
+function prismaMockExclusionPlugin() {
+  return {
+    name: 'prisma-mock-exclusion',
+    enforce: 'pre' as const,
+    resolveId(source: string, importer?: string) {
+      // Excluir tests de base de datos del mock de @prisma/client
+      // Devolver la ruta real del módulo en node_modules
+      if (source === '@prisma/client' && importer?.includes('study-note-versioning.test.ts')) {
+        // Devolver la ruta real del módulo para que Vite lo resuelva sin alias
+        return path.resolve(process.cwd(), 'node_modules/@prisma/client/index.js')
+      }
+      return null
+    },
+  }
+}
 
 // Plugin para interceptar next/server antes de que next-auth lo importe
 function nextServerMockPlugin() {
@@ -89,7 +110,8 @@ export class NextResponse {
 
 export default defineConfig({
   plugins: [
-    nextServerMockPlugin(), // PRIMERO: Debe estar antes de otros plugins que puedan importar next/server
+    prismaMockExclusionPlugin(), // PRIMERO: Excluir tests de DB del mock de Prisma
+    nextServerMockPlugin(), // SEGUNDO: Debe estar antes de otros plugins que puedan importar next/server
     react(),
     tsconfigPaths(),
     excludeStrykerPlugin(),
@@ -108,6 +130,7 @@ export default defineConfig({
     // ✅ Para estos tests, usa entorno Node (Request/Response reales)
     environmentMatchGlobs: [
       ['**/src/app/api/notes/versions/**/*.test.ts', 'node'],
+      ['**/src/lib/study-notes/**/*.test.ts', 'node'],
     ],
     // Optimizaciones para reducir carga en Cursor
     pool: 'forks', // Usar procesos separados en lugar de threads
@@ -239,10 +262,12 @@ export default defineConfig({
         find: /^next\/server$/,
         replacement: path.resolve(process.cwd(), 'src/test/mocks/next-server.ts'),
       },
-      {
-        find: /^@prisma\/client$/,
-        replacement: path.resolve(process.cwd(), 'src/test/mocks/prisma-client.ts'),
-      },
+      // @prisma/client alias - COMENTADO para permitir tests de DB con cliente real
+      // Descomentar para otros tests que necesiten el mock
+      // {
+      //   find: /^@prisma\/client$/,
+      //   replacement: path.resolve(process.cwd(), 'src/test/mocks/prisma-client.ts'),
+      // },
       {
         find: '@',
         replacement: path.resolve(process.cwd(), 'src'),
