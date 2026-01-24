@@ -2,8 +2,8 @@ name: deps-major-label-gate
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, labeled, unlabeled]
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
