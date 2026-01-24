@@ -86,18 +86,20 @@ export function calcularPuntajePonderado(
   let puntajePonderado = 0
 
   // NEM
-  if (ponderaciones.nem > 0) {
-    puntajePonderado = addComponentScore(puntajePonderado, nem, ponderaciones.nem)
-  }
+  puntajePonderado = addOptionalComponentScore(
+    puntajePonderado,
+    nem,
+    ponderaciones.nem,
+    'NEM es requerido'
+  )
 
   // Ranking
-  if (ponderaciones.ranking > 0) {
-    puntajePonderado = addComponentScore(
-      puntajePonderado,
-      ranking,
-      ponderaciones.ranking
-    )
-  }
+  puntajePonderado = addOptionalComponentScore(
+    puntajePonderado,
+    ranking,
+    ponderaciones.ranking,
+    'Ranking es requerido'
+  )
 
   // Competencia Lectora
   if (ponderaciones.lectora > 0) {
