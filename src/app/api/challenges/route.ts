@@ -13,7 +13,7 @@ export const runtime = 'nodejs'
 const createChallengeSchema = z.object({
   examId: z.cuid({ error: 'examId debe ser un CUID válido' }).optional(),
   message: z.string().max(500).optional(), // Limitar longitud del mensaje
-  deadline: z.datetime({ error: 'Invalid datetime' }).optional(), // ISO date string validado
+  deadline: z.string().datetime({ message: 'Invalid datetime' }).optional(), // ISO date string validado
 })
 
 /**

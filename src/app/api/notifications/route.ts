@@ -23,7 +23,7 @@ const createNotificationSchema = z.object({
   relatedType: z.enum(['topic', 'exam', 'attempt', 'challenge', 'schedule', 'material']).optional(),
   actionUrl: z.url({ error: 'Invalid URL' }).optional().or(z.literal('')),
   priority: z.enum(['low', 'normal', 'high', 'urgent']).optional(),
-  expiresAt: z.datetime({ error: 'Invalid datetime' }).optional(),
+  expiresAt: z.string().datetime({ message: 'Invalid datetime' }).optional(),
 })
 
 export async function GET(request: NextRequest) {

@@ -29,8 +29,8 @@ const updateScheduleSchema = z.object({
 })
 
 const getSchedulesQuerySchema = z.object({
-  startDate: z.datetime({ error: 'Invalid datetime' }).optional(),
-  endDate: z.datetime({ error: 'Invalid datetime' }).optional(),
+  startDate: z.string().datetime({ message: 'Invalid datetime' }).optional(),
+  endDate: z.string().datetime({ message: 'Invalid datetime' }).optional(),
   completed: z
     .enum(['true', 'false'])
     .optional()
