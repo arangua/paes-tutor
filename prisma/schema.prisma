@@ -6,6 +6,24 @@ generator client {
   provider = "prisma-client-js"
 }
 
+enum StudyNoteChangeType {
+  CREATE
+  UPDATE
+  PUBLISH
+  UNPUBLISH
+  ARCHIVE
+  RESTORE
+  SYSTEM
+}
+
+enum StudyNoteChangeSource {
+  UI
+  API
+  MIGRATION
+  IMPORT
+  SYSTEM
+}
+
 model User {
   id                 String    @id @default(cuid())
   name               String?
@@ -69,28 +87,28 @@ model Student {
   nombre    String
   createdAt DateTime @default(now())
 
-  attempts           Attempt[]
-  metrics            PerformanceMetric[]
-  practiceSessions   PracticeSession[]
-  bookmarks          Bookmark[]
-  flashcards         Flashcard[]
-  studyNotes         StudyNote[]
-  studySchedules     StudySchedule[]
-  sharedExams        SharedExam[]        @relation("SharedBy")
-  receivedExams      SharedExam[]        @relation("SharedWith")
-  sharedMaterials    SharedMaterial[]    @relation("SharedBy")
-  receivedMaterials  SharedMaterial[]    @relation("SharedWith")
-  sharedFlashcards   SharedFlashcard[]   @relation("SharedFlashcardBy")
-  receivedFlashcards SharedFlashcard[]   @relation("SharedFlashcardWith")
-  sharedNotes        SharedNote[]        @relation("SharedNoteBy")
-  receivedNotes      SharedNote[]        @relation("SharedNoteWith")
-  sharedNoteVersions SharedNoteVersion[] @relation("SharedNoteVersionBy")
+  attempts             Attempt[]
+  metrics              PerformanceMetric[]
+  practiceSessions     PracticeSession[]
+  bookmarks            Bookmark[]
+  flashcards           Flashcard[]
+  studyNotes           StudyNote[]
+  studySchedules       StudySchedule[]
+  sharedExams          SharedExam[]        @relation("SharedBy")
+  receivedExams        SharedExam[]        @relation("SharedWith")
+  sharedMaterials      SharedMaterial[]    @relation("SharedBy")
+  receivedMaterials    SharedMaterial[]    @relation("SharedWith")
+  sharedFlashcards     SharedFlashcard[]   @relation("SharedFlashcardBy")
+  receivedFlashcards   SharedFlashcard[]   @relation("SharedFlashcardWith")
+  sharedNotes          SharedNote[]        @relation("SharedNoteBy")
+  receivedNotes        SharedNote[]        @relation("SharedNoteWith")
+  sharedNoteVersions   SharedNoteVersion[] @relation("SharedNoteVersionBy")
   receivedNoteVersions SharedNoteVersion[] @relation("SharedNoteVersionWith")
-  challengesSent     Challenge[]         @relation("Challenger")
-  challengesReceived Challenge[]         @relation("Challenged")
-  challengesWon      Challenge[]         @relation("Winner")
-  notifications      Notification[]
-  webhooks           Webhook[]
+  challengesSent       Challenge[]         @relation("Challenger")
+  challengesReceived   Challenge[]         @relation("Challenged")
+  challengesWon        Challenge[]         @relation("Winner")
+  notifications        Notification[]
+  webhooks             Webhook[]
 }
 
 model Subject {
@@ -381,24 +399,27 @@ model Flashcard {
 }
 
 model StudyNote {
-  id         String    @id @default(cuid())
-  studentId  String
-  student    Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  questionId String?
-  question   Question? @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  topicId    String?
-  topic      Topic?    @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  title      String
-  content    String
-  tags       String? // Tags separados por comas
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  studentId       String
+  student         Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  questionId      String?
+  question        Question? @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  topicId         String?
+  topic           Topic?    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  title           String
+  content         String
+  tags            String? // Tags separados por comas
+  currentVersion  Int       @default(1)
+  createdByUserId String?
+  updatedByUserId String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  sharedNotes SharedNote[]
+  sharedNotes        SharedNote[]
   sharedNoteVersions SharedNoteVersion[]
-  versions     StudyNoteVersion[]
-  restoreHistory VersionRestoreHistory[]
-  versionComments VersionComment[]
+  versions           StudyNoteVersion[]
+  restoreHistory     VersionRestoreHistory[]
+  versionComments    VersionComment[]
 
   @@index([studentId, createdAt])
   @@index([studentId, topicId])
@@ -406,39 +427,37 @@ model StudyNote {
 }
 
 model StudyNoteVersion {
-  id         String    @id @default(cuid())
-  noteId     String
-  note       StudyNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
-  title      String
-  content    String
-  tags       String? // Tags separados por comas
-  name       String? // Nombre personalizado opcional para la versión
-  color      String? // Color de etiqueta (hex)
-  isImportant Boolean  @default(false) // Marcar como importante para backup
-  isCompressed Boolean @default(false) // Indica si el contenido está comprimido con gzip
-  comment    String? // Comentario o nota sobre esta versión
-  createdAt  DateTime  @default(now())
-  createdBy  String // ID del estudiante que creó esta versión
+  id          String @id @default(cuid())
+  studyNoteId String
+  version     Int
 
-  @@index([noteId, createdAt])
-  @@index([noteId, isImportant, createdAt]) // Índice compuesto para búsquedas por importancia
-  @@index([noteId, createdAt, isImportant]) // Índice para queries con filtros de fecha e importancia
-  @@index([noteId, createdBy]) // Índice para queries que filtran por creador
-  @@index([noteId])
-  @@index([createdBy])
-  @@index([isImportant])
-  @@index([isCompressed])
+  snapshot Json
+
+  changeType    StudyNoteChangeType
+  source        StudyNoteChangeSource @default(API)
+  changeSummary String?
+
+  createdAt       DateTime @default(now())
+  createdByUserId String?
+
+  snapshotHash String?
+
+  studyNote StudyNote @relation(fields: [studyNoteId], references: [id], onDelete: Cascade)
+
+  @@unique([studyNoteId, version])
+  @@index([studyNoteId, createdAt])
+  @@index([createdByUserId, createdAt])
 }
 
 model VersionComment {
-  id         String    @id @default(cuid())
+  id        String    @id @default(cuid())
   versionId String
-  noteId     String
-  note       StudyNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
-  comment    String
-  createdBy  String // ID del estudiante que creó el comentario
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  noteId    String
+  note      StudyNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  comment   String
+  createdBy String // ID del estudiante que creó el comentario
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@index([versionId, createdAt])
   @@index([noteId, versionId, createdAt]) // Índice compuesto para queries que buscan comentarios de una versión ordenados por fecha
@@ -447,12 +466,12 @@ model VersionComment {
 }
 
 model VersionRestoreHistory {
-  id         String    @id @default(cuid())
-  noteId     String
-  note       StudyNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  id                String    @id @default(cuid())
+  noteId            String
+  note              StudyNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
   restoredVersionId String // ID de la versión restaurada
-  restoredBy String // ID del estudiante que restauró
-  restoredAt DateTime @default(now())
+  restoredBy        String // ID del estudiante que restauró
+  restoredAt        DateTime  @default(now())
 
   @@index([noteId, restoredAt])
   @@index([restoredBy, restoredAt]) // Índice para queries que buscan restauraciones por usuario ordenadas por fecha
@@ -726,11 +745,11 @@ model Webhook {
   id          String   @id @default(cuid())
   studentId   String
   student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  url         String   // URL del webhook
-  secret      String?  // Secret para firmar payloads (opcional)
-  events      String   // JSON array de eventos: ["version.created", "version.restored", etc.]
+  url         String // URL del webhook
+  secret      String? // Secret para firmar payloads (opcional)
+  events      String // JSON array de eventos: ["version.created", "version.restored", etc.]
   active      Boolean  @default(true)
-  noteId      String?  // Si es null, escucha eventos de todas las notas
+  noteId      String? // Si es null, escucha eventos de todas las notas
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -743,19 +762,19 @@ model Webhook {
 }
 
 model WebhookDelivery {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   webhookId   String
-  webhook     Webhook  @relation(fields: [webhookId], references: [id], onDelete: Cascade)
-  event       String   // Tipo de evento: "version.created", "version.restored", etc.
-  payload     String   // JSON del payload enviado
-  status      String   // "pending", "success", "failed"
-  statusCode  Int?     // Código HTTP de la respuesta
-  response    String?  // Respuesta del servidor remoto
-  attempts    Int      @default(0)
+  webhook     Webhook   @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  event       String // Tipo de evento: "version.created", "version.restored", etc.
+  payload     String // JSON del payload enviado
+  status      String // "pending", "success", "failed"
+  statusCode  Int? // Código HTTP de la respuesta
+  response    String? // Respuesta del servidor remoto
+  attempts    Int       @default(0)
   lastAttempt DateTime?
   nextRetry   DateTime? // Próximo intento si falló
   deliveredAt DateTime? // Fecha de entrega exitosa
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   @@index([webhookId, status])
   @@index([status, nextRetry])
