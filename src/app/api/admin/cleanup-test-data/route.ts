@@ -3,7 +3,7 @@ import { getCurrentUser } from '@/lib/get-session'
 import { withRateLimit } from '@/lib/rate-limit-middleware'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
-import type { Prisma } from '@prisma/client'
+import { PrismaClient, Prisma } from '@prisma/client'
 
 export const runtime = 'nodejs'
 
@@ -47,7 +47,7 @@ async function cleanupTestData(data: z.infer<typeof cleanupSchema>): Promise<Cle
   }
 
   try {
-    await prisma.$transaction(async tx => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // 1. Eliminar intentos (attempts) primero (dependencias)
       if (data.deleteAttempts) {
         try {
@@ -117,10 +117,10 @@ async function cleanupTestData(data: z.infer<typeof cleanupSchema>): Promise<Cle
             await tx.attempt.deleteMany({ where: whereClause })
             result.attempts.deleted = count
           }
-        } catch (error) {
+        } catch (e: unknown) {
           result.errors.push({
             type: 'attempts',
-            error: error instanceof Error ? error.message : 'Error desconocido',
+            error: e instanceof Error ? e.message : 'Error desconocido',
           })
         }
       }
@@ -166,10 +166,10 @@ async function cleanupTestData(data: z.infer<typeof cleanupSchema>): Promise<Cle
             await tx.exam.deleteMany({ where: whereClause })
             result.exams.deleted = count
           }
-        } catch (error) {
+        } catch (e: unknown) {
           result.errors.push({
             type: 'exams',
-            error: error instanceof Error ? error.message : 'Error desconocido',
+            error: e instanceof Error ? e.message : 'Error desconocido',
           })
         }
       }
@@ -210,10 +210,10 @@ async function cleanupTestData(data: z.infer<typeof cleanupSchema>): Promise<Cle
             await tx.question.deleteMany({ where: whereClause })
             result.questions.deleted = count
           }
-        } catch (error) {
+        } catch (e: unknown) {
           result.errors.push({
             type: 'questions',
-            error: error instanceof Error ? error.message : 'Error desconocido',
+            error: e instanceof Error ? e.message : 'Error desconocido',
           })
         }
       }
@@ -253,10 +253,10 @@ async function cleanupTestData(data: z.infer<typeof cleanupSchema>): Promise<Cle
             await tx.topic.deleteMany({ where: whereClause })
             result.topics.deleted = count
           }
-        } catch (error) {
+        } catch (e: unknown) {
           result.errors.push({
             type: 'topics',
-            error: error instanceof Error ? error.message : 'Error desconocido',
+            error: e instanceof Error ? e.message : 'Error desconocido',
           })
         }
       }
@@ -284,18 +284,18 @@ async function cleanupTestData(data: z.infer<typeof cleanupSchema>): Promise<Cle
             await tx.user.deleteMany({ where: whereClause })
             result.users.deleted = count
           }
-        } catch (error) {
+        } catch (e: unknown) {
           result.errors.push({
             type: 'users',
-            error: error instanceof Error ? error.message : 'Error desconocido',
+            error: e instanceof Error ? e.message : 'Error desconocido',
           })
         }
       }
     })
-  } catch (error) {
+  } catch (e: unknown) {
     result.errors.push({
       type: 'transaction',
-      error: error instanceof Error ? error.message : 'Error en la transacción',
+      error: e instanceof Error ? e.message : 'Error en la transacción',
     })
   }
 
@@ -375,11 +375,11 @@ export async function POST(request: NextRequest) {
               : ''),
           result,
         })
-      } catch (error) {
+      } catch (e: unknown) {
         return NextResponse.json(
           {
             error: 'Error al limpiar datos',
-            details: error instanceof Error ? error.message : 'Error desconocido',
+            details: e instanceof Error ? e.message : 'Error desconocido',
           },
           { status: 500 }
         )
