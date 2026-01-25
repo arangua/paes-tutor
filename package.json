@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": "24.11.1"
+    "node": "24"
   },
   "scripts": {
     "dev": "next dev",
@@ -37,6 +37,7 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "analyze": "ANALYZE=true npm run build",
+    "postinstall": "prisma generate",
     "prepare": "node -e \"try { if (require('fs').existsSync('node_modules/husky')) require('husky').install() } catch (e) {}\"",
     "import:demre": "npx tsx scripts/import-demre-exams.ts",
     "sonar": "sonar-scanner",
