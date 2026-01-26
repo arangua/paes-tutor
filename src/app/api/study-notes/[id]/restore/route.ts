@@ -30,6 +30,38 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
 
   const user = await getCurrentUserOrNull()
   const restoredByUserId = user?.userId ?? null
+  const actorUserId = restoredByUserId ?? 'system'
+
+  const current = await prisma.studyNote.findUnique({
+    where: { id },
+    select: { currentVersion: true },
+  })
+  if (!current) {
+    return NextResponse.json({ error: 'StudyNote not found' }, { status: 404 })
+  }
+  const fromVersion = current.currentVersion
+
+  if (version === fromVersion) {
+    await prisma.versionRestoreHistory.create({
+      data: {
+        studyNoteId: id,
+        fromVersion,
+        toVersion: version,
+        status: 'NOOP',
+        actorUserId,
+        reason: `Restore to current version (no-op)`,
+      },
+    })
+    return NextResponse.json(
+      {
+        ok: true,
+        kind: 'NOOP',
+        fromVersion,
+        toVersion: version,
+      },
+      { status: 200 },
+    )
+  }
 
   const restored = await restoreStudyNoteToVersion(prisma, id, version, {
     restoredByUserId,
@@ -37,8 +69,23 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     changeSummary: `Restored from v${version} via API`,
   })
 
+  await prisma.versionRestoreHistory.create({
+    data: {
+      studyNoteId: id,
+      fromVersion,
+      toVersion: version,
+      status: 'APPLIED',
+      actorUserId,
+      reason: `Restored to v${version} via API`,
+    },
+  })
+
   return NextResponse.json(
     {
+      ok: true,
+      kind: 'APPLIED',
+      fromVersion,
+      toVersion: version,
       restoredNote: restored,
       restoredToVersion: version,
       newCurrentVersion: restored.currentVersion,
