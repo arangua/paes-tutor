@@ -52,7 +52,7 @@ describe('GET /api/health', () => {
     clearAllMocks()
   })
 
-  it('debe retornar estado healthy cuando todo está bien', async () => {
+  it('debe retornar estado ok cuando todo está bien', async () => {
     vi.mocked(prisma.$queryRaw).mockResolvedValue([{ '1': 1 }] as any)
 
     const response = await GET()
@@ -67,7 +67,7 @@ describe('GET /api/health', () => {
     expect(data).toHaveProperty('timestamp')
     expect(data).toHaveProperty('uptime')
     expect(data).toHaveProperty('checks')
-    expect(data.status).toBe('healthy')
+    expect(data.status).toBe('ok')
     expect(data.checks.database).toBe('ok')
   })
 

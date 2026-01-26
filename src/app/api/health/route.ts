@@ -14,7 +14,7 @@ import { logger } from '@/lib/logger'
 export const runtime = 'nodejs'
 
 interface HealthStatus {
-  status: 'healthy' | 'degraded' | 'unhealthy'
+  status: 'ok' | 'degraded' | 'unhealthy'
   timestamp: string
   uptime: number
   checks: {
@@ -86,7 +86,7 @@ export async function GET(): Promise<NextResponse<HealthStatus>> {
     const memory = getMemoryInfo()
 
     // Determinar estado general
-    let status: 'healthy' | 'degraded' | 'unhealthy' = 'healthy'
+    let status: 'ok' | 'degraded' | 'unhealthy' = 'ok'
     if (dbStatus === 'error') {
       status = 'unhealthy'
     } else if (dbStatus === 'degraded' || (memory && memory.status === 'high')) {
@@ -104,7 +104,7 @@ export async function GET(): Promise<NextResponse<HealthStatus>> {
       version: process.env.npm_package_version || 'unknown',
     }
 
-    const statusCode = status === 'healthy' ? 200 : status === 'degraded' ? 200 : 503
+    const statusCode = status === 'ok' ? 200 : status === 'degraded' ? 200 : 503
 
     logger.info(
       {
