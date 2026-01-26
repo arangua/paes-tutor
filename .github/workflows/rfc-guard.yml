@@ -1,0 +1,39 @@
+name: RFC Guard
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+jobs:
+  rfc-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect sensitive changes
+        id: diff
+        run: |
+          git fetch origin main
+          git diff --name-only origin/main...HEAD > changed_files.txt
+
+          echo "Changed files:"
+          cat changed_files.txt
+
+          if grep -E "^(prisma/schema\.prisma|src/app/api/|src/lib/env/|package\.json|package-lock\.json)" changed_files.txt; then
+            echo "sensitive=true" >> $GITHUB_OUTPUT
+          else
+            echo "sensitive=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Enforce RFC reference
+        if: steps.diff.outputs.sensitive == 'true'
+        run: |
+          echo "Sensitive changes detected. Checking for RFC reference..."
+
+          PR_TEXT="$(jq -r '.pull_request.title + " " + .pull_request.body' "$GITHUB_EVENT_PATH")"
+
+          echo "$PR_TEXT" | grep -E "RFC-[0-9]{4}" || {
+            echo "::error::Sensitive changes require an accepted RFC (RFC-XXXX) referenced in PR title or body."
+            exit 1
+          }
