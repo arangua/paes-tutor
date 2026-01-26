@@ -12,6 +12,7 @@
     "clean": "powershell -ExecutionPolicy Bypass -File scripts/clean-start.ps1",
     "clean:force": "powershell -ExecutionPolicy Bypass -File scripts/clean-start.ps1 -Force",
     "build": "next build",
+    "vercel-build": "next build",
     "start": "next start",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
