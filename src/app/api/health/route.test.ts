@@ -29,6 +29,7 @@ vi.mock('next/server', () => {
 import { describe, it, expect, beforeEach } from 'vitest'
 import { GET } from './route'
 import { prisma } from '@/lib/prisma'
+import { healthResponseSchema } from '@/lib/contracts/health.contract'
 import {
   clearAllMocks,
 } from '@/test/enterprise/shared-test-helpers'
@@ -60,6 +61,7 @@ describe('GET /api/health', () => {
     // Leer body una sola vez y reutilizar
     const text = await response.text()
     const data = JSON.parse(text)
+    healthResponseSchema.parse(data)
 
     expect(response.status).toBe(200)
     expect(data).toBeDefined()
@@ -80,6 +82,7 @@ describe('GET /api/health', () => {
     const response = await GET()
 
     const data = await response.json()
+    healthResponseSchema.parse(data)
     expect(data.status).toBe('degraded')
     expect(data.checks.database).toBe('degraded')
   })
@@ -91,6 +94,7 @@ describe('GET /api/health', () => {
 
     expect(response.status).toBe(503)
     const data = await response.json()
+    healthResponseSchema.parse(data)
     expect(data.status).toBe('unhealthy')
     expect(data.checks.database).toBe('error')
   })
@@ -101,6 +105,7 @@ describe('GET /api/health', () => {
     const response = await GET()
 
     const data = await response.json()
+    healthResponseSchema.parse(data)
     if (data.checks.memory) {
       expect(data.checks.memory).toHaveProperty('rssMB')
       expect(data.checks.memory).toHaveProperty('heapUsedMB')

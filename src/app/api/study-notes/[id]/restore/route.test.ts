@@ -8,6 +8,7 @@ import {
   createStudyNoteWithVersioning,
   updateStudyNoteWithVersioning,
 } from '@/lib/study-notes/study-note-versioning'
+import { restoreResponseSchema } from '@/lib/contracts/study-note-restore.contract'
 import { getAuthenticatedUserWithStudent } from '@/lib/get-session'
 
 // Crear cliente Prisma real directamente
@@ -128,6 +129,7 @@ describe('POST /api/study-notes/[id]/restore', () => {
     const ctx = { params: { id: testNoteId } }
     const response = await POST(request, ctx)
     const data = await response.json()
+    restoreResponseSchema.parse(data)
 
     // Assert: respuesta exitosa con kind = NOOP
     expect(response.status).toBe(200)
@@ -189,6 +191,7 @@ describe('POST /api/study-notes/[id]/restore', () => {
     const ctx = { params: { id: testNoteId } }
     const response = await POST(request, ctx)
     const data = await response.json()
+    restoreResponseSchema.parse(data)
 
     // Assert: respuesta exitosa con kind = APPLIED
     expect(response.status).toBe(200)
