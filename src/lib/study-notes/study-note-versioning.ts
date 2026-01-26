@@ -122,6 +122,31 @@ export async function updateStudyNoteWithVersioning(
       throw new Error(`StudyNote not found: ${studyNoteId}`)
     }
 
+    // Ensure baseline version exists (enterprise invariant: at least v1)
+    const existingVersions = await tx.studyNoteVersion.findMany({
+      where: { studyNoteId },
+      orderBy: [{ version: 'desc' }],
+    })
+    if (existingVersions.length === 0) {
+      const baselineSnapshot = buildSnapshot(existing)
+      const snapshotHash = hashSnapshot({
+        ...baselineSnapshot,
+        updatedAt: undefined as never,
+      })
+      await tx.studyNoteVersion.create({
+        data: {
+          studyNoteId,
+          version: 1,
+          snapshot: baselineSnapshot,
+          changeType: 'CREATE',
+          source,
+          changeSummary: input.changeSummary ?? 'Baseline v1 (retrofill)',
+          createdByUserId: input.updatedByUserId ?? existing.updatedByUserId ?? null,
+          snapshotHash,
+        },
+      })
+    }
+
     const nextTitle = input.title ?? existing.title
     const nextContent = input.content ?? existing.content
 
