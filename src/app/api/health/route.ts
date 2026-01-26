@@ -20,9 +20,10 @@ interface HealthStatus {
   checks: {
     database: 'ok' | 'degraded' | 'error'
     memory?: {
-      used: number
-      total: number
-      percentage: number
+      rssMB: number
+      heapUsedMB: number
+      heapTotalMB: number
+      status: 'ok' | 'high'
     }
   }
   version?: string
@@ -53,18 +54,20 @@ async function checkDatabase(): Promise<'ok' | 'degraded' | 'error'> {
 /**
  * Obtener información de memoria
  */
-function getMemoryInfo(): { used: number; total: number; percentage: number } | undefined {
+function getMemoryInfo():
+  | { rssMB: number; heapUsedMB: number; heapTotalMB: number; status: 'ok' | 'high' }
+  | undefined {
   if (typeof process !== 'undefined' && process.memoryUsage) {
     const usage = process.memoryUsage()
-    const total = usage.heapTotal
-    const used = usage.heapUsed
-    const percentage = total > 0 ? (used / total) * 100 : 0
 
-    return {
-      used: Math.round(used / 1024 / 1024), // MB
-      total: Math.round(total / 1024 / 1024), // MB
-      percentage: Math.round(percentage * 100) / 100,
-    }
+    const rssMB = Math.round(usage.rss / 1024 / 1024)
+    const heapUsedMB = Math.round(usage.heapUsed / 1024 / 1024)
+    const heapTotalMB = Math.round(usage.heapTotal / 1024 / 1024)
+
+    const RSS_LIMIT_MB = 700
+    const status: 'ok' | 'high' = rssMB > RSS_LIMIT_MB ? 'high' : 'ok'
+
+    return { rssMB, heapUsedMB, heapTotalMB, status }
   }
   return undefined
 }
@@ -86,7 +89,7 @@ export async function GET(): Promise<NextResponse<HealthStatus>> {
     let status: 'healthy' | 'degraded' | 'unhealthy' = 'healthy'
     if (dbStatus === 'error') {
       status = 'unhealthy'
-    } else if (dbStatus === 'degraded' || (memory && memory.percentage > 90)) {
+    } else if (dbStatus === 'degraded' || (memory && memory.status === 'high')) {
       status = 'degraded'
     }
 
@@ -107,7 +110,7 @@ export async function GET(): Promise<NextResponse<HealthStatus>> {
       {
         status,
         dbStatus,
-        memory: memory?.percentage,
+        memory: memory?.status,
         duration: Date.now() - startTime,
       },
       'Health check completed'

@@ -102,9 +102,11 @@ describe('GET /api/health', () => {
 
     const data = await response.json()
     if (data.checks.memory) {
-      expect(data.checks.memory).toHaveProperty('used')
-      expect(data.checks.memory).toHaveProperty('total')
-      expect(data.checks.memory).toHaveProperty('percentage')
+      expect(data.checks.memory).toHaveProperty('rssMB')
+      expect(data.checks.memory).toHaveProperty('heapUsedMB')
+      expect(data.checks.memory).toHaveProperty('heapTotalMB')
+      expect(data.checks.memory).toHaveProperty('status')
+      expect(['ok', 'high']).toContain(data.checks.memory.status)
     }
   })
 })
