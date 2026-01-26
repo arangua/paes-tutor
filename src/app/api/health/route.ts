@@ -101,7 +101,10 @@ export async function GET(): Promise<NextResponse<HealthStatus>> {
         database: dbStatus,
         ...(memory && { memory }),
       },
-      version: process.env.npm_package_version || 'unknown',
+      version:
+        process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ??
+        process.env.NEXT_PUBLIC_APP_VERSION ??
+        'unknown',
     }
 
     const statusCode = status === 'ok' ? 200 : status === 'degraded' ? 200 : 503
