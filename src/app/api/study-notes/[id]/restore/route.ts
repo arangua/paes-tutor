@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { restoreStudyNoteToVersion } from '@/lib/study-notes/study-note-versioning'
 import {
   paramsSchema,
   restoreBodySchema,
@@ -20,75 +19,87 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
   }
 
-  const { id } = parsedParams.data
-  const { version } = parsedBody.data
+  const { id: noteId } = parsedParams.data
+  const body = parsedBody.data
 
-  const access = await requireStudyNoteAccess(prisma, id)
+  const access = await requireStudyNoteAccess(prisma, noteId)
   if (!access.ok) {
     return NextResponse.json({ error: access.message }, { status: access.status })
   }
 
   const user = await getCurrentUserOrNull()
-  const restoredByUserId = user?.userId ?? null
-  const actorUserId = restoredByUserId ?? 'system'
-
-  const current = await prisma.studyNote.findUnique({
-    where: { id },
-    select: { currentVersion: true },
-  })
-  if (!current) {
-    return NextResponse.json({ error: 'StudyNote not found' }, { status: 404 })
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
-  const fromVersion = current.currentVersion
 
-  if (version === fromVersion) {
-    await prisma.versionRestoreHistory.create({
+  const toVersion = body.version
+
+  const result = await prisma.$transaction(async (tx) => {
+    // 1) cargar nota + currentVersion (con guard ya aplicado)
+    const note = await tx.studyNote.findUnique({
+      where: { id: noteId },
+      select: { id: true, currentVersion: true },
+    })
+    if (!note) return { kind: 'NOT_FOUND' as const }
+
+    const fromVersion = note.currentVersion
+
+    // 2) validar que exista la versión destino (opcional, pero da 404 claro)
+    const targetExists = await tx.studyNoteVersion.findUnique({
+      where: { studyNoteId_version: { studyNoteId: note.id, version: toVersion } },
+      select: { id: true },
+    })
+    if (!targetExists) return { kind: 'VERSION_NOT_FOUND' as const }
+
+    // 3) idempotencia
+    if (toVersion === fromVersion) {
+      await tx.versionRestoreHistory.create({
+        data: {
+          studyNoteId: note.id,
+          fromVersion,
+          toVersion,
+          actorUserId: user.userId,
+          reason: body.reason ?? null,
+          status: 'NOOP',
+        },
+      })
+      return { kind: 'NOOP' as const, fromVersion, toVersion }
+    }
+
+    // 4) aplicar restore: NO crear versión nueva, solo mover el puntero
+    await tx.studyNote.update({
+      where: { id: note.id },
+      data: { currentVersion: toVersion },
+    })
+
+    await tx.versionRestoreHistory.create({
       data: {
-        studyNoteId: id,
+        studyNoteId: note.id,
         fromVersion,
-        toVersion: version,
-        status: 'NOOP',
-        actorUserId,
-        reason: `Restore to current version (no-op)`,
+        toVersion,
+        actorUserId: user.userId,
+        reason: (body as { reason?: string }).reason ?? null,
+        status: 'APPLIED',
       },
     })
-    return NextResponse.json(
-      {
-        ok: true,
-        kind: 'NOOP',
-        fromVersion,
-        toVersion: version,
-      },
-      { status: 200 },
-    )
+
+    return { kind: 'APPLIED' as const, fromVersion, toVersion }
+  })
+
+  if (result.kind === 'NOT_FOUND') {
+    return NextResponse.json({ error: 'StudyNote not found' }, { status: 404 })
   }
 
-  const restored = await restoreStudyNoteToVersion(prisma, id, version, {
-    restoredByUserId,
-    source: 'API',
-    changeSummary: `Restored from v${version} via API`,
-  })
-
-  await prisma.versionRestoreHistory.create({
-    data: {
-      studyNoteId: id,
-      fromVersion,
-      toVersion: version,
-      status: 'APPLIED',
-      actorUserId,
-      reason: `Restored to v${version} via API`,
-    },
-  })
+  if (result.kind === 'VERSION_NOT_FOUND') {
+    return NextResponse.json({ error: 'Version not found' }, { status: 404 })
+  }
 
   return NextResponse.json(
     {
       ok: true,
-      kind: 'APPLIED',
-      fromVersion,
-      toVersion: version,
-      restoredNote: restored,
-      restoredToVersion: version,
-      newCurrentVersion: restored.currentVersion,
+      kind: result.kind,
+      fromVersion: result.fromVersion,
+      toVersion: result.toVersion,
     },
     { status: 200 },
   )
