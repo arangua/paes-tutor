@@ -43,6 +43,7 @@ export const versionParamsSchema = z.object({
 
 export const restoreBodySchema = z.object({
   version: z.number().int().positive(),
+  reason: z.string().optional(),
 })
 
 export async function requireStudyNoteAccess(prisma: PrismaClient, noteId: string) {
