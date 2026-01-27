@@ -26,3 +26,7 @@ En Neon (branch main) existían migraciones aplicadas/registradas para TECH_DEBT
 ## Rollback
 - Revertir PR revierte código y migraciones locales.
 - En DB no se realiza reset; cualquier ajuste posterior debe respetar `_prisma_migrations` existente.
+  
+Notas de implementación / CI
+- El PR asociado (#14) fue mergeado mediante *bypass rules (squash)* debido a agotamiento de minutos de GitHub Actions. La validación técnica (migraciones y hardening) fue realizada localmente. El CI se re-ejecutará cuando se restablezcan los minutos disponibles.
+
