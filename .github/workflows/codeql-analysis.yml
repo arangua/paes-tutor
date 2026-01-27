@@ -1,15 +1,24 @@
 name: CodeQL Analysis
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:
+
   schedule:
-    - cron: '0 0 * * 0' # Weekly on Sunday
+    - cron: '0 6 * * 1' # Lunes 06:00 UTC
+
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+
+concurrency:
+  group: codeql-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   analyze:
+    if: github.repository == 'arangua/paes-tutor'
     name: Analyze
     runs-on: ubuntu-latest
     permissions:
