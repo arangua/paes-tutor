@@ -361,6 +361,18 @@ export function isPrivateIp(ip: string): boolean {
 }
 
 /**
+ * Design note on octal parsing edge case:
+ * parseInt('08', 8) returns 0 because '8' is not a valid octal digit.
+ * This means ambiguous inputs like '08.8.8.8' are parsed as [0, 8, 8, 8]
+ * → mapped to 0.0.0.0/8 → BLOCKED. The OS might interpret '08' as decimal 8,
+ * meaning the real target is 8.8.8.8 (public).
+ *
+ * This is INTENTIONAL: for SSRF prevention, false positives (blocking
+ * too much) are always preferable to false negatives (allowing bypasses).
+ * The fail-safe design means ambiguous encodings are blocked by default.
+ */
+
+/**
  * Pre-fetch URL validation (hostname + format only, no DNS).
  * Use validateExternalUrlWithDns() for full protection.
  */
@@ -815,12 +827,19 @@ async function updatePerformanceMetrics(/* params */) {
 async set<T>(key: string, data: T, ttl?: number): Promise<void> {
   try {
     const effectiveTtl = ttl || DEFAULT_CACHE_TTL_MS
+    // Upstash Redis SDK auto-serializa objetos JSON — no requiere JSON.stringify explícito
     await this.client.setex(key, Math.floor(effectiveTtl / 1000), data)
   } catch (error) {
-    console.error('Error al guardar en caché Redis:', error)
+    // Usar logger estructurado en vez de console.error (Secure Logging Practices)
+    logger.error(
+      { error: error instanceof Error ? error.message : String(error), key },
+      'Error al guardar en caché Redis'
+    )
   }
 }
 ```
+
+**Nota:** Las 3 funciones de `RedisCacheAdapter` que usan `console.error`/`console.warn` (`get`, `set`, `delete`, `clear`) deben migrarse a `logger` como parte de este fix. Esto alinea con CR-28 (errores silenciados) y el criterio Secure Logging Practices.
 
 ---
 
