@@ -712,25 +712,18 @@ refetch: () => {
 
 ---
 
-### CR-10: Selección de oponente arbitraria
+### CR-10: Selección de oponente arbitraria — DIFERIDO
 
 **Archivos:** `src/app/api/challenges/route.ts:149-194`, `src/app/api/shared-exams/route.ts:148-193`
-**Riesgo de regresión:** MEDIO — cambia la lógica de selección
+**Estado:** Diferido formalmente a RFC-2026-004
 
-**Fix:**
+**Justificación del diferimiento:**
+La selección ideal debería ser por parámetro del usuario, lo cual constituye un cambio de contrato de API que requiere diseño de endpoint dedicado. Un fix parcial (aleatorizar con `Math.random()`) no resuelve el problema de fondo y crea una experiencia impredecible.
+
+**Acción inmediata:** Solo agregar un comentario `@security-debt` en el código para trazabilidad:
 ```typescript
-// Reemplazar .find() con selección aleatoria
-const otherStudents = allStudents.filter(s => {
-  const safeSId = s.id && typeof s.id === 'string' ? s.id : null
-  return safeSId !== null && safeSId !== safeCurrentStudentId
-})
-
-const randomOpponent = otherStudents.length > 0
-  ? otherStudents[Math.floor(Math.random() * otherStudents.length)]
-  : null
+// @security-debt CR-10: Selección de oponente arbitraria — ver RFC-2026-004 para diseño de endpoint con parámetro de selección
 ```
-
-**Nota:** Idealmente la selección debería ser por parámetro del usuario, pero eso es un cambio de API que requiere RFC separado.
 
 ---
 
@@ -781,22 +774,21 @@ useEffect(() => {
 
 ---
 
-### CR-13: Monkey-patching console
+### CR-13: Monkey-patching console — DIFERIDO
 
 **Archivo:** `src/components/GlobalErrorHandler.tsx:59-109`
-**Riesgo de regresión:** ALTO — componente probablemente suprime errores que los usuarios reportan
+**Estado:** Diferido formalmente a RFC-2026-004
 
-**Fix (conservador):** En vez de monkey-patchear console, usar React Error Boundary:
+**Justificación del diferimiento:**
+1. Alto riesgo de regresión — el componente suprime warnings que podrían enmascarar bugs reales
+2. Los warnings filtrados (Amplitude, keyframes, controlled components) deben corregirse en su causa raíz
+3. Remover el monkey-patch sin corregir las causas raíz generaría ruido en consola que afecta DX
+4. Requiere análisis de cada warning suprimido para determinar si es seguro exponerlo
+
+**Acción inmediata:** Solo agregar un comentario `@security-debt` en el código para trazabilidad:
 ```typescript
-// Opción conservadora: mantener el filtering pero usar un approach menos invasivo
-// Agregar comment explicando por qué y las limitaciones
-// Agregar guard test que detecte monkey-patching de globals
-
-// Si se decide mantener: al menos agregar cleanup robusto
-// y logging de los warnings suprimidos para debugging
+// @security-debt CR-13: Monkey-patching de console.warn/error — ver RFC-2026-004 para análisis de causa raíz
 ```
-
-**Recomendación:** Dado el alto riesgo, diferir a RFC separado. Los warnings filtrados (Amplitude, keyframes, controlled components) deberían corregirse en su causa raíz.
 
 ---
 
@@ -944,14 +936,21 @@ export async function invalidateCache(_pattern: string): Promise<void> {
 
 ## Fase 4 — Bajos (8 hallazgos)
 
-### CR-21: ignoreBuildErrors: true
+### CR-21: ignoreBuildErrors: true — DIFERIDO
 
-**Riesgo de regresión:** ALTO — podría bloquear el build
+**Archivo:** `next.config.ts`
+**Estado:** Diferido formalmente a RFC-2026-004
 
-**Estrategia en 2 pasos:**
-1. Ejecutar `npx tsc --noEmit` y listar todos los errores
-2. Si son pocos y en archivos de test → corregirlos y remover flag
-3. Si son muchos → crear RFC separado con plan de corrección gradual
+**Justificación del diferimiento:**
+1. Scope desconocido — la cantidad de errores de TypeScript ocultos por este flag es indeterminada
+2. Remover el flag sin corregir todos los errores bloquearía CI y deploys
+3. Requiere un audit previo (`npx tsc --noEmit`) para dimensionar el esfuerzo
+4. Podría requerir correcciones en decenas de archivos
+
+**Acción inmediata:** Solo agregar un comentario `@security-debt` en el código para trazabilidad:
+```typescript
+// @security-debt CR-21: ignoreBuildErrors oculta errores de tipo — ver RFC-2026-004 para plan de corrección gradual
+```
 
 ---
 
@@ -1043,11 +1042,21 @@ export function getClientIp(request: Request): string {
 
 ---
 
-### CR-27: Auth patterns inconsistentes
+### CR-27: Auth patterns inconsistentes — DIFERIDO
 
-**Riesgo de regresión:** ALTO — tocar autenticación en muchas rutas simultáneamente
+**Archivos:** Múltiples rutas API con patrones de autenticación divergentes
+**Estado:** Diferido formalmente a RFC-2026-004
 
-**Recomendación:** Crear RFC-2026-004 para middleware de autenticación unificado. No abordar en este PR para minimizar riesgo.
+**Justificación del diferimiento:**
+1. Refactoring transversal de alto riesgo — afecta todas las rutas API con autenticación
+2. Tocar autenticación en muchas rutas simultáneamente multiplica la probabilidad de regresiones
+3. Requiere diseño de middleware unificado con rollout gradual
+4. El beneficio es de calidad de código, no de seguridad crítica (las rutas individuales sí autentican)
+
+**Acción inmediata:** Solo agregar un comentario `@security-debt` en el código para trazabilidad:
+```typescript
+// @security-debt CR-27: Auth patterns inconsistentes — ver RFC-2026-004 para middleware unificado
+```
 
 ---
 
@@ -1113,15 +1122,16 @@ CR-09 + CR-12 (mismo archivo), CR-16, CR-18
 CR-14, CR-15, CR-19, CR-20
 
 ### Batch 6 (logger + dependientes):
-CR-17, CR-28, CR-13
+CR-17, CR-28
 
 ### Batch 7 (bajos):
 CR-22, CR-23, CR-24, CR-25, CR-26
 
-### Batch 8 (requieren RFC separado):
-CR-10 (opponent selection — cambio de API)
-CR-21 (ignoreBuildErrors — scope desconocido)
-CR-27 (auth unification — alto riesgo)
+### Batch 8 (diferidos — requieren RFC separado):
+CR-10 (opponent selection — cambio de API) → RFC-2026-004
+CR-13 (console monkey-patch — análisis de causa raíz) → RFC-2026-004
+CR-21 (ignoreBuildErrors — scope desconocido) → RFC-2026-004
+CR-27 (auth unification — alto riesgo) → RFC-2026-004
 
 ---
 
