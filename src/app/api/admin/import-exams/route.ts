@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/get-session'
+import { isAdmin } from '@/lib/check-admin'
 import { withRateLimit } from '@/lib/rate-limit-middleware'
 import { validateBody } from '@/lib/api-helpers'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 import type { PrismaClient } from '@prisma/client'
 import fs from 'fs/promises'
 import fsSync from 'fs'
@@ -1024,6 +1026,19 @@ export async function POST(request: NextRequest) {
         const user = await getCurrentUser()
         if (!user) {
           return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+        }
+
+        // Verificar que el usuario sea admin
+        const userIsAdmin = await isAdmin()
+        if (!userIsAdmin) {
+          logger.warn(
+            { userId: user.id, email: user.email },
+            'Intento de importar exámenes sin permisos de admin'
+          )
+          return NextResponse.json(
+            { error: 'No tienes permisos para importar exámenes. Se requieren permisos de administrador.' },
+            { status: 403 }
+          )
         }
 
         // Detectar si es FormData o JSON

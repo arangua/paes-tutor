@@ -231,11 +231,38 @@ export default defineConfig({
       ],
       include: ['src/**/*.{ts,tsx}'],
       thresholds: {
-        // Umbrales globales (etapa actual — desbloqueo)
-        lines: 15,
-        functions: 15,
-        branches: 10,
-        statements: 15,
+        // Umbrales globales — incrementados conservadoramente desde 15%
+        // NOTA: Si algún test falla por cobertura, revisar qué archivo nuevo
+        // no tiene tests y añadirlos, o excluir temporalmente ese archivo.
+        lines: 25,
+        functions: 25,
+        branches: 15,
+        statements: 25,
+        // Umbrales por directorio para código crítico (más estrictos)
+        'src/lib/auth.ts': {
+          lines: 60,
+          functions: 60,
+          branches: 50,
+          statements: 60,
+        },
+        'src/lib/security.ts': {
+          lines: 60,
+          functions: 60,
+          branches: 50,
+          statements: 60,
+        },
+        'src/lib/encryption.ts': {
+          lines: 70,
+          functions: 70,
+          branches: 60,
+          statements: 70,
+        },
+        'src/lib/rate-limit.ts': {
+          lines: 50,
+          functions: 50,
+          branches: 40,
+          statements: 50,
+        },
       },
     },
   },

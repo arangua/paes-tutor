@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/get-session'
+import { isAdmin } from '@/lib/check-admin'
 import { withRateLimit } from '@/lib/rate-limit-middleware'
 import { logger } from '@/lib/logger'
 import * as cheerio from 'cheerio'
@@ -356,6 +357,19 @@ export async function POST(request: NextRequest) {
         const user = await getCurrentUser()
         if (!user) {
           return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+        }
+
+        // Verificar que el usuario sea admin
+        const userIsAdmin = await isAdmin()
+        if (!userIsAdmin) {
+          logger.warn(
+            { userId: user.id, email: user.email },
+            'Intento de obtener PDFs DEMRE sin permisos de admin'
+          )
+          return NextResponse.json(
+            { error: 'No tienes permisos para esta operación. Se requieren permisos de administrador.' },
+            { status: 403 }
+          )
         }
 
         const body = await request.json()
