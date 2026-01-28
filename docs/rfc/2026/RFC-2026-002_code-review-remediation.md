@@ -63,7 +63,7 @@ Este RFC **no** busca:
 
 **Fase 2 — Altos:**
 - `src/lib/webhooks.ts`
-- `src/lib/encryption.ts`
+- `src/lib/encryption.ts` (solo CR-07: 1 línea; CR-08 diferido a RFC-2026-003)
 - `src/hooks/useExams.ts`
 - `src/app/api/challenges/route.ts`
 - `src/app/api/shared-exams/route.ts`
@@ -121,7 +121,7 @@ Orden de implementación por dependencias:
 | 7 | Encryption key cambia por reinicio | Usar key estática determinista en dev | Test: encrypt/decrypt sobrevive reload simulado |
 | 8 | Salt PBKDF2 hardcodeado | **Diferido a RFC-2026-003** — requiere migración de datos encriptados existentes; documentar limitación en código | N/A en esta fase |
 | 9 | refetch() es no-op | Agregar trigger state en dependencias del useEffect | Test: refetch dispara re-fetch |
-| 10 | Selección de oponente arbitraria | Selección aleatoria con seed o parámetro | Test: selección no siempre retorna el mismo |
+| 10 | ~~Selección de oponente arbitraria~~ | **Diferido a RFC-2026-004** — cambio de contrato de API; requiere diseño de endpoint | N/A en esta fase |
 | 11 | maskApiKey sobre ciphertext | Llamar maskApiKey antes de encrypt | Test: últimos 4 chars son de la key original |
 
 #### Fase 3 — Medios (9 hallazgos)
@@ -129,7 +129,7 @@ Orden de implementación por dependencias:
 | # | Hallazgo | Fix | Test |
 |---|----------|-----|------|
 | 12 | Race condition en useExams | Agregar AbortController | Test: cleanup aborta fetch pendiente |
-| 13 | Monkey-patching console | Reemplazar con filtro en error boundary sin patchear globals | Test: console.warn no es sobreescrito |
+| 13 | ~~Monkey-patching console~~ | **Diferido a RFC-2026-004** — alto riesgo, necesita análisis de causa raíz de warnings | N/A en esta fase |
 | 14 | Race condition updatePerformanceMetrics | Envolver en transacción Prisma | Test: updates concurrentes no pierden datos |
 | 15 | Redis TTL inconsistente | Aplicar defaultTTL cuando no se pasa TTL | Test: Redis set sin TTL tiene expiración |
 | 16 | useAutoSave cleanup en cada cambio | Usar ref para data en cleanup, reducir dependencias | Test: onSave no se llama en cada cambio de data |
@@ -142,13 +142,13 @@ Orden de implementación por dependencias:
 
 | # | Hallazgo | Fix | Test |
 |---|----------|-----|------|
-| 21 | ignoreBuildErrors: true | Remover flag, corregir errores de tipo | Build pasa sin ignoreBuildErrors |
+| 21 | ~~ignoreBuildErrors: true~~ | **Diferido a RFC-2026-004** — scope desconocido, podría bloquear CI | N/A en esta fase |
 | 22 | Sin validación formato API keys | Agregar regex de formato por provider | Test: key con formato inválido es rechazada |
 | 23 | Sin bounds en spaced-repetition | Validar quality ∈ [0,5] | Test: quality fuera de rango lanza error |
 | 24 | Sin paginación en shared-exams | Agregar take/skip con defaults | Test: respuesta respeta límite |
 | 25 | N+1 query en import-exams | Pre-cargar topics antes del loop | Test: solo 1 query de topics |
 | 26 | getClientIp confía en headers | Documentar limitación, agregar log de advertencia | Test: header spoofado genera warning |
-| 27 | Auth patterns inconsistentes | Crear middleware auth unificado | Test: todas las rutas admin usan mismo patrón |
+| 27 | ~~Auth patterns inconsistentes~~ | **Diferido a RFC-2026-004** — refactoring transversal de alto riesgo | N/A en esta fase |
 | 28 | Errores silenciados sin logging | Agregar logger.error en catch blocks | Test: error de DB genera log |
 
 ---
@@ -178,13 +178,18 @@ Orden de implementación por dependencias:
 
 ## 7. Riesgos
 
-| Riesgo | Severidad | Probabilidad |
-|--------|-----------|-------------|
-| Fix de encriptación corrompe keys existentes | Alta | Media |
-| Remoción de ignoreBuildErrors bloquea el build | Media | Alta |
-| Fix de console monkey-patch rompe error boundary | Media | Baja |
-| Fix de auth inconsistente introduce nuevos 401s | Media | Media |
-| Fix de race conditions introduce deadlocks | Baja | Baja |
+| Riesgo | Severidad | Probabilidad | Nota |
+|--------|-----------|-------------|------|
+| CR-07 dev key estática filtra a producción | Media | Baja | Warning existente + ENV check en prod |
+| Fix de race conditions introduce deadlocks | Baja | Baja | |
+| SSRF validation bloquea URLs legítimas | Media | Media | `redirect: 'manual'` mitiga CDN redirects |
+| Admin check bloquea admins legítimos | Media | Baja | Test e2e de admin antes de deploy |
+
+**Riesgos eliminados por deferral:**
+- ~~Fix de encriptación corrompe keys existentes~~ → CR-08 diferido a RFC-2026-003
+- ~~Remoción de ignoreBuildErrors bloquea el build~~ → CR-21 diferido a RFC-2026-004
+- ~~Fix de console monkey-patch rompe error boundary~~ → CR-13 diferido a RFC-2026-004
+- ~~Fix de auth inconsistente introduce nuevos 401s~~ → CR-27 diferido a RFC-2026-004
 
 ---
 
@@ -225,16 +230,16 @@ Orden de implementación por dependencias:
 11. Test + fix #7 (encryption key dev)
 12. ~~Test + fix #8 (PBKDF2 salt)~~ → **Diferido a RFC-2026-003** (requiere migración de datos)
 13. Test + fix #9 (useExams refetch)
-14. Test + fix #10 (opponent selection)
+14. ~~Test + fix #10 (opponent selection)~~ → **Diferido a RFC-2026-004**
 15. Test + fix #11 (maskApiKey)
 16. Validación post-fase: full suite
 
 ### Fase 3 — Medios
-17-25. Test + fix para cada hallazgo (#12-#20)
+17-25. Test + fix para cada hallazgo (#12-#20, excepto ~~#13~~ diferido a RFC-2026-004)
 26. Validación post-fase: full suite
 
 ### Fase 4 — Bajos
-27-34. Test + fix para cada hallazgo (#21-#28)
+27-34. Test + fix para cada hallazgo (#21-#28, excepto ~~#21~~ y ~~#27~~ diferidos a RFC-2026-004)
 35. Validación post-fase: full suite
 36. Validación final: full suite + typecheck + lint + build
 
