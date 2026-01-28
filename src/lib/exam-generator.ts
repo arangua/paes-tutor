@@ -127,7 +127,7 @@ function buildPromptForExamGeneration(
     .map(
       m => {
         const ejeSuffix = m.topic?.ejeTematico ? ` (Eje: ${m.topic.ejeTematico})` : ''
-        return `- ${m.titulo}${ejeSuffix}: ${m.contenido.substring(0, 200)}...`
+        return `- ${m.titulo}${ejeSuffix}: ${m.contenido.substring(0, EXAM_CONSTANTS.MATERIAL_PREVIEW_LENGTH)}...`
       }
     )
     .join('\n')
@@ -265,7 +265,7 @@ function parseAIResponse(response: {
       {
         error: parseError instanceof Error ? parseError.message : String(parseError),
         responseLength: response.content.length,
-        responsePreview: response.content.substring(0, 500),
+        responsePreview: response.content.substring(0, EXAM_CONSTANTS.AI_RESPONSE_PREVIEW_LENGTH),
         service: response.service,
         model: response.model,
       },

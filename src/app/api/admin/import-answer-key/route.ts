@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/get-session'
+import { isAdmin } from '@/lib/check-admin'
 import { withRateLimit } from '@/lib/rate-limit-middleware'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
@@ -598,6 +599,19 @@ export async function POST(request: NextRequest) {
         const user = await getCurrentUser()
         if (!user) {
           return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+        }
+
+        // Verificar que el usuario sea admin
+        const userIsAdmin = await isAdmin()
+        if (!userIsAdmin) {
+          logger.warn(
+            { userId: user.id, email: user.email },
+            'Intento de importar clavijero sin permisos de admin'
+          )
+          return NextResponse.json(
+            { error: 'No tienes permisos para importar clavijeros. Se requieren permisos de administrador.' },
+            { status: 403 }
+          )
         }
 
         // Manejar FormData

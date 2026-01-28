@@ -156,6 +156,10 @@ export const EXAM_CONSTANTS = {
   REQUIRED_OPTIONS_COUNT: 4,
   MIN_QUESTIONS: 5,
   MAX_QUESTIONS: 80,
+  /** Longitud máxima del preview de material de estudio en el prompt de generación */
+  MATERIAL_PREVIEW_LENGTH: 200,
+  /** Longitud máxima del preview de respuesta de IA para logging */
+  AI_RESPONSE_PREVIEW_LENGTH: 500,
 } as const
 
 // Tipos de búsqueda permitidos

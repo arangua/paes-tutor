@@ -800,19 +800,12 @@ export async function parseRequestBody<T = Record<string, unknown>>(
   | { success: true; data: T }
   | { success: false; error: NextResponse }
 > {
-  // DEBUG: Log al inicio para confirmar que se ejecuta
-  console.error('[parseRequestBody] ===== ENTRY ===== context:', context, 'allowEmpty:', allowEmpty)
-  console.error('[parseRequestBody] request type:', typeof request, 'request.constructor.name:', request?.constructor?.name)
-  console.error('[parseRequestBody] _bodyText antes de validaciones:', (request as any)._bodyText?.substring?.(0, 50) || 'N/A')
-  
   // Validar Content-Type si está presente
   const contentType = request.headers.get('content-type')
-  console.error('[parseRequestBody] contentType:', contentType)
   // CORRECCIÓN: Validar que contentType sea un string válido antes de usar includes()
   if (contentType && typeof contentType === 'string' && contentType.length > 0) {
     try {
       if (!contentType.includes('application/json')) {
-        console.error('[parseRequestBody] Content-Type inválido, retornando error')
         logger.warn(
           { contentType, context: `notes/versions/${context}` },
           'Content-Type inválido para parsear JSON'
@@ -835,10 +828,7 @@ export async function parseRequestBody<T = Record<string, unknown>>(
   }
 
   // Validar tamaño del payload antes de parsear (prevenir DoS)
-  // CORRECCIÓN: Validar que request.headers.get() retorne un string válido
-  console.error('[parseRequestBody] Validando tamaño del payload...')
   const contentLength = request.headers.get('content-length')
-  console.error('[parseRequestBody] contentLength:', contentLength)
   if (contentLength && typeof contentLength === 'string' && contentLength.trim().length > 0) {
     try {
       const { SIZE_LIMITS } = await import('./config')
@@ -887,7 +877,8 @@ export async function parseRequestBody<T = Record<string, unknown>>(
     // Esto evita problemas con Request real de Node donde request.text() puede no funcionar
     // IMPORTANTE: Verificar _bodyText ANTES de intentar leer el body del Request
     // porque una vez que se lee el body del Request, ya no está disponible
-    const directBody = (request as any)._bodyText
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Fallback para test environments (happy-dom) donde _bodyText es inyectado
+    const directBody = (request as Record<string, unknown>)._bodyText as string | undefined
     if (directBody !== undefined && directBody !== null && typeof directBody === 'string' && directBody.length > 0) {
       try {
         body = JSON.parse(directBody)
@@ -895,17 +886,9 @@ export async function parseRequestBody<T = Record<string, unknown>>(
         body = directBody
       }
     } else {
-      console.error('[parseRequestBody] _bodyText no disponible, intentando request.text()...')
-      // Si no está disponible directamente, intentar request.text() (funciona con Request real de Node/undici)
-      // Esto es lo más compatible con Request estándar
+      // Si _bodyText no está disponible, intentar request.text() (funciona con Request real de Node/undici)
       try {
-        console.error('[parseRequestBody] Intentando request.text()...')
         const bodyText = await request.text()
-        console.error('[parseRequestBody] request.text() retornó:', {
-          text: bodyText?.substring(0, 100) || '(empty)',
-          length: bodyText?.length || 0,
-          type: typeof bodyText,
-        })
         if (bodyText && bodyText.length > 0) {
           try {
             body = JSON.parse(bodyText)
@@ -918,7 +901,8 @@ export async function parseRequestBody<T = Record<string, unknown>>(
             body = await request.json()
           } catch (jsonError) {
             // Si ambos fallan, usar fallback para tests (happy-dom)
-            const requestBody = (request as any)._bodyText || (request as any).body
+            const reqRecord = request as Record<string, unknown>
+            const requestBody = reqRecord._bodyText || reqRecord.body
             if (requestBody) {
               if (typeof requestBody === 'string') {
                 try {
@@ -940,7 +924,8 @@ export async function parseRequestBody<T = Record<string, unknown>>(
           body = await request.json()
         } catch (jsonError) {
           // Si ambos fallan, usar fallback para tests (happy-dom)
-          const requestBody = (request as any)._bodyText || (request as any).body
+          const reqRecord = request as Record<string, unknown>
+          const requestBody = reqRecord._bodyText || reqRecord.body
           if (requestBody) {
             if (typeof requestBody === 'string') {
               try {
@@ -959,16 +944,7 @@ export async function parseRequestBody<T = Record<string, unknown>>(
     }
     
     // Si allowEmpty es false y el body está vacío, retornar error
-    console.error('[parseRequestBody] Antes de verificar isEmptyBody:', {
-      body_type: typeof body,
-      body_value: body,
-      body_isNull: body === null,
-      body_isUndefined: body === undefined,
-      isEmptyBody_result: isEmptyBody(body),
-      allowEmpty,
-    })
     if (!allowEmpty && isEmptyBody(body)) {
-      console.error('[parseRequestBody] Body está vacío, retornando error')
       return createErrorResult(
         createErrorResponse(ERROR_MESSAGES.EMPTY_REQUEST_BODY, 400)
       )

@@ -61,24 +61,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
         const { user: dbUser, enrichedContext } = authContextResult.data
 
-        // DEBUG: Verificar estado del request antes de parseRequestBody
-        console.error('[compress/POST] Antes de parseRequestBody:', {
-          method: request.method,
-          url: request.url,
-          has_bodyText: !!(request as any)._bodyText,
-          bodyText_length: (request as any)._bodyText?.length || 0,
-          bodyUsed: (request as any).bodyUsed,
-          contentType: request.headers.get('content-type'),
-        })
-
         // Parsear body JSON
-        console.error('[compress/POST] Llamando a parseRequestBody...')
         const bodyResult = await parseRequestBody(request, 'POST')
-        console.error('[compress/POST] parseRequestBody retornó:', {
-          success: bodyResult.success,
-          error_status: bodyResult.success ? 'N/A' : bodyResult.error.status,
-          error_body: bodyResult.success ? 'N/A' : await bodyResult.error.text().catch(() => 'no se pudo leer'),
-        })
         if (!bodyResult.success) {
           return addTracingHeaders(bodyResult.error, requestId, Date.now() - startTime)
         }
