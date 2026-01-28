@@ -3,6 +3,9 @@ name: RFC Guard
 on:
   pull_request:
     types: [opened, edited, synchronize]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
 
 jobs:
   rfc-guard:
