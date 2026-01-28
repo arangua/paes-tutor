@@ -1,8 +1,8 @@
 # RFC-2026-002 — Remediación de hallazgos de Code Review con prevención de regresiones
 
-**Estado:** Accepted
+**Estado:** Draft
 **Autor:** Code Review Team
-**Fecha:** 2026-01-28
+**Fecha:** 2026-01-27
 
 ---
 
@@ -119,7 +119,7 @@ Orden de implementación por dependencias:
 |---|----------|-----|------|
 | 6 | timingSafeEqual lanza en longitudes distintas | Comparar longitudes antes, retornar false si difieren | Test: firma de largo incorrecto retorna false |
 | 7 | Encryption key cambia por reinicio | Usar key estática determinista en dev | Test: encrypt/decrypt sobrevive reload simulado |
-| 8 | Salt PBKDF2 hardcodeado | Generar salt aleatorio, almacenarlo con el ciphertext | Test: dos encriptaciones del mismo texto producen ciphertexts distintos |
+| 8 | Salt PBKDF2 hardcodeado | **Diferido a RFC-2026-003** — requiere migración de datos encriptados existentes; documentar limitación en código | N/A en esta fase |
 | 9 | refetch() es no-op | Agregar trigger state en dependencias del useEffect | Test: refetch dispara re-fetch |
 | 10 | Selección de oponente arbitraria | Selección aleatoria con seed o parámetro | Test: selección no siempre retorna el mismo |
 | 11 | maskApiKey sobre ciphertext | Llamar maskApiKey antes de encrypt | Test: últimos 4 chars son de la key original |
@@ -166,10 +166,12 @@ Orden de implementación por dependencias:
 ### Backward compatibility
 - Todas las APIs mantienen la misma firma
 - Los cambios en HTTP status codes (400→401) se consideran correcciones, no breaking changes
-- La encriptación (issue 7-8) requiere migración de datos existentes
+- La encriptación (issue 7) cambia el fallback de dev a valor estático — no afecta producción
+- Issue 8 (salt dinámico) **diferido formalmente a RFC-2026-003** por requerir migración de datos
 
 ### Migraciones necesarias
-- **Issue 7-8**: Si hay API keys encriptadas con la key temporal, necesitan re-encriptarse
+- **Issue 7**: Si hay datos encriptados con `dev-temp-key-<timestamp>`, ya están irrecuperables (bug original); el fix previene que esto siga ocurriendo
+- **Issue 8**: No se implementa en este RFC — requiere versionado del ciphertext + migración. Ver RFC-2026-003
 - **Issue 21**: Posibles errores de TypeScript que actualmente se ignoran
 
 ---
@@ -196,7 +198,7 @@ Orden de implementación por dependencias:
 5. **Tag de fase**: Git tag al completar cada fase
 
 ### Para riesgos específicos:
-- **Encriptación**: Crear script de migración con dry-run antes de aplicar
+- **Encriptación (CR-08)**: Diferido formalmente a RFC-2026-003; solo se aplica comentario `@security-debt` de trazabilidad
 - **ignoreBuildErrors**: Listar errores de TS primero, evaluar scope antes de remover
 - **Console patch**: Verificar que GlobalErrorHandler sigue capturando errores
 - **Auth**: Agregar logging detallado en middleware para detectar falsos 401
@@ -221,7 +223,7 @@ Orden de implementación por dependencias:
 ### Fase 2 — Altos
 10. Test + fix #6 (timingSafeEqual)
 11. Test + fix #7 (encryption key dev)
-12. Test + fix #8 (PBKDF2 salt)
+12. ~~Test + fix #8 (PBKDF2 salt)~~ → **Diferido a RFC-2026-003** (requiere migración de datos)
 13. Test + fix #9 (useExams refetch)
 14. Test + fix #10 (opponent selection)
 15. Test + fix #11 (maskApiKey)
@@ -287,10 +289,9 @@ Ningún rollback requiere:
 
 ## 12. Decisión
 
-**Resultado:** Accepted
+**Resultado:** Pending
 **Responsable de la decisión:** Maintainers del proyecto
-**Justificación:**
-Los hallazgos críticos de seguridad (auth bypass, SSRF) y runtime crashes requieren remediación inmediata. El plan de fases con test-first y commits atómicos minimiza el riesgo de regresiones mientras mantiene el estado Enterprise del proyecto.
+**Justificación:** Pendiente de aprobación. Transiciona a "Accepted" cuando el PR de docs sea aprobado/mergeado por maintainers.
 
 ---
 
