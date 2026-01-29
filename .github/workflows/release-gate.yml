@@ -19,6 +19,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -34,6 +36,11 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Fail if lockfile changed by install
+        run: |
+          git status --porcelain
+          git diff --name-only --exit-code package-lock.json
 
       - name: Debug lockfile fingerprint (post)
         run: |
