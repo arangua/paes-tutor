@@ -1,8 +1,8 @@
 name: release-drafter
 
 on:
-  pull_request:
-    branches: [main]
+  pull_request_target:
+    types: [opened, reopened, synchronize, edited]
   workflow_dispatch:
 
 permissions:
@@ -13,6 +13,10 @@ jobs:
   update_release_draft:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
       - uses: release-drafter/release-drafter@v6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
