@@ -1,8 +1,8 @@
 {
   "meta": {
-    "packageLockSha256": "8b09f69a6269eadd873ddd1d5b13ceccc64784ee1ed423a4334a698a7b0984f5"
+    "packageLockSha256": "090240dbe7cf24667eb8ee7bf9cded9924aab986a7f3e79c0764f3ce0603a044"
   },
-  "generatedAt": "2026-01-29T10:30:06.169Z",
+  "generatedAt": "2026-01-29T12:22:32.570Z",
   "node": "v24.11.1",
   "npm": "11.6.2",
   "count": 1148,
