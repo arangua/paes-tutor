@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { execSync } from "node:child_process";
+import fs from "node:fs";
 import { existsSync, readFileSync } from "node:fs";
 
 function sh(cmd) {
@@ -110,7 +111,7 @@ if (lockBeforeNormalized !== lockAfterNormalized) {
 // Restaurar el lockfile original si no había cambios reales
 if (lockBefore !== lockAfter) {
   // Solo diferencias de line endings, restaurar original
-  require("fs").writeFileSync("package-lock.json", lockBefore, "utf8");
+  fs.writeFileSync("package-lock.json", lockBefore, "utf8");
 }
 
 ok("Lockfile presente, lockfileVersion=3, política y consistencia OK.");
