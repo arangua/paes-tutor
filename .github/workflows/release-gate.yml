@@ -23,6 +23,12 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
+      - name: Snapshot package-lock (PRE)
+        shell: bash
+        run: |
+          echo "PRE_LOCK_HASH=$(sha256sum package-lock.json | cut -d' ' -f1)" >> $GITHUB_ENV
+          echo "PRE_LOCK_BYTES=$(stat -c%s package-lock.json)" >> $GITHUB_ENV
+
       - name: Debug checkout HEAD
         run: |
           echo "event_name=${{ github.event_name }}"
@@ -72,3 +78,20 @@ jobs:
         with:
           subject-path: |
             .next/**
+
+      - name: Verify package-lock immutability
+        shell: bash
+        run: |
+          POST_HASH=$(sha256sum package-lock.json | cut -d' ' -f1)
+          POST_BYTES=$(stat -c%s package-lock.json)
+
+          echo "PRE_HASH=$PRE_LOCK_HASH"
+          echo "POST_HASH=$POST_HASH"
+          echo "PRE_BYTES=$PRE_LOCK_BYTES"
+          echo "POST_BYTES=$POST_BYTES"
+
+          if [ "$PRE_LOCK_HASH" != "$POST_HASH" ] || [ "$PRE_LOCK_BYTES" != "$POST_BYTES" ]; then
+            echo "::error::package-lock.json was modified during Release Gate"
+            git diff -- package-lock.json || true
+            exit 1
+          fi
