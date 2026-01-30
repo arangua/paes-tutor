@@ -85,6 +85,16 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
+      - name: Debug lockfile fingerprint (PRE ci:release)
+        shell: bash
+        run: |
+          echo "PRE_CIRELEASE_SHA=$(git rev-parse HEAD)"
+          ls -la package-lock.json
+          echo "PRE_CIRELEASE_sha256=$(sha256sum package-lock.json | awk '{print $1}')"
+          echo "PRE_CIRELEASE_bytes=$(wc -c < package-lock.json)"
+          git status --porcelain
+          git diff --name-only --exit-code package-lock.json || true
+
       - name: Run Release Gate
         run: npm run ci:release
         env:
