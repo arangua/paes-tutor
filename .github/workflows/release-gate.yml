@@ -55,6 +55,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Snapshot package-lock (POST npm)
+        shell: bash
+        run: |
+          POST_NPM_HASH=$(sha256sum package-lock.json | cut -d' ' -f1)
+          POST_NPM_BYTES=$(stat -c%s package-lock.json)
+
+          echo "PRE_HASH=$PRE_LOCK_HASH"
+          echo "POST_NPM_HASH=$POST_NPM_HASH"
+          echo "PRE_BYTES=$PRE_LOCK_BYTES"
+          echo "POST_NPM_BYTES=$POST_NPM_BYTES"
+
+          if [ "$PRE_LOCK_HASH" != "$POST_NPM_HASH" ] || [ "$PRE_LOCK_BYTES" != "$POST_NPM_BYTES" ]; then
+            echo "::error::package-lock.json changed right after npm step. Blocking Release Gate."
+            git diff -- package-lock.json || true
+            exit 1
+          fi
+
       - name: Fail if lockfile changed by install
         run: |
           git status --porcelain
