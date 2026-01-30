@@ -17,10 +17,22 @@ jobs:
       attestations: write
 
     steps:
-      - name: Checkout code
+      - name: Checkout code (PR head)
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request' && format('refs/pull/{0}/head', github.event.pull_request.number) || github.sha }}
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Debug checkout HEAD
+        run: |
+          echo "event_name=${{ github.event_name }}"
+          echo "GITHUB_REF=$GITHUB_REF"
+          echo "GITHUB_SHA=$GITHUB_SHA"
+          echo "pr_head_sha=${{ github.event.pull_request.head.sha }}"
+          echo "checked_out_sha=$(git rev-parse HEAD)"
+          ls -la package-lock.json
+          echo "sha256=$(sha256sum package-lock.json | awk '{print $1}')"
+          echo "bytes=$(wc -c < package-lock.json)"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
