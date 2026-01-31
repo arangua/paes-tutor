@@ -2,7 +2,7 @@
   "meta": {
     "packageLockSha256": "8b09f69a6269eadd873ddd1d5b13ceccc64784ee1ed423a4334a698a7b0984f5"
   },
-  "generatedAt": "2026-01-30T15:46:03.567Z",
+  "generatedAt": "2026-01-31T12:30:35.717Z",
   "node": "v24.11.1",
   "npm": "11.6.2",
   "count": 1156,
@@ -331,9 +331,9 @@
     "@typescript-eslint/visitor-keys@8.50.0",
     "@unrs/resolver-binding-linux-x64-gnu@1.11.1",
     "@unrs/resolver-binding-linux-x64-musl@1.11.1",
-    "@upstash/core-analytics@0.0.10",
-    "@upstash/ratelimit@2.0.7",
-    "@upstash/redis@1.35.8",
+    "@upstash/core-analytics@v0.0.10",
+    "@upstash/ratelimit@v2.0.7",
+    "@upstash/redis@v1.35.8",
     "@vitejs/plugin-react@5.1.2",
     "@vitest/coverage-v8@4.0.16",
     "@vitest/expect@4.0.16",
