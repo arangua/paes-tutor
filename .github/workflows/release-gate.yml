@@ -11,11 +11,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
-    permissions:
-      contents: read
-      id-token: write
-      attestations: write
-
     steps:
       - name: Checkout code (PR head)
         uses: actions/checkout@v4
@@ -48,8 +43,6 @@ jobs:
 
       - name: Debug lockfile fingerprint (pre)
         run: |
-          echo "ref=$GITHUB_REF sha=$GITHUB_SHA"
-          ls -la package-lock.json
           node -e "const fs=require('fs'),c=require('crypto'); const b=fs.readFileSync('package-lock.json'); console.log('sha256=',c.createHash('sha256').update(b).digest('hex')); console.log('bytes=',b.length)"
 
       - name: Install dependencies
@@ -77,34 +70,13 @@ jobs:
           git status --porcelain
           git diff --name-only --exit-code package-lock.json
 
-      - name: Debug lockfile fingerprint (post)
-        run: |
-          ls -la package-lock.json
-          node -e "const fs=require('fs'),c=require('crypto'); const b=fs.readFileSync('package-lock.json'); console.log('sha256=',c.createHash('sha256').update(b).digest('hex')); console.log('bytes=',b.length)"
-
       - name: Generate Prisma Client
         run: npx prisma generate
-
-      - name: Debug lockfile fingerprint (PRE ci:release)
-        shell: bash
-        run: |
-          echo "PRE_CIRELEASE_SHA=$(git rev-parse HEAD)"
-          ls -la package-lock.json
-          echo "PRE_CIRELEASE_sha256=$(sha256sum package-lock.json | awk '{print $1}')"
-          echo "PRE_CIRELEASE_bytes=$(wc -c < package-lock.json)"
-          git status --porcelain
-          git diff --name-only --exit-code package-lock.json || true
 
       - name: Run Release Gate
         run: npm run ci:release
         env:
           NODE_ENV: production
-
-      - name: Attest build provenance
-        uses: actions/attest-build-provenance@v1
-        with:
-          subject-path: |
-            .next/**
 
       - name: Verify package-lock immutability
         shell: bash
@@ -112,13 +84,39 @@ jobs:
           POST_HASH=$(sha256sum package-lock.json | cut -d' ' -f1)
           POST_BYTES=$(stat -c%s package-lock.json)
 
-          echo "PRE_HASH=$PRE_LOCK_HASH"
-          echo "POST_HASH=$POST_HASH"
-          echo "PRE_BYTES=$PRE_LOCK_BYTES"
-          echo "POST_BYTES=$POST_BYTES"
-
           if [ "$PRE_LOCK_HASH" != "$POST_HASH" ] || [ "$PRE_LOCK_BYTES" != "$POST_BYTES" ]; then
             echo "::error::package-lock.json was modified during Release Gate"
             git diff -- package-lock.json || true
             exit 1
           fi
+
+  write_deps_snapshot_baseline:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    name: Write deps snapshot baseline (linux)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node 24.11.1
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.11.1
+          cache: npm
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Write deps snapshot baseline
+        run: npm run guard:deps-snapshot:write
+
+      - name: Upload baseline artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DEPS_SNAPSHOT-linux-node24
+          path: docs/ci/DEPS_SNAPSHOT.json
+          if-no-files-found: error
+          retention-days: 3
