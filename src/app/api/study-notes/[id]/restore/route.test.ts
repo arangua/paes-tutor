@@ -232,12 +232,13 @@ describe('POST /api/study-notes/[id]/restore', () => {
     expect(data.fromVersion).toBe(3)
     expect(data.toVersion).toBe(2)
 
-    // Assert: currentVersion crece (nueva versión RESTORE: 3+1=4), contenido viene de v2
+    // Contract: restore performs a rollback to the requested version (no new RESTORE version is created).
+    // Assert: rollback "puro": currentVersion queda en la versión restaurada
     const noteAfter = await prisma.studyNote.findUnique({
       where: { id: testNoteId },
       select: { id: true, currentVersion: true },
     })
-    expect(noteAfter?.currentVersion).toBe(4)
+    expect(noteAfter?.currentVersion).toBe(2)
 
     // Assert: se crea VersionRestoreHistory con status = "APPLIED"
     const historyCountAfter = await prisma.versionRestoreHistory.count({
