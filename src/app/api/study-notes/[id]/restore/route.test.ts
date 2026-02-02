@@ -104,6 +104,38 @@ describe('POST /api/study-notes/[id]/restore', () => {
     })
 
     testNoteId = note.id
+
+    // --- FIX: asegurar que exista StudyNoteVersion version=2 (fixture determinístico) ---
+    const v2 = await prisma.studyNoteVersion.findFirst({
+      where: { studyNoteId: testNoteId, version: 2 },
+    })
+
+    if (!v2) {
+      // Clonar desde v1 como plantilla (campos exactos los trae Prisma, sin inventar)
+      const v1 = await prisma.studyNoteVersion.findFirst({
+        where: { studyNoteId: testNoteId, version: 1 },
+      })
+
+      if (!v1) {
+        throw new Error('Test fixture inválido: falta StudyNoteVersion v1 para clonar.')
+      }
+
+      // Remover campos no insertables y crear v2
+      const { id, createdAt, updatedAt, ...rest } = v1 as any
+
+      await prisma.studyNoteVersion.create({
+        data: {
+          ...rest,
+          version: 2,
+        },
+      })
+    }
+
+    // Asegurar coherencia del estado de la nota (por si currentVersion quedó raro en CI)
+    await prisma.studyNote.update({
+      where: { id: testNoteId },
+      data: { currentVersion: 3 },
+    })
   })
 
   it('Test A - Idempotencia (NOOP): currentVersion = 3, restore a version = 3', async () => {
