@@ -1,9 +1,15 @@
 #!/usr/bin/env node
-import { execSync } from "node:child_process";
+import { execSync, execFileSync } from "node:child_process";
 import fs from "node:fs";
 import { existsSync, readFileSync } from "node:fs";
 
+const ALLOWED_GIT_PREFIX = "git ";
+
 function sh(cmd) {
+  const trimmed = typeof cmd === "string" ? cmd.trim() : "";
+  if (!trimmed.startsWith(ALLOWED_GIT_PREFIX)) {
+    throw new Error(`guard-lockfile-policy: comando no permitido (allowlist: ${ALLOWED_GIT_PREFIX.trim()})`);
+  }
   return execSync(cmd, { stdio: "pipe", encoding: "utf8" }).trim();
 }
 
@@ -59,11 +65,15 @@ if (pkgChanged && !lockChanged) {
 // Guardar estado actual antes de regenerar
 const lockBefore = readFileSync("package-lock.json", "utf8");
 
+const npmCmd = process.platform === "win32" ? "npm.cmd" : "npm";
 try {
-  execSync("npm install --package-lock-only --ignore-scripts --no-audit --fund=false", {
-    stdio: "pipe",
-    encoding: "utf8",
-  });
+  execFileSync(npmCmd, [
+    "install",
+    "--package-lock-only",
+    "--ignore-scripts",
+    "--no-audit",
+    "--fund=false",
+  ], { stdio: "pipe", encoding: "utf8", shell: true });
 } catch (e) {
   fail(
     [
