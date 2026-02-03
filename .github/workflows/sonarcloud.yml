@@ -31,7 +31,7 @@ jobs:
       - name: Run tests with coverage (for Sonar)
         timeout-minutes: 25
         shell: bash
-        run: npm run test:coverage -- --runInBand --testTimeout=30000
+        run: npm run test:coverage -- --no-file-parallelism --testTimeout=30000
 
       - name: Assert LCOV exists
         shell: bash
