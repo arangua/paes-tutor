@@ -36,6 +36,9 @@ jobs:
           echo "Running coverage with bounded timeout to avoid CI hangs..."
           timeout 20m npm run test:coverage -- --runInBand --testTimeout=30000
 
+      - name: Run tests with coverage (for Sonar)
+        run: npm run test:coverage
+
       - name: Assert LCOV exists
         shell: bash
         run: |
