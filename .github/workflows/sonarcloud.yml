@@ -30,7 +30,7 @@ jobs:
 
       - name: Run tests with coverage
         timeout-minutes: 15
-        run: npm run test:coverage -- --pool=threads --testTimeout=30000
+        run: npm run test:coverage -- --pool=threads --coverage.provider=istanbul --testTimeout=30000
 
       - name: Assert LCOV exists
         shell: bash
