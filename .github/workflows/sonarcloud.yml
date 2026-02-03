@@ -19,7 +19,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24.11.1'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
@@ -28,20 +28,27 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
-      - name: Run tests (without coverage due to open handles issue)
-        timeout-minutes: 10
-        run: npm run test:run -- --pool=threads --testTimeout=30000
+      - name: Run tests with coverage (bounded)
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Running coverage with bounded timeout to avoid CI hangs..."
+          timeout 20m npm run test:coverage -- --runInBand --testTimeout=30000
 
-      # TODO: Re-enable coverage once open handles issue is resolved
-      # See: https://github.com/arangua/paes-tutor/issues/NEW
-      # - name: Run tests with coverage
-      #   run: npm run test:coverage
+      - name: Run tests with coverage (for Sonar)
+        shell: bash
+        run: |
+          timeout 20m npm run test:coverage -- --testTimeout=30000
 
-      - name: SonarCloud Scan (without coverage metrics)
-        uses: SonarSource/sonarcloud-github-action@master
+      - name: Assert LCOV exists
+        shell: bash
+        run: |
+          ls -la coverage || true
+          test -f coverage/lcov.info && echo "OK: coverage/lcov.info exists" || (echo "ERROR: coverage/lcov.info missing" && exit 1)
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@v5.0.0
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        with:
-          projectBaseDir: .
 
