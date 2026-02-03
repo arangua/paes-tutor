@@ -29,8 +29,14 @@ jobs:
         run: npx prisma generate
 
       - name: Run tests with coverage
-        run: npm run test:coverage
-        continue-on-error: true
+        timeout-minutes: 15
+        run: npm run test:coverage -- --testTimeout=30000
+
+      - name: Assert LCOV exists
+        shell: bash
+        run: |
+          ls -la coverage || true
+          test -f coverage/lcov.info && echo "OK: coverage/lcov.info exists" || (echo "ERROR: coverage/lcov.info missing" && exit 1)
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
