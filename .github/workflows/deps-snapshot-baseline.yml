@@ -1,0 +1,33 @@
+name: Write deps snapshot baseline (linux)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  write:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node 24.11.1
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.11.1
+          cache: npm
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Write deps snapshot baseline
+        run: npm run guard:deps-snapshot:write
+
+      - name: Upload baseline artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DEPS_SNAPSHOT-linux-node24
+          path: docs/ci/DEPS_SNAPSHOT.json
+          if-no-files-found: error
+          retention-days: 3

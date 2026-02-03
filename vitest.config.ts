@@ -117,9 +117,17 @@ export default defineConfig({
     excludeStrykerPlugin(),
   ],
   test: {
+    deps: {
+      optimizer: {
+        client: { enabled: false },
+        ssr: { enabled: false },
+      },
+    },
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./vitest.setup.ts', './src/test/setup.ts'],
+    // Force exit in CI to prevent hanging after coverage collection
+    globalTeardown: process.env.CI ? './vitest.global-teardown.ts' : undefined,
     // ✅ Enterprise: Asegurar que el mock de next/server se ejecute antes de cualquier import
     sequence: {
       hooks: 'stack',
