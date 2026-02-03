@@ -1,6 +1,11 @@
 import '@testing-library/jest-dom/vitest'
-import { afterEach, vi, beforeAll, beforeEach } from 'vitest'
+import { afterEach, afterAll, vi, beforeAll, beforeEach } from 'vitest'
 import { cleanup } from '@testing-library/react'
+
+// Mock global: por defecto, todos los tests corren como admin
+vi.mock('@/lib/check-admin', () => ({
+  isAdmin: vi.fn().mockResolvedValue(true),
+}))
 
 // Declaraciones globales para mocks persistentes
 declare global {
@@ -299,4 +304,9 @@ beforeEach(() => {
   // ✅ Default seguro para el repositorio completo: NO autenticado
   globalThis.__mockGetAuthenticatedUserWithStudent__?.mockReset()
   globalThis.__mockGetAuthenticatedUserWithStudent__?.mockResolvedValue(null)
+})
+
+// Cierre final (evitar handles huérfanos / cuelgues en CI)
+afterAll(() => {
+  // server.close(); // CRÍTICO si usas MSW
 })
