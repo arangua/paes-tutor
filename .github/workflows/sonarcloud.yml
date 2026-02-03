@@ -33,16 +33,16 @@ jobs:
         shell: bash
         run: |
           # Run vitest with timeout, kill if it hangs after tests complete
-          # The process hangs due to esbuild not exiting, but coverage is written
-          timeout --signal=SIGTERM --kill-after=30s 5m \
-            npm run test:coverage -- --pool=threads --coverage.provider=istanbul --testTimeout=30000 \
+          # v8 coverage writes files before process hangs (unlike istanbul+esbuild)
+          timeout --signal=SIGTERM --kill-after=30s 7m \
+            npm run test:coverage -- --pool=threads --testTimeout=30000 \
             || EXIT_CODE=$?
 
           # Exit code 124 means timeout killed it (expected if it hangs)
           # Exit code 0 means it finished normally
           # Any other code is a real failure
           if [ "${EXIT_CODE:-0}" -eq 124 ]; then
-            echo "::warning::Vitest was killed by timeout (expected due to esbuild hang)"
+            echo "::warning::Vitest was killed by timeout (expected due to open handles)"
           elif [ "${EXIT_CODE:-0}" -ne 0 ]; then
             echo "::error::Tests failed with exit code ${EXIT_CODE}"
             exit ${EXIT_CODE}
@@ -51,8 +51,10 @@ jobs:
           # Verify coverage was generated before timeout
           if [ -f coverage/lcov.info ]; then
             echo "Coverage generated successfully"
+            ls -la coverage/
           else
             echo "::error::Coverage file not generated"
+            ls -la coverage/ || echo "coverage/ directory does not exist"
             exit 1
           fi
 
