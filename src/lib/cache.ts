@@ -153,56 +153,39 @@ async function getCacheInstance(): Promise<CacheAdapter> {
   return cachePromise
 }
 
+let memoryCacheCleanupInterval: NodeJS.Timeout | null = null
+
+export function teardownMemoryCacheCleanup() {
+  if (memoryCacheCleanupInterval) {
+    clearInterval(memoryCacheCleanupInterval)
+    memoryCacheCleanupInterval = null
+  }
+}
+
 function setupMemoryCacheCleanup(cache: MemoryCacheAdapter) {
+  // En tests/CI NO instalamos intervalos (dejan handles abiertos y cuelgan Vitest)
+  if (process.env.NODE_ENV === 'test' || process.env.CI === 'true') return
+
   // Limpiar caché cada 10 minutos (solo en Node.js runtime)
   if (
     typeof setInterval !== 'undefined' &&
     typeof process !== 'undefined' &&
     process.env.NEXT_RUNTIME !== 'edge'
   ) {
-    const cleanupInterval = setInterval(() => {
-      cache.cleanup()
-    }, CACHE_CLEANUP_INTERVAL_MS)
+    // Idempotente: evitar múltiples intervalos si se llama varias veces
+    if (!memoryCacheCleanupInterval) {
+      memoryCacheCleanupInterval = setInterval(() => {
+        cache.cleanup()
+      }, CACHE_CLEANUP_INTERVAL_MS)
+    }
 
     // Limpiar en caso de que el proceso termine
     if (typeof process !== 'undefined' && process.on) {
       process.on('SIGTERM', () => {
-        clearInterval(cleanupInterval)
+        teardownMemoryCacheCleanup()
       })
       process.on('SIGINT', () => {
-        clearInterval(cleanupInterval)
-      })
-    }
-  }
-}
-
-// Si es memoria, configurar cleanup periódico
-// NOTA: Este setInterval se ejecuta a nivel de módulo y no se limpia explícitamente
-// Esto es intencional: el cleanup del caché debe ejecutarse mientras la aplicación esté corriendo
-// En producción, considerar usar un sistema de tareas programadas (cron) o un worker thread
-const ENABLE_CACHE_CLEANUP_INTERVAL =
-  process.env.NODE_ENV === 'test' ? false : process.env.ENABLE_CACHE_CLEANUP_INTERVAL === 'true'
-
-if (ENABLE_CACHE_CLEANUP_INTERVAL) {
-  // Limpiar caché cada 10 minutos (solo en Node.js runtime)
-  if (
-    typeof setInterval !== 'undefined' &&
-    typeof process !== 'undefined' &&
-    process.env.NEXT_RUNTIME !== 'edge'
-  ) {
-    // Guardar referencia al interval para poder limpiarlo si es necesario
-    // En Next.js, esto se ejecuta una vez al cargar el módulo
-    const cleanupInterval = setInterval(() => {
-      cache.cleanup()
-    }, CACHE_CLEANUP_INTERVAL_MS)
-
-    // Limpiar en caso de que el proceso termine (opcional, pero buena práctica)
-    if (typeof process !== 'undefined' && process.on) {
-      process.on('SIGTERM', () => {
-        clearInterval(cleanupInterval)
-      })
-      process.on('SIGINT', () => {
-        clearInterval(cleanupInterval)
+        teardownMemoryCacheCleanup()
       })
     }
   }
