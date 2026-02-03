@@ -116,13 +116,13 @@ export default defineConfig({
     tsconfigPaths(),
     excludeStrykerPlugin(),
   ],
-  deps: {
-    optimizer: {
-      web: { enabled: false },
-      ssr: { enabled: false },
-    },
-  },
   test: {
+    deps: {
+      optimizer: {
+        client: { enabled: false },
+        ssr: { enabled: false },
+      },
+    },
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./vitest.setup.ts', './src/test/setup.ts'],
