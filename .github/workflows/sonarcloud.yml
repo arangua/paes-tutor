@@ -36,6 +36,12 @@ jobs:
           echo "Running coverage with bounded timeout to avoid CI hangs..."
           timeout 20m npm run test:coverage -- --runInBand --testTimeout=30000
 
+      - name: Assert LCOV exists
+        shell: bash
+        run: |
+          ls -la coverage || true
+          test -f coverage/lcov.info && echo "OK: coverage/lcov.info exists" || (echo "ERROR: coverage/lcov.info missing" && exit 1)
+
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v5.0.0
         env:
