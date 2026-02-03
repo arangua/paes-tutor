@@ -116,6 +116,12 @@ export default defineConfig({
     tsconfigPaths(),
     excludeStrykerPlugin(),
   ],
+  deps: {
+    optimizer: {
+      web: { enabled: false },
+      ssr: { enabled: false },
+    },
+  },
   test: {
     environment: 'jsdom',
     globals: true,
