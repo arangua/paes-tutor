@@ -111,9 +111,18 @@ child.stderr.on("data", (chunk) => {
 child.on("exit", (code, signal) => {
   clearTimeout(t);
 
-  // Si Vitest salió normal (no lo matamos), respetamos exit code.
-  if (!signal) process.exit(code ?? decideExit());
+  // Logging mínimo para que la próxima vez no tengamos que adivinar
+  const lcovExists = fs.existsSync(lcovPath);
+  console.log(
+    `[watchdog] child exit: code=${code} signal=${signal ?? "none"} lcov=${lcovExists} sawFailure=${sawFailureMarker}`
+  );
 
-  // Si lo matamos (signal), decidimos por lcov + no FAIL.
+  // Si Vitest salió OK, OK.
+  if (signal == null && code === 0) {
+    process.exit(0);
+  }
+
+  // Si Vitest salió con code != 0 o lo matamos por señal:
+  // decidir por evidencia (lcov + no FAIL) para no caer en falsos negativos.
   process.exit(decideExit());
 });
