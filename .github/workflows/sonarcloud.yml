@@ -60,11 +60,6 @@ jobs:
         run: |
           test -s coverage/lcov.info
 
-      - name: Run full test suite (no coverage)
-        shell: bash
-        run: npm run test -- --no-file-parallelism --testTimeout=30000
-        timeout-minutes: 10
-
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
         env:
