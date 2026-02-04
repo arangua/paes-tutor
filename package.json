@@ -32,6 +32,8 @@
     "test:prisma": "vitest run src/lib/__tests__/prisma.test.ts prisma/__tests__/schema-validation.test.ts",
     "test:run:silent": "powershell -ExecutionPolicy Bypass -File scripts/run-tests-silent.ps1",
     "test:run:optimized": "powershell -ExecutionPolicy Bypass -File scripts/run-tests-optimized.ps1",
+    "test:smoke": "vitest run --no-file-parallelism --testTimeout=30000 src/app/api/sentry-smoke/route.test.ts",
+    "test:smoke:coverage": "vitest run --coverage --no-file-parallelism --testTimeout=30000 src/app/api/sentry-smoke/route.test.ts",
     "test:coverage": "vitest run --coverage",
     "test:coverage:ui": "vitest --coverage --ui",
     "test:e2e": "playwright test",
