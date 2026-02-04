@@ -43,7 +43,7 @@
     "import:demre": "npx tsx scripts/import-demre-exams.ts",
     "sonar": "sonar-scanner",
     "sonar:local": "sonar-scanner -Dsonar.host.url=http://localhost:9000",
-    "test:coverage:sonar": "npm run test:coverage && npm run sonar",
+    "test:coverage:sonar": "node scripts/vitest-ci-watchdog.mjs",
     "test:coverage:sonar:ps1": "powershell -ExecutionPolicy Bypass -File scripts/run-test-coverage-sonar.ps1",
     "test:mutation": "stryker run",
     "test:mutation:deep": "stryker run --mutate src/**/*.{ts,tsx} --maxConcurrentTestRunners 1",

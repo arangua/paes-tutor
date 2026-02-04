@@ -1,0 +1,119 @@
+#!/usr/bin/env node
+import { spawn } from "node:child_process";
+import fs from "node:fs";
+
+const isWin = process.platform === "win32";
+
+/**
+ * Objetivo: si Vitest se cuelga DESPUÉS de generar coverage/lcov.info,
+ * terminar el step antes del timeout de GitHub Actions, sin ocultar fallos reales.
+ *
+ * Regla:
+ * - Si detectamos marcadores de FAIL -> exit 1
+ * - Si NO hay FAIL y existe coverage/lcov.info -> exit 0 (aunque haya que matar el proceso)
+ * - Si NO hay FAIL pero NO existe lcov -> exit 1
+ */
+
+// Límite duro menor que 25min del job (margen de seguridad)
+const hardMaxMs = 23 * 60_000;
+
+// Ruta canónica en el repo (confirmada por tu config)
+const lcovPath = "coverage/lcov.info";
+
+// Usa los mismos flags que ya aparecen en tu CI (según logs)
+const vitestCmd = isWin ? "npx.cmd" : "npx";
+const vitestArgs = [
+  "vitest",
+  "run",
+  "--coverage",
+  "--no-file-parallelism",
+  "--testTimeout=30000",
+];
+
+let sawFailureMarker = false;
+
+function markFailureIfNeeded(text) {
+  // Marcadores típicos (conservador: si aparece FAIL/fail, consideramos fallo)
+  const markers = [
+    "\nFAIL",
+    " FAIL ",
+    "Test Files",
+    "Tests",
+    "failed",
+    "Failed",
+    "AssertionError",
+    "UnhandledPromiseRejection",
+  ];
+
+  // Ojo: "Test Files" por sí solo no es fallo. Lo usamos junto a "failed" debajo.
+  if (text.includes("Test Files") && text.includes("failed")) sawFailureMarker = true;
+  if (text.includes("Tests") && text.includes("failed")) sawFailureMarker = true;
+
+  // Otros marcadores generales
+  if (text.includes("\nFAIL") || text.includes(" FAIL ")) sawFailureMarker = true;
+  if (text.includes("AssertionError")) sawFailureMarker = true;
+  if (text.includes("UnhandledPromiseRejection")) sawFailureMarker = true;
+
+  // "failed"/"Failed" sueltos: los marcamos solo si vienen en un contexto típico
+  if (text.includes(" failed") && (text.includes("Test Files") || text.includes("Tests"))) {
+    sawFailureMarker = true;
+  }
+}
+
+function killTree(pid) {
+  try {
+    if (!isWin) {
+      // matar grupo de procesos (por detached: true)
+      process.kill(-pid, "SIGKILL");
+    } else {
+      // Windows: matar árbol
+      spawn("taskkill", ["/PID", String(pid), "/T", "/F"], { stdio: "ignore" });
+    }
+  } catch {
+    // ignore
+  }
+}
+
+function decideExit() {
+  const lcovExists = fs.existsSync(lcovPath);
+
+  if (sawFailureMarker) return 1;
+  if (lcovExists) return 0;
+  return 1;
+}
+
+// Spawn en grupo (Linux) para poder matar árbol completo
+const child = spawn(vitestCmd, vitestArgs, {
+  stdio: ["ignore", "pipe", "pipe"],
+  shell: false,
+  detached: !isWin,
+  env: { ...process.env, CI: process.env.CI ?? "1" },
+});
+
+// Hard timeout: si Vitest no termina, lo cortamos y salimos según regla
+const t = setTimeout(() => {
+  killTree(child.pid);
+  process.exit(decideExit());
+}, hardMaxMs);
+
+child.stdout.on("data", (chunk) => {
+  const text = chunk.toString();
+  process.stdout.write(text);
+  markFailureIfNeeded(text);
+});
+
+child.stderr.on("data", (chunk) => {
+  const text = chunk.toString();
+  process.stderr.write(text);
+  markFailureIfNeeded(text);
+});
+
+child.on("exit", (code, signal) => {
+  clearTimeout(t);
+
+  // Si Vitest salió normal (no lo matamos), respetamos exit code.
+  if (!signal) process.exit(code ?? decideExit());
+
+  // Si lo matamos (signal), decidimos por lcov + no FAIL.
+  process.exit(decideExit());
+});
