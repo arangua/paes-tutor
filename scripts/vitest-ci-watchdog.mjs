@@ -16,7 +16,7 @@ const isWin = process.platform === "win32";
  */
 
 // Límite duro menor que 25min del job (margen de seguridad)
-const hardMaxMs = 23 * 60_000;
+const hardMaxMs = 20 * 60_000;
 
 // Ruta canónica en el repo (confirmada por tu config)
 const lcovPath = path.resolve(process.cwd(), "coverage/lcov.info");
@@ -27,6 +27,7 @@ const vitestArgs = [
   "vitest",
   "run",
   "--coverage",
+  "--coverage.provider=istanbul",
   "--no-file-parallelism",
   "--testTimeout=30000",
 ];
