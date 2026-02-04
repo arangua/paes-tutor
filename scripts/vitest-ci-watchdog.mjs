@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
 import fs from "node:fs";
+import path from "node:path";
 
 const isWin = process.platform === "win32";
 
@@ -18,7 +19,7 @@ const isWin = process.platform === "win32";
 const hardMaxMs = 23 * 60_000;
 
 // Ruta canónica en el repo (confirmada por tu config)
-const lcovPath = "coverage/lcov.info";
+const lcovPath = path.resolve(process.cwd(), "coverage/lcov.info");
 
 // Usa los mismos flags que ya aparecen en tu CI (según logs)
 const vitestCmd = isWin ? "npx.cmd" : "npx";
@@ -74,8 +75,29 @@ function killTree(pid) {
   }
 }
 
+function debugCoverageDir() {
+  try {
+    const covDir = path.resolve(process.cwd(), "coverage");
+    const exists = fs.existsSync(covDir);
+    console.log(`[watchdog] cwd=${process.cwd()}`);
+    console.log(`[watchdog] lcovPath=${lcovPath}`);
+    console.log(`[watchdog] coverageDir=${covDir} exists=${exists}`);
+    if (exists) {
+      const files = fs.readdirSync(covDir);
+      console.log(`[watchdog] coverageDirFiles=${JSON.stringify(files)}`);
+    }
+  } catch (e) {
+    console.log(`[watchdog] debugCoverageDir error: ${e?.message ?? e}`);
+  }
+}
+
 function decideExit() {
   const lcovExists = fs.existsSync(lcovPath);
+
+  if (!lcovExists) {
+    console.log("[watchdog] lcov missing at decision time");
+    debugCoverageDir();
+  }
 
   if (sawFailureMarker) return 1;
   if (lcovExists) return 0;
@@ -93,7 +115,11 @@ const child = spawn(vitestCmd, vitestArgs, {
 // Hard timeout: si Vitest no termina, lo cortamos y salimos según regla
 const t = setTimeout(() => {
   killTree(child.pid);
-  process.exit(decideExit());
+
+  // Espera breve para que el filesystem termine de escribir/flush del coverage
+  setTimeout(() => {
+    process.exit(decideExit());
+  }, 3000);
 }, hardMaxMs);
 
 child.stdout.on("data", (chunk) => {
@@ -111,18 +137,14 @@ child.stderr.on("data", (chunk) => {
 child.on("exit", (code, signal) => {
   clearTimeout(t);
 
-  // Logging mínimo para que la próxima vez no tengamos que adivinar
   const lcovExists = fs.existsSync(lcovPath);
   console.log(
     `[watchdog] child exit: code=${code} signal=${signal ?? "none"} lcov=${lcovExists} sawFailure=${sawFailureMarker}`
   );
 
   // Si Vitest salió OK, OK.
-  if (signal == null && code === 0) {
-    process.exit(0);
-  }
+  if (signal == null && code === 0) process.exit(0);
 
-  // Si Vitest salió con code != 0 o lo matamos por señal:
-  // decidir por evidencia (lcov + no FAIL) para no caer en falsos negativos.
+  // En cualquier otro caso, decidir por evidencia
   process.exit(decideExit());
 });
