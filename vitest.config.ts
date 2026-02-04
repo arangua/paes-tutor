@@ -127,7 +127,9 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./vitest.setup.ts', './src/test/setup.ts'],
     // Force exit in CI to prevent hanging after coverage collection
-    globalTeardown: process.env.CI ? './vitest.global-teardown.ts' : undefined,
+    globalTeardown: process.env.CI
+      ? ['./vitest.global-teardown.ts', './test/why-is-node-running.teardown.ts']
+      : ['./test/why-is-node-running.teardown.ts'],
     // ✅ Enterprise: Asegurar que el mock de next/server se ejecute antes de cualquier import
     sequence: {
       hooks: 'stack',
@@ -189,8 +191,10 @@ export default defineConfig({
       },
     },
     coverage: {
-      provider: 'v8',
-      reporter: ['text', 'json', 'html', 'lcov'],
+      provider: process.env.CI ? 'istanbul' : 'v8',
+      reporter: ['lcov', 'text', 'html'],
+      reportsDirectory: 'coverage',
+      clean: true,
       exclude: [
         '**/*.d.ts',
         '**/*.test.*',
