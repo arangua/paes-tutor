@@ -34,25 +34,21 @@ jobs:
           rm -rf coverage || true
           mkdir -p coverage
 
-          echo "Running vitest with coverage (watchdog)..."
-          # Importante: timeout devuelve exit code 124 si mata el proceso.
-          # Queremos aceptar 124 SOLO si ya existe coverage/lcov.info.
           set +e
           timeout --signal=SIGTERM 9m bash -lc \
-            "DEBUG=vitest:* NODE_OPTIONS=\"--trace-warnings\" \
-            npx vitest run --coverage \
-              --no-file-parallelism \
-              --pool=forks --poolOptions.forks.singleFork=true \
-              --testTimeout=30000 \
-              --reporter=verbose"
-          CODE=$?
+            "DEBUG=vitest:* NODE_OPTIONS='--trace-warnings' npx vitest run --coverage --no-file-parallelism --pool=forks --poolOptions.forks.singleFork=true --testTimeout=30000 --reporter=verbose" \
+            2>&1 | tee vitest-ci.log
+          CODE=${PIPESTATUS[0]}
           set -e
 
           echo "vitest/timeout exit code: $CODE"
 
+          echo "---- vitest tail (last 120 lines) ----"
+          tail -n 120 vitest-ci.log || true
+          echo "--------------------------------------"
+
           if [ -f coverage/lcov.info ] && [ -s coverage/lcov.info ]; then
             echo "✅ Found coverage/lcov.info (non-empty). Proceeding."
-            # (opcional) info rápida para debug
             wc -l coverage/lcov.info || true
           else
             echo "::error title=LCOV missing::coverage/lcov.info was not produced (or is empty)."
