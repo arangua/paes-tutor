@@ -33,6 +33,12 @@ import Link from 'next/link'
 import { Breadcrumbs } from '@/components/layout/breadcrumbs'
 import { toast } from 'sonner'
 
+export const IMPORT_PROGRESS_TOAST_ID = "import-progress";
+
+export function dismissImportProgressToast(toastLib: { dismiss: (id?: string) => void } ) {
+  toastLib.dismiss(IMPORT_PROGRESS_TOAST_ID);
+}
+
 interface ExamToImport {
   pdfUrl: string
   pdfFile: File | null
@@ -371,7 +377,7 @@ export default function ImportExamsPage() {
       ])
     } finally {
       setLoading(false)
-      toast.dismiss('import-progress')
+      dismissImportProgressToast(toast);
     }
   }
 
