@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -103,6 +103,7 @@ export default function ImportExamsPage() {
       details?: string
     }>
   >([])
+  const importInFlightRef = useRef<AbortController | null>(null)
 
   const addExam = () => {
     setExams([
@@ -257,15 +258,6 @@ export default function ImportExamsPage() {
     }
   }
 
-  // Helper: Procesar respuesta de importación
-  const processImportResponse = async (response: Response): Promise<ImportResult[]> => {
-    const data = await response.json()
-    if (!response.ok) {
-      throw new Error(getErrorMessageFromResponse(response, data))
-    }
-    return data.results || []
-  }
-
   const handleImport = async () => {
     const errors = validateExams(exams)
     if (errors.length > 0) {
@@ -280,44 +272,92 @@ export default function ImportExamsPage() {
       return
     }
 
+    // Guard anti doble click / doble ejecución (Caso A)
+    if (loading) return
+
     setLoading(true)
     setResults([])
 
-    try {
-      toast.loading(`Iniciando importación de ${exams.length} examen(es)...`, { id: 'import-progress' })
-      
-      const hasFiles = exams.some(exam => exam.inputType === 'file' && exam.pdfFile)
-      let response: Response
+    // Abort de request anterior si quedó colgada
+    importInFlightRef.current?.abort()
+    const controller = new AbortController()
+    importInFlightRef.current = controller
 
+    const qs = typeof window !== 'undefined' ? window.location.search : ''
+    const requestId =
+      typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : String(Date.now())
+    console.log('[import] start', { requestId, qs })
+
+    try {
+      const timeoutMs = 60_000
+      const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs)
+
+      const hasFiles = exams.some(exam => exam.inputType === 'file' && exam.pdfFile)
+      toast.loading(`Iniciando importación de ${exams.length} examen(es)...`, { id: 'import-progress' })
+
+      let response: Response
       if (hasFiles) {
         const formData = buildFormData(exams)
-        response = await fetch('/api/admin/import-exams', {
+        response = await fetch(`/api/admin/import-exams${qs}`, {
           method: 'POST',
           body: formData,
+          signal: controller.signal,
         })
       } else {
-        response = await fetch('/api/admin/import-exams', {
+        response = await fetch(`/api/admin/import-exams${qs}`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ exams }),
+          signal: controller.signal,
         })
       }
 
-      const results = await processImportResponse(response)
-      showImportResults(results)
+      window.clearTimeout(timeoutId)
+      console.log('[import] response', { requestId, status: response.status })
+
+      if (!response.ok) {
+        const text = await response.text().catch(() => '')
+        throw new Error(`HTTP ${response.status}: ${text}`)
+      }
+
+      const contentType = response.headers.get('content-type') || ''
+      const data = contentType.includes('application/json')
+        ? await response.json().catch(() => null)
+        : await response.text().catch(() => '')
+
+      console.log('[import] done', { requestId, data })
+
+      if (data && typeof data === 'object' && (data as { dryRun?: boolean }).dryRun) {
+        const dry = data as { parsedCount?: number; numeroPDF?: { withValue?: number; unique?: number } }
+        toast.success('Dry-run OK', {
+          description: `parsedCount: ${dry.parsedCount ?? '—'}, numeroPDF.withValue: ${dry.numeroPDF?.withValue ?? '—'}`,
+          id: 'import-progress',
+        })
+        setResults([
+          {
+            success: true,
+            examTitle: 'Dry-run',
+            message: `Parseados: ${dry.parsedCount ?? 0}, numeroPDF con valor: ${dry.numeroPDF?.withValue ?? 0}`,
+            details: JSON.stringify(data, null, 2),
+          },
+        ])
+      } else if (data && typeof data === 'object' && Array.isArray((data as { results?: unknown }).results)) {
+        showImportResults((data as { results: ImportResult[] }).results)
+      } else {
+        showImportResults([])
+      }
     } catch (error) {
+      console.error('[import] error', { requestId, error })
       const errorInfo = extractErrorInfo(error)
       const structuredError = getErrorMessage(ERROR_CODES.DATA_IMPORT_FAILED, {
         reason: errorInfo.message,
       })
-
       trackError(error instanceof Error ? error : new Error(String(error)), {
         type: 'exam_import_error',
         path: typeof window !== 'undefined' ? window.location.pathname : undefined,
       })
-
       toast.error(structuredError.title, {
         description: `${structuredError.description} ${structuredError.solution}`,
         duration: 6000,
@@ -331,6 +371,7 @@ export default function ImportExamsPage() {
       ])
     } finally {
       setLoading(false)
+      toast.dismiss('import-progress')
     }
   }
 
