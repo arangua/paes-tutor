@@ -6,7 +6,8 @@
     "node": "24"
   },
   "overrides": {
-    "hono": "^4.11.7"
+    "hono": "^4.11.7",
+    "lodash": "^4.17.23"
   },
   "scripts": {
     "dev": "next dev",
