@@ -5,6 +5,9 @@
   "engines": {
     "node": "24"
   },
+  "overrides": {
+    "hono": "^4.11.7"
+  },
   "scripts": {
     "dev": "next dev",
     "dev:safe": "powershell -ExecutionPolicy Bypass -File scripts/start-dev.ps1",
