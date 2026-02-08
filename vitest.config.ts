@@ -192,7 +192,7 @@ export default defineConfig({
     },
     coverage: {
       provider: process.env.CI ? 'istanbul' : 'v8',
-      reporter: ['lcov', 'text', 'html'],
+      reporter: ['lcov', 'text'],
       reportsDirectory: 'coverage',
       clean: true,
       exclude: [
