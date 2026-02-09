@@ -49,7 +49,7 @@ export function useExams(options: UseExamsOptions = {}) {
 
   // Cargar exámenes
   useEffect(() => {
-    // eslint-disable-next-line sonarjs/cognitive-complexity
+     
     async function loadExams() {
       try {
         setIsLoading(true)

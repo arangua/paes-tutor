@@ -14,8 +14,6 @@ import {
   Clock,
   TrendingUp,
   BookOpen,
-  Loader2,
-  AlertCircle,
   BarChart3,
   Printer,
 } from 'lucide-react'

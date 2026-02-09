@@ -140,7 +140,7 @@ export function NoteDialog({
     }
   }
 
-  // eslint-disable-next-line sonarjs/cognitive-complexity -- complex by design (UI submit flow); refactor in dedicated batch
+   
   const handleSubmit = async () => {
     // Validación final
     if (!title.trim()) {

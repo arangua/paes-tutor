@@ -296,7 +296,7 @@ function validateAndFixQuestions(
     )
   }
 
-  // eslint-disable-next-line sonarjs/cognitive-complexity
+   
   return questions.map((q, index) => {
     // Para tipo mixta, algunas preguntas pueden ser de desarrollo (sin opciones)
     // Para tipo objetiva, todas deben tener opciones

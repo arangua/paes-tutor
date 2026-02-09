@@ -230,20 +230,6 @@ export default function ImportExamsPage() {
     return formData
   }
 
-  // Helper: Extraer mensaje de error de respuesta HTTP
-  const getErrorMessageFromResponse = (response: Response, data: { error?: string }): string => {
-    if (response.status === 401) {
-      return 'No tienes permiso para importar exámenes. Debes ser administrador.'
-    }
-    if (response.status === 400) {
-      return data.error || 'Los datos enviados son inválidos. Verifica el formato de los exámenes.'
-    }
-    if (response.status >= 500) {
-      return 'Error del servidor al procesar los exámenes. Por favor, intenta nuevamente más tarde.'
-    }
-    return data.error || 'Error al importar exámenes'
-  }
-
   // Helper: Mostrar resultados de importación
   const showImportResults = (results: ImportResult[]) => {
     setResults(results)
@@ -294,7 +280,7 @@ export default function ImportExamsPage() {
       typeof crypto !== 'undefined' && 'randomUUID' in crypto
         ? crypto.randomUUID()
         : String(Date.now())
-    console.log('[import] start', { requestId, qs })
+    console.warn('[import] start', { requestId, qs })
 
     try {
       const timeoutMs = 60_000
@@ -321,7 +307,7 @@ export default function ImportExamsPage() {
       }
 
       window.clearTimeout(timeoutId)
-      console.log('[import] response', { requestId, status: response.status })
+      console.warn('[import] response', { requestId, status: response.status })
 
       if (!response.ok) {
         const text = await response.text().catch(() => '')
@@ -333,7 +319,7 @@ export default function ImportExamsPage() {
         ? await response.json().catch(() => null)
         : await response.text().catch(() => '')
 
-      console.log('[import] done', { requestId, data })
+      console.warn('[import] done', { requestId, data })
 
       if (data && typeof data === 'object' && (data as { dryRun?: boolean }).dryRun) {
         const dry = data as { parsedCount?: number; numeroPDF?: { withValue?: number; unique?: number } }

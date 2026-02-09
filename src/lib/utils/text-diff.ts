@@ -135,7 +135,7 @@ function isNotLcsLine(
   // equivale a: lcsIdx >= lcs.length || (line !== undefined && line !== lcs[lcsIdx])
   if (lcsIdx >= lcs.length) return true
   if (line === undefined) return false
-  // eslint-disable-next-line security/detect-object-injection
+   
   return line !== lcs[lcsIdx]
 }
 
@@ -166,9 +166,9 @@ function generateSimpleDiff(oldText: string, newText: string): DiffResult[] {
   let lcsIdx = 0
 
   while (oldIdx < oldLines.length || newIdx < newLines.length) {
-    // eslint-disable-next-line security/detect-object-injection
+     
     const oldLine = oldLines[oldIdx] // index controlled by loop bounds
-    // eslint-disable-next-line security/detect-object-injection
+     
     const newLine = newLines[newIdx] // index controlled by loop bounds
 
     const canRemove = oldIdx < oldLines.length && isNotLcsLine(oldLine, lcs, lcsIdx)
@@ -211,14 +211,14 @@ function buildLcsTable(arr1: string[], arr2: string[]): number[][] {
 
       if (a === b) {
         const prev = dp[i - 1]?.[j - 1] ?? 0
-        // eslint-disable-next-line security/detect-object-injection
+         
         dp[i][j] = prev + 1 // indices controlled by loop bounds
       } else {
-        // eslint-disable-next-line security/detect-object-injection
+         
         const up = dp[i - 1]?.[j] ?? 0 // indices controlled by loop bounds
-        // eslint-disable-next-line security/detect-object-injection
+         
         const left = dp[i]?.[j - 1] ?? 0 // indices controlled by loop bounds
-        // eslint-disable-next-line security/detect-object-injection
+         
         dp[i][j] = Math.max(up, left) // indices controlled by loop bounds
       }
     }
@@ -243,9 +243,9 @@ function reconstructLcs(arr1: string[], arr2: string[], dp: number[][]): string[
       continue
     }
 
-    // eslint-disable-next-line security/detect-object-injection
+     
     const up = dp[i - 1]?.[j] ?? 0 // indices controlled by loop bounds
-    // eslint-disable-next-line security/detect-object-injection
+     
     const left = dp[i]?.[j - 1] ?? 0 // indices controlled by loop bounds
 
     if (up > left) i--

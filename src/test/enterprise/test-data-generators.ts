@@ -83,7 +83,7 @@ export class EnterpriseDataGenerator<T> {
    * Establece un campo
    */
   set<K extends keyof T>(key: K, value: T[K]): this {
-    // eslint-disable-next-line security/detect-object-injection
+     
     this.data[key] = value // key validated via generic union (keyof T)
     return this
   }
@@ -406,7 +406,7 @@ export function validateTestData<T extends keyof typeof TestDataSchemas>(
   type: T,
   data: unknown
 ): z.output<typeof TestDataSchemas[T]> {
-  // eslint-disable-next-line security/detect-object-injection
+   
   const schema = TestDataSchemas[type] // key validated via union (keyof typeof TestDataSchemas)
   return schema.parse(data) as z.output<typeof TestDataSchemas[T]>
 }

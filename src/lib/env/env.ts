@@ -53,9 +53,9 @@ export const env = (() => {
   // Esto evita que variables del sistema (Windows, Node, etc.) causen errores
   const filteredEnv = Object.fromEntries(
     allowedKeys
-      // eslint-disable-next-line security/detect-object-injection
+       
       .filter((key) => process.env[key] !== undefined) // key validated via allowedKeys as const
-      // eslint-disable-next-line security/detect-object-injection
+       
       .map((key) => [key, process.env[key]]) // key validated via allowedKeys as const
   ) as Record<string, string | undefined>
 

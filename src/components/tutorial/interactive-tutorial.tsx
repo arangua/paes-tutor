@@ -1,6 +1,6 @@
 'use client'
 
-/* eslint-disable sonarjs/no-nested-functions, sonarjs/cognitive-complexity, sonarjs/no-dead-store -- complex tutorial UI; refactor tracked in dedicated batch */
+ 
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -131,7 +131,7 @@ export function InteractiveTutorial({
     }
   }, [currentStep, completedSteps, storageKey])
 
-  // eslint-disable-next-line security/detect-object-injection
+   
   const currentStepData = steps[currentStep] // index controlled by step bounds
   const isLastStep = currentStep === steps.length - 1
   const progress = ((currentStep + 1) / steps.length) * 100

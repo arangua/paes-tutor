@@ -107,7 +107,7 @@ export class EnterpriseTestOrchestrator {
     // Ejecutar en orden inverso (LIFO)
     for (let i = this.context.cleanup.length - 1; i >= 0; i--) {
       try {
-        // eslint-disable-next-line security/detect-object-injection
+         
         const cleanupFn = this.context.cleanup[i] // index controlled by loop bounds
         if (cleanupFn) {
           await cleanupFn()
@@ -173,7 +173,7 @@ export class EnterpriseTestOrchestrator {
     if (!this.context.metadata) {
       this.context.metadata = {}
     }
-    // eslint-disable-next-line security/detect-object-injection
+     
     this.context.metadata[key] = value // key validated via internal metadata API
   }
 
@@ -181,7 +181,7 @@ export class EnterpriseTestOrchestrator {
    * Obtiene metadata
    */
   getMetadata<T>(key: string): T | undefined {
-    // eslint-disable-next-line security/detect-object-injection
+     
     return this.context.metadata?.[key] as T | undefined // key validated via internal metadata API
   }
 }

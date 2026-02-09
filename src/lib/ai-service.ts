@@ -172,7 +172,7 @@ export async function getAIConfig(
 
   for (const service of serviceOrder) {
     // Primero intentar con configuración del usuario, luego variables de entorno
-    // eslint-disable-next-line security/detect-object-injection -- service is a restricted union (AIService) and keys are predefined
+     
     const apiKey = userApiKeys[service] || envApiKeys[service]
     if (apiKey) {
       return {

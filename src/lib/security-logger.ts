@@ -64,7 +64,7 @@ export function getClientIp(request: Request): string {
 
 // Constante para caracteres de control (RFC 20): 0x00-0x1F y 0x7F (DEL)
 // Necesario para detectar caracteres de control maliciosos en seguridad
-// eslint-disable-next-line no-control-regex, sonarjs/no-control-regex
+// eslint-disable-next-line no-control-regex
 const CONTROL_CHARS_RE = /[\x00-\x1F\x7F]/g
 
 /**

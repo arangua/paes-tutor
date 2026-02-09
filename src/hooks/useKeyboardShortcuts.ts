@@ -30,7 +30,7 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcut[]) {
   useEffect(() => {
     if (shortcuts.length === 0) return
 
-    // eslint-disable-next-line sonarjs/cognitive-complexity
+     
     const handleKeyDown = (event: KeyboardEvent) => {
       // Usar la referencia actual para evitar problemas de closure
       const currentShortcuts = shortcutsRef.current

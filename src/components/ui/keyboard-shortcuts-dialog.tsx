@@ -24,12 +24,12 @@ export function KeyboardShortcutsDialog({
   const groupedShortcuts = shortcuts.reduce(
     (acc, shortcut) => {
       const category = shortcut.category || 'otros'
-      // eslint-disable-next-line security/detect-object-injection
+       
       if (!acc[category]) { // key validated via app-defined shortcut categories
-        // eslint-disable-next-line security/detect-object-injection
+         
         acc[category] = [] // key validated via app-defined shortcut categories
       }
-      // eslint-disable-next-line security/detect-object-injection
+       
       acc[category].push(shortcut) // key validated via app-defined shortcut categories
       return acc
     },
@@ -67,7 +67,7 @@ export function KeyboardShortcutsDialog({
         </DialogHeader>
         <div className="space-y-6 mt-4">
           {Object.entries(groupedShortcuts).map(([category, categoryShortcuts]) => {
-            // eslint-disable-next-line security/detect-object-injection
+             
             const categoryLabel = categoryNames[category] || category // key validated via app-defined shortcut categories
 
             return (

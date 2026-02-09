@@ -150,7 +150,7 @@ export function GlobalSearch({ open, onOpenChange }: Readonly<GlobalSearchProps>
   const handleSelect = useCallback((index: number) => {
     if (index < results.length) {
       // Seleccionar resultado
-      // eslint-disable-next-line security/detect-object-injection
+       
       const result = results[index] // index controlled by bounds check
       addToHistory(query, result.type)
       onOpenChange(false)
@@ -163,7 +163,7 @@ export function GlobalSearch({ open, onOpenChange }: Readonly<GlobalSearchProps>
     } else {
       // Seleccionar sugerencia del historial
       const historyIndex = index - results.length - suggestions.length
-      // eslint-disable-next-line security/detect-object-injection
+       
       const historyItem = historySuggestions[historyIndex] // index controlled by computed bounds
       if (historyItem) {
         setQuery(historyItem.query)

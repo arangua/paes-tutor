@@ -59,7 +59,7 @@ export function ProgressChart({ attempts }: Readonly<ProgressChartProps>) {
 
   const dataWithAverage = chartData.map((d, i) => ({
     ...d,
-    // eslint-disable-next-line security/detect-object-injection
+     
     promedio: movingAverage[i] ?? null, // index controlled by map loop bounds
   }))
 
