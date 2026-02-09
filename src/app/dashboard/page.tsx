@@ -40,6 +40,7 @@ import { DashboardTutorial } from '@/components/tutorial/dashboard-tutorial'
 import { ActionHistory } from '@/components/dashboard/action-history'
 import { PendingReminders } from '@/components/dashboard/pending-reminders'
 import { ErrorHistory } from '@/components/dashboard/error-history'
+import { UXBoundary } from '@/components/ux/UXBoundary'
 
 // Lazy load recharts para reducir el bundle inicial
 const SubjectPerformanceChart = lazy(() =>
@@ -431,15 +432,9 @@ export default function DashboardPage() {
     )
   }
 
-  if (!student) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-red-600">No se encontró información del estudiante</p>
-      </div>
-    )
-  }
-
   return (
+    <UXBoundary isEmpty={!student} isLoading={false} error={undefined}>
+    {student ? (
     <>
       {showTour && <WelcomeTour onComplete={handleTourComplete} onSkip={handleTourSkip} />}
       <DashboardTutorial />
@@ -729,5 +724,7 @@ export default function DashboardPage() {
         </div>
       </div>
     </>
+    ) : null}
+    </UXBoundary>
   )
 }

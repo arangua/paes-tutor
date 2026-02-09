@@ -55,7 +55,10 @@ type HeaderUserInfoDecision =
   | { kind: 'no_update' }
 
 function sessionToUserInfo(session: HeaderSession): UserInfo | null {
-  if (!session?.user) return null
+  if (!session?.user) {
+    const empty: UserInfo | null = null
+    return empty
+  }
   return {
     nombre: session.user.name ?? undefined,
     email: session.user.email ?? undefined,

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -2802,7 +2802,10 @@ export function NoteVersions({
       >
         {(() => {
           const version = allVersions.find(v => v.id === hoveredVersion)
-          if (!version) return null
+          if (!version) {
+            const skip: ReactNode = null
+            return skip
+          }
           return (
             <>
               <h4 className="font-semibold text-sm mb-2 truncate">{version.title}</h4>

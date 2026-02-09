@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Search,
@@ -223,7 +223,10 @@ export function GlobalSearch({ open, onOpenChange }: Readonly<GlobalSearchProps>
     addToHistory(item.query, item.type)
   }
 
-  if (!open) return null
+  if (!open) {
+    const empty: ReactNode = null
+    return empty
+  }
 
   return (
     <div

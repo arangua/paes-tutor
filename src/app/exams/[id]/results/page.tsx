@@ -30,6 +30,7 @@ import {
 import { toast } from 'sonner'
 import { useProgressTracker } from '@/hooks/useProgressTracker'
 import { ProgressDialog } from '@/components/ui/progress-dialog'
+import { UXBoundary } from '@/components/ux/UXBoundary'
 
 // ✅ Enterprise: Lazy loading de componentes pesados que no son críticos para el render inicial
 // Los componentes de exportación y desafíos solo se cargan cuando el usuario interactúa con ellos
@@ -194,8 +195,10 @@ export default function ExamResultsPage() {
   }
 
   const prepareExportData = (): ExamResultData | null => {
-    if (!attempt) return null
-
+    if (!attempt) {
+      const empty: ExamResultData | null = null
+      return empty
+    }
     return {
       examTitle: attempt.exam.titulo,
       subjectName: attempt.exam.subject.nombre,
@@ -309,37 +312,14 @@ export default function ExamResultsPage() {
     }
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Cargando resultados...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (error || !attempt) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-destructive" />
-              Error
-            </CardTitle>
-            <CardDescription>{error || 'No se pudieron cargar los resultados'}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={() => router.push('/dashboard')}>Volver al Dashboard</Button>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
   return (
+    <UXBoundary
+      isLoading={isLoading}
+      isEmpty={!attempt}
+      error={error ?? undefined}
+      loadingMessage="Cargando resultados..."
+    >
+    {attempt ? (
     <>
       <ProgressDialog
         open={exportProgress.isActive}
@@ -554,5 +534,7 @@ export default function ExamResultsPage() {
         </div>
       </div>
     </>
+    ) : null}
+    </UXBoundary>
   )
 }
