@@ -43,7 +43,8 @@ if (!inGit) {
   process.exit(0);
 }
 
-// Política: si cambia package.json en el PR/commit, package-lock.json debe cambiar también.
+// Política: si cambian dependencias en package.json, package-lock.json debe cambiar también.
+// Cambios solo en scripts u otros campos no-deps no exigen actualizar el lock.
 const changed = sh("git diff --name-only --diff-filter=ACMRT HEAD~1..HEAD || true")
   .split("\n")
   .map(s => s.trim())
@@ -52,13 +53,34 @@ const changed = sh("git diff --name-only --diff-filter=ACMRT HEAD~1..HEAD || tru
 const pkgChanged = changed.includes("package.json");
 const lockChanged = changed.includes("package-lock.json");
 
+const DEP_KEYS = ["dependencies", "devDependencies", "optionalDependencies", "overrides", "engines"];
+
+function onlyDepKeysChanged() {
+  try {
+    const oldPkg = sh("git show HEAD~1:package.json");
+    const newPkg = sh("git show HEAD:package.json");
+    const oldJson = JSON.parse(oldPkg);
+    const newJson = JSON.parse(newPkg);
+    for (const key of Object.keys({ ...oldJson, ...newJson })) {
+      if (DEP_KEYS.includes(key)) {
+        if (JSON.stringify(oldJson[key]) !== JSON.stringify(newJson[key])) return false;
+      }
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 if (pkgChanged && !lockChanged) {
-  fail(
-    [
-      "Se detectó cambio en package.json sin cambio en package-lock.json.",
-      "Solución: ejecuta `npm install` (o `npm install --package-lock-only`) y commitea el lockfile.",
-    ].join("\n")
-  );
+  if (!onlyDepKeysChanged()) {
+    fail(
+      [
+        "Se detectó cambio en package.json (dependencias) sin cambio en package-lock.json.",
+        "Solución: ejecuta `npm install` (o `npm install --package-lock-only`) y commitea el lockfile.",
+      ].join("\n")
+    );
+  }
 }
 
 // Consistencia: regenerar lockfile (sin instalar node_modules) y exigir que no haya diffs.
