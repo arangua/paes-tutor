@@ -75,6 +75,10 @@ jobs:
     - name: Run tests with coverage
       run: npm run test:coverage
 
+    - name: Normalize LCOV paths for Sonar (Windows -> Linux)
+      run: |
+        sed -i 's#\\#/#g' coverage/lcov.info
+
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
       with:
