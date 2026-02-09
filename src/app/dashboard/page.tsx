@@ -41,6 +41,7 @@ import { ActionHistory } from '@/components/dashboard/action-history'
 import { PendingReminders } from '@/components/dashboard/pending-reminders'
 import { ErrorHistory } from '@/components/dashboard/error-history'
 import { UXBoundary } from '@/components/ux/UXBoundary'
+import { EmptyState } from '@/components/ux'
 
 // Lazy load recharts para reducir el bundle inicial
 const SubjectPerformanceChart = lazy(() =>
@@ -724,7 +725,16 @@ export default function DashboardPage() {
         </div>
       </div>
     </>
-    ) : null}
+    ) : (
+      <EmptyState
+        title="Sin datos para mostrar"
+        description="Aún no tenemos información suficiente para tu dashboard."
+        actionLabel="Reintentar"
+        onAction={() => {
+          if (typeof window !== 'undefined') window.location.reload()
+        }}
+      />
+    )}
     </UXBoundary>
   )
 }
