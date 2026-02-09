@@ -194,6 +194,8 @@ export default defineConfig({
       provider: process.env.CI ? 'istanbul' : 'v8',
       reporter: ['lcov', 'text'],
       reportsDirectory: 'coverage',
+      reportOnFailure: true,
+      resolveSourceMap: true,
       clean: true,
       exclude: [
         '**/*.d.ts',
