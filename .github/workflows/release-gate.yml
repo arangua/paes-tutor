@@ -73,11 +73,23 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
-      - name: Run Release Gate
-        run: npm run ci:release
+      - name: CI Check (guards only)
+        run: npm run ci:check:guards-only
         env:
           NODE_ENV: production
-          CI_CLEAN_OUTPUT_TIMEOUT_MS: "600000"
+
+      - name: Test (capture output for warning budget)
+        run: |
+          mkdir -p docs/ci
+          npm run test:run 2>&1 | tee docs/ci/_last_test_output.txt
+
+      - name: Guard clean output (analyze captured log)
+        run: npm run guard:ci-clean-output
+
+      - name: Release checks (typecheck/lint/build)
+        run: npm run guard:repo-clean && npm run typecheck && npm run lint && npm run build
+        env:
+          NODE_ENV: production
 
       - name: Verify package-lock immutability
         shell: bash
