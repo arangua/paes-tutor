@@ -23,7 +23,7 @@
     "lint:strict": "eslint . --max-warnings 0 --ignore-pattern \"e2e/**\" --ignore-pattern \"playwright.config.ts\"",
     "lint:e2e": "powershell -ExecutionPolicy Bypass -File scripts/run-lint-e2e-isolated.ps1",
     "lint:next": "next lint",
-    "lint:critical": "powershell -ExecutionPolicy Bypass -File scripts/lint-critical.ps1",
+    "lint:critical": "node scripts/lint-critical.mjs",
     "lint:changed": "powershell -ExecutionPolicy Bypass -File scripts/lint-changed-files.ps1",
     "lint:full": "eslint . --ignore-pattern \"e2e/**\" --ignore-pattern \"playwright.config.ts\"",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
