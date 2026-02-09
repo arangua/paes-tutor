@@ -100,15 +100,24 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function getErrorFromPayload(payload: unknown): string | null {
-  if (!isRecord(payload)) return null
+  if (!isRecord(payload)) {
+    const noError: string | null = null
+    return noError
+  }
   const error = payload.error
   return typeof error === 'string' && error.trim().length > 0 ? error : null
 }
 
 function getErrorFromFirstArrayItem(payload: unknown): string | null {
-  if (!Array.isArray(payload) || payload.length === 0) return null
+  if (!Array.isArray(payload) || payload.length === 0) {
+    const noError: string | null = null
+    return noError
+  }
   const first = payload[0]
-  if (!isRecord(first)) return null
+  if (!isRecord(first)) {
+    const noError: string | null = null
+    return noError
+  }
   const error = first.error
   return typeof error === 'string' && error.trim().length > 0 ? error : null
 }
