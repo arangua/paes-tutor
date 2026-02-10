@@ -186,3 +186,12 @@ Cada decisión debe incluir:
 - Decisión: aceptar drift como actualización legítima del snapshot de dependencias resueltas y reescribir baseline.
 - Acción: `npm run guard:deps-snapshot:write` → actualiza `docs/ci/DEPS_SNAPSHOT.json`.
 - Impacto: baseline CI actualizado; no cambia código de app, solo verificación de consistencia.
+
+### 2026-02-10 — Update deps snapshot baseline (PR #29)
+**Decisión:** Actualizar baseline cross-platform de deps snapshot tras bump/override de dependencias por alertas HIGH de Trivy.  
+**Contexto:** Trivy detectó nuevas alertas HIGH (GHSA-43fc-jf86-j433 en axios <=1.13.4 y GHSA-7h2j-956f-4vf2 en @isaacs/brace-expansion 5.0.0). Se aplicó bump directo de axios (1.13.2 → 1.13.5) y override de @isaacs/brace-expansion (5.0.0 → 5.0.1).  
+**Impacto:**
+- Baseline `docs/ci/DEPS_SNAPSHOT.json` actualizado con las nuevas versiones resueltas
+- Release Gate exige snapshot al día; este commit evita drift en el guard
+- Sin cambios funcionales del producto; solo trazabilidad del baseline  
+**Referencia:** PR #29 — fix(security): bump axios and override brace-expansion (Trivy high)
