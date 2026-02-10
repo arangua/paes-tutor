@@ -30,6 +30,7 @@ import {
 } from '@/lib/export-utils'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import { UXBoundary } from '@/components/ux/UXBoundary'
 
 interface TrendData {
   date: string
@@ -125,32 +126,16 @@ export default function AnalyticsPage() {
     )
   }
 
-  if (error || !analytics) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-destructive" />
-              Error
-            </CardTitle>
-            <CardDescription>{error || 'No se pudieron cargar las estadísticas'}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={() => router.push('/dashboard')}>Volver al Dashboard</Button>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
 
   const handlePrint = () => {
     window.print()
   }
 
   const prepareExportData = (): AnalyticsData | null => {
-    if (!analytics) return null
-
+    if (!analytics) {
+      const empty: AnalyticsData | null = null
+      return empty
+    }
     return {
       studentAverage: analytics.comparison?.studentAverage || 0,
       overallAverage: analytics.comparison?.overallAverage || 0,
@@ -265,6 +250,12 @@ export default function AnalyticsPage() {
   }
 
   return (
+    <UXBoundary
+      isLoading={false}
+      isEmpty={!analytics}
+      error={error ?? undefined}
+    >
+    {analytics ? (
     <>
       <style>{`
         @media print {
@@ -646,5 +637,7 @@ export default function AnalyticsPage() {
         )}
       </div>
     </>
+    ) : null}
+    </UXBoundary>
   )
 }

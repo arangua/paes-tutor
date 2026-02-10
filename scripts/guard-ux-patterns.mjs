@@ -110,6 +110,18 @@ function walk(dir) {
 }
 
 /**
+ * Obtiene línea, columna y texto de línea a partir del índice en el texto
+ */
+function lineInfoFromIndex(text, idx) {
+  const upTo = text.slice(0, idx)
+  const lines = upTo.split(/\r?\n/)
+  const line = lines.length
+  const col = lines[lines.length - 1].length + 1
+  const lineText = text.split(/\r?\n/)[line - 1] || ''
+  return { line, col, lineText }
+}
+
+/**
  * Verifica si un archivo es un componente React o página
  */
 function isComponentFile(filePath) {
@@ -131,7 +143,18 @@ function checkFile(filePath) {
   const errors = []
 
   for (const { pattern, message, example, fix } of FORBIDDEN_PATTERNS) {
-    if (pattern.test(content)) {
+    const m = pattern.exec(content)
+    if (m) {
+      if (message === 'Pantalla en blanco - usar EmptyState') {
+        const idx = m.index ?? content.indexOf(m[0])
+        const info = lineInfoFromIndex(content, idx)
+        console.error('----- UX GUARD DEBUG (REAL MATCH) -----')
+        console.error('File:', relativePath)
+        console.error('Matched:', JSON.stringify(m[0]))
+        console.error(`At: line ${info.line}, col ${info.col}`)
+        console.error('Line:', info.lineText)
+        console.error('--------------------------------------')
+      }
       errors.push({
         file: relativePath,
         message,

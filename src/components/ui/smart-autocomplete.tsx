@@ -126,7 +126,7 @@ export function SmartAutocomplete({
   // Scroll a la sugerencia seleccionada
   useEffect(() => {
     if (selectedIndex >= 0 && suggestionsRef.current) {
-      // eslint-disable-next-line security/detect-object-injection
+       
       const selectedElement = suggestionsRef.current.children[selectedIndex] as HTMLElement // index controlled by bounds check
       if (selectedElement) {
         selectedElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' })

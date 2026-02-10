@@ -40,6 +40,8 @@ import { DashboardTutorial } from '@/components/tutorial/dashboard-tutorial'
 import { ActionHistory } from '@/components/dashboard/action-history'
 import { PendingReminders } from '@/components/dashboard/pending-reminders'
 import { ErrorHistory } from '@/components/dashboard/error-history'
+import { UXBoundary } from '@/components/ux/UXBoundary'
+import { EmptyState } from '@/components/ux'
 
 // Lazy load recharts para reducir el bundle inicial
 const SubjectPerformanceChart = lazy(() =>
@@ -98,15 +100,24 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function getErrorFromPayload(payload: unknown): string | null {
-  if (!isRecord(payload)) return null
+  if (!isRecord(payload)) {
+    const noError: string | null = null
+    return noError
+  }
   const error = payload.error
   return typeof error === 'string' && error.trim().length > 0 ? error : null
 }
 
 function getErrorFromFirstArrayItem(payload: unknown): string | null {
-  if (!Array.isArray(payload) || payload.length === 0) return null
+  if (!Array.isArray(payload) || payload.length === 0) {
+    const noError: string | null = null
+    return noError
+  }
   const first = payload[0]
-  if (!isRecord(first)) return null
+  if (!isRecord(first)) {
+    const noError: string | null = null
+    return noError
+  }
   const error = first.error
   return typeof error === 'string' && error.trim().length > 0 ? error : null
 }
@@ -431,15 +442,9 @@ export default function DashboardPage() {
     )
   }
 
-  if (!student) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-red-600">No se encontró información del estudiante</p>
-      </div>
-    )
-  }
-
   return (
+    <UXBoundary isEmpty={!student} isLoading={false} error={undefined}>
+    {student ? (
     <>
       {showTour && <WelcomeTour onComplete={handleTourComplete} onSkip={handleTourSkip} />}
       <DashboardTutorial />
@@ -729,5 +734,16 @@ export default function DashboardPage() {
         </div>
       </div>
     </>
+    ) : (
+      <EmptyState
+        title="Sin datos para mostrar"
+        description="Aún no tenemos información suficiente para tu dashboard."
+        actionLabel="Reintentar"
+        onAction={() => {
+          if (typeof window !== 'undefined') window.location.reload()
+        }}
+      />
+    )}
+    </UXBoundary>
   )
 }

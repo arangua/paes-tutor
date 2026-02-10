@@ -1,8 +1,15 @@
 #!/usr/bin/env node
-import { execSync } from "node:child_process";
+import { execSync, execFileSync } from "node:child_process";
+import fs from "node:fs";
 import { existsSync, readFileSync } from "node:fs";
 
+const ALLOWED_GIT_PREFIX = "git ";
+
 function sh(cmd) {
+  const trimmed = typeof cmd === "string" ? cmd.trim() : "";
+  if (!trimmed.startsWith(ALLOWED_GIT_PREFIX)) {
+    throw new Error(`guard-lockfile-policy: comando no permitido (allowlist: ${ALLOWED_GIT_PREFIX.trim()})`);
+  }
   return execSync(cmd, { stdio: "pipe", encoding: "utf8" }).trim();
 }
 
@@ -36,7 +43,8 @@ if (!inGit) {
   process.exit(0);
 }
 
-// Política: si cambia package.json en el PR/commit, package-lock.json debe cambiar también.
+// Política: si cambian dependencias en package.json, package-lock.json debe cambiar también.
+// Cambios solo en scripts u otros campos no-deps no exigen actualizar el lock.
 const changed = sh("git diff --name-only --diff-filter=ACMRT HEAD~1..HEAD || true")
   .split("\n")
   .map(s => s.trim())
@@ -45,24 +53,49 @@ const changed = sh("git diff --name-only --diff-filter=ACMRT HEAD~1..HEAD || tru
 const pkgChanged = changed.includes("package.json");
 const lockChanged = changed.includes("package-lock.json");
 
+const DEP_KEYS = ["dependencies", "devDependencies", "optionalDependencies", "overrides", "engines"];
+
+function onlyDepKeysChanged() {
+  try {
+    const oldPkg = sh("git show HEAD~1:package.json");
+    const newPkg = sh("git show HEAD:package.json");
+    const oldJson = JSON.parse(oldPkg);
+    const newJson = JSON.parse(newPkg);
+    for (const key of Object.keys({ ...oldJson, ...newJson })) {
+      if (DEP_KEYS.includes(key)) {
+        if (JSON.stringify(oldJson[key]) !== JSON.stringify(newJson[key])) return false;
+      }
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 if (pkgChanged && !lockChanged) {
-  fail(
-    [
-      "Se detectó cambio en package.json sin cambio en package-lock.json.",
-      "Solución: ejecuta `npm install` (o `npm install --package-lock-only`) y commitea el lockfile.",
-    ].join("\n")
-  );
+  if (!onlyDepKeysChanged()) {
+    fail(
+      [
+        "Se detectó cambio en package.json (dependencias) sin cambio en package-lock.json.",
+        "Solución: ejecuta `npm install` (o `npm install --package-lock-only`) y commitea el lockfile.",
+      ].join("\n")
+    );
+  }
 }
 
 // Consistencia: regenerar lockfile (sin instalar node_modules) y exigir que no haya diffs.
 // Guardar estado actual antes de regenerar
 const lockBefore = readFileSync("package-lock.json", "utf8");
 
+const npmCmd = process.platform === "win32" ? "npm.cmd" : "npm";
 try {
-  execSync("npm install --package-lock-only --ignore-scripts --no-audit --fund=false", {
-    stdio: "pipe",
-    encoding: "utf8",
-  });
+  execFileSync(npmCmd, [
+    "install",
+    "--package-lock-only",
+    "--ignore-scripts",
+    "--no-audit",
+    "--fund=false",
+  ], { stdio: "pipe", encoding: "utf8", shell: true });
 } catch (e) {
   fail(
     [
@@ -110,7 +143,7 @@ if (lockBeforeNormalized !== lockAfterNormalized) {
 // Restaurar el lockfile original si no había cambios reales
 if (lockBefore !== lockAfter) {
   // Solo diferencias de line endings, restaurar original
-  require("fs").writeFileSync("package-lock.json", lockBefore, "utf8");
+  fs.writeFileSync("package-lock.json", lockBefore, "utf8");
 }
 
 ok("Lockfile presente, lockfileVersion=3, política y consistencia OK.");

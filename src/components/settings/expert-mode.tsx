@@ -64,7 +64,7 @@ export function ExpertMode() {
   }
 
   const toggleSetting = (key: keyof ExpertModeSettings) => {
-    // eslint-disable-next-line security/detect-object-injection
+     
     const newSettings = { ...settings, [key]: !settings[key] } // key validated via keyof ExpertModeSettings
     // Si se desactiva el modo experto, desactivar todas las opciones
     if (key === 'enabled' && !newSettings.enabled) {

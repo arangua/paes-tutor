@@ -1,0 +1,32 @@
+name: Write deps snapshot baseline (linux)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  write-deps-snapshot:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.11.1"
+          cache: "npm"
+
+      - name: Install dependencies (linux)
+        run: npm ci
+
+      - name: Write deps snapshot baseline
+        run: npm run guard:deps-snapshot:write
+
+      - name: Upload baseline artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deps-snapshot-linux
+          path: docs/ci/DEPS_SNAPSHOT.json

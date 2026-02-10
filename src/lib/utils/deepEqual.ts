@@ -7,7 +7,7 @@ function deepEqualArrays(a: unknown[], b: unknown[]): boolean {
   if (a.length !== b.length) return false
 
   for (let i = 0; i < a.length; i++) {
-    // eslint-disable-next-line security/detect-object-injection
+     
     if (!deepEqual(a[i], b[i])) return false // index controlled by loop bounds
   }
   return true
@@ -27,9 +27,9 @@ function deepEqualObjects(
   for (const key of keysA) {
     if (!keysBSet.has(key)) return false
 
-    // eslint-disable-next-line security/detect-object-injection
+     
     const valueA = a[key] // key validated via Object.keys + set membership
-    // eslint-disable-next-line security/detect-object-injection
+     
     const valueB = b[key] // key validated via Object.keys + set membership
 
     if (!deepEqual(valueA, valueB)) return false

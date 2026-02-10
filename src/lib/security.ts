@@ -11,7 +11,7 @@ const MAX_STRING_LENGTH = LIMIT_CONSTANTS.MAX_STRING_LENGTH
 // Constante para caracteres de control a eliminar (excepto \n=0x0A, \r=0x0D, \t=0x09)
 // Necesario para sanitización de seguridad - eliminar caracteres de control maliciosos
 // Rango: 0x00-0x08, 0x0B-0x0C, 0x0E-0x1F, 0x7F (DEL)
-// eslint-disable-next-line no-control-regex, sonarjs/no-control-regex
+// eslint-disable-next-line no-control-regex
 const CONTROL_CHARS_TO_REMOVE_RE = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g
 
 /**
@@ -56,28 +56,28 @@ export function sanitizeObject<T extends Record<string, unknown>>(obj: T): T {
   const sanitized = { ...obj }
 
   for (const key in sanitized) {
-    // eslint-disable-next-line security/detect-object-injection
+     
     if (typeof sanitized[key] === 'string') { // key controlled by iterating over object properties
-      // eslint-disable-next-line security/detect-object-injection
+       
       sanitized[key] = sanitizeString(sanitized[key] as string) as T[Extract<keyof T, string>] // key controlled by loop
     } else if (
-      // eslint-disable-next-line security/detect-object-injection
+       
       typeof sanitized[key] === 'object' && // key controlled by loop
-      // eslint-disable-next-line security/detect-object-injection
+       
       sanitized[key] != null && // key controlled by loop (usar != para evitar different-types-comparison)
-      // eslint-disable-next-line security/detect-object-injection
+       
       !Array.isArray(sanitized[key]) // key controlled by loop
     ) {
-      // eslint-disable-next-line security/detect-object-injection
+       
       sanitized[key] = sanitizeObject(sanitized[key] as Record<string, unknown>) as T[Extract<
         keyof T,
         string
       >] // key controlled by loop
     } else if (
-      // eslint-disable-next-line security/detect-object-injection
+       
       Array.isArray(sanitized[key]) // key controlled by loop
     ) {
-      // eslint-disable-next-line security/detect-object-injection
+       
       sanitized[key] = (sanitized[key] as unknown[]).map(item => { // key controlled by loop
         if (typeof item === 'string') {
           return sanitizeString(item)

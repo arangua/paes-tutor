@@ -1,6 +1,11 @@
 import '@testing-library/jest-dom/vitest'
-import { afterEach, vi, beforeAll, beforeEach } from 'vitest'
+import { afterEach, afterAll, vi, beforeAll, beforeEach } from 'vitest'
 import { cleanup } from '@testing-library/react'
+
+// Mock global: por defecto, todos los tests corren como admin
+vi.mock('@/lib/check-admin', () => ({
+  isAdmin: vi.fn().mockResolvedValue(true),
+}))
 
 // Declaraciones globales para mocks persistentes
 declare global {
@@ -175,21 +180,21 @@ beforeAll(() => {
   const localStorageMock = (() => {
     let store: Record<string, string> = {}
     return {
-      // eslint-disable-next-line security/detect-object-injection
+       
       getItem: (key: string) => store[key] || null, // key controlled by Web Storage API contract (tests)
       setItem: (key: string, value: string) => {
-        // eslint-disable-next-line security/detect-object-injection
+         
         store[key] = value.toString() // key controlled by Web Storage API contract (tests)
       },
       removeItem: (key: string) => {
-        // eslint-disable-next-line security/detect-object-injection
+         
         delete store[key] // key controlled by Web Storage API contract (tests)
       },
       clear: () => {
         store = {}
       },
       length: 0,
-      // eslint-disable-next-line security/detect-object-injection
+       
       key: (index: number) => Object.keys(store)[index] || null, // index controlled by loop bounds in tests
     }
   })()
@@ -299,4 +304,9 @@ beforeEach(() => {
   // ✅ Default seguro para el repositorio completo: NO autenticado
   globalThis.__mockGetAuthenticatedUserWithStudent__?.mockReset()
   globalThis.__mockGetAuthenticatedUserWithStudent__?.mockResolvedValue(null)
+})
+
+// Cierre final (evitar handles huérfanos / cuelgues en CI)
+afterAll(() => {
+  // server.close(); // CRÍTICO si usas MSW
 })

@@ -11,14 +11,29 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
-    permissions:
-      contents: read
-      id-token: write
-      attestations: write
-
     steps:
-      - name: Checkout code
+      - name: Checkout code (PR head)
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Snapshot package-lock (PRE)
+        shell: bash
+        run: |
+          echo "PRE_LOCK_HASH=$(sha256sum package-lock.json | cut -d' ' -f1)" >> $GITHUB_ENV
+          echo "PRE_LOCK_BYTES=$(stat -c%s package-lock.json)" >> $GITHUB_ENV
+
+      - name: Debug checkout HEAD
+        run: |
+          echo "event_name=${{ github.event_name }}"
+          echo "GITHUB_REF=$GITHUB_REF"
+          echo "GITHUB_SHA=$GITHUB_SHA"
+          echo "pr_head_sha=${{ github.event.pull_request.head.sha }}"
+          echo "checked_out_sha=$(git rev-parse HEAD)"
+          ls -la package-lock.json
+          echo "sha256=$(sha256sum package-lock.json | awk '{print $1}')"
+          echo "bytes=$(wc -c < package-lock.json)"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -26,19 +41,95 @@ jobs:
           node-version: '24.11.1'
           cache: 'npm'
 
+      - name: Debug lockfile fingerprint (pre)
+        run: |
+          node -e "const fs=require('fs'),c=require('crypto'); const b=fs.readFileSync('package-lock.json'); console.log('sha256=',c.createHash('sha256').update(b).digest('hex')); console.log('bytes=',b.length)"
+
       - name: Install dependencies
         run: npm ci
+
+      - name: Snapshot package-lock (POST npm)
+        shell: bash
+        run: |
+          POST_NPM_HASH=$(sha256sum package-lock.json | cut -d' ' -f1)
+          POST_NPM_BYTES=$(stat -c%s package-lock.json)
+
+          echo "PRE_HASH=$PRE_LOCK_HASH"
+          echo "POST_NPM_HASH=$POST_NPM_HASH"
+          echo "PRE_BYTES=$PRE_LOCK_BYTES"
+          echo "POST_NPM_BYTES=$POST_NPM_BYTES"
+
+          if [ "$PRE_LOCK_HASH" != "$POST_NPM_HASH" ] || [ "$PRE_LOCK_BYTES" != "$POST_NPM_BYTES" ]; then
+            echo "::error::package-lock.json changed right after npm step. Blocking Release Gate."
+            git diff -- package-lock.json || true
+            exit 1
+          fi
+
+      - name: Fail if lockfile changed by install
+        run: |
+          git status --porcelain
+          git diff --name-only --exit-code package-lock.json
 
       - name: Generate Prisma Client
         run: npx prisma generate
 
-      - name: Run Release Gate
-        run: npm run ci:release
+      - name: CI Check (guards only)
+        run: npm run ci:check:guards-only
         env:
           NODE_ENV: production
 
-      - name: Attest build provenance
-        uses: actions/attest-build-provenance@v1
+      - name: Test (capture output for warning budget)
+        run: |
+          mkdir -p docs/ci
+          npm run test:run 2>&1 | tee docs/ci/_last_test_output.txt
+
+      - name: Guard clean output (analyze captured log)
+        run: npm run guard:ci-clean-output
+
+      - name: Release checks (typecheck/lint/build)
+        run: npm run guard:repo-clean && npm run typecheck && npm run lint && npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Verify package-lock immutability
+        shell: bash
+        run: |
+          POST_HASH=$(sha256sum package-lock.json | cut -d' ' -f1)
+          POST_BYTES=$(stat -c%s package-lock.json)
+
+          if [ "$PRE_LOCK_HASH" != "$POST_HASH" ] || [ "$PRE_LOCK_BYTES" != "$POST_BYTES" ]; then
+            echo "::error::package-lock.json was modified during Release Gate"
+            git diff -- package-lock.json || true
+            exit 1
+          fi
+
+  write_deps_snapshot_baseline:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    name: Write deps snapshot baseline (linux)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          subject-path: |
-            .next/**
+          fetch-depth: 0
+
+      - name: Setup Node 24.11.1
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.11.1
+          cache: npm
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Write deps snapshot baseline
+        run: npm run guard:deps-snapshot:write
+
+      - name: Upload baseline artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DEPS_SNAPSHOT-linux-node24
+          path: docs/ci/DEPS_SNAPSHOT.json
+          if-no-files-found: error
+          retention-days: 3

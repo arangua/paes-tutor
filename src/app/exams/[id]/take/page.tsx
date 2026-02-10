@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, type ReactNode } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -175,8 +175,10 @@ export default function TakeExamPage() {
   const [saveMessage, setSaveMessage] = useState<string>('')
   const [showCancelDialog, setShowCancelDialog] = useState(false)
   const [showUnansweredDialog, setShowUnansweredDialog] = useState(false)
+  const [abortUnansweredSubmit, setAbortUnansweredSubmit] = useState(false)
   const [unansweredCount, setUnansweredCount] = useState(0)
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const handleSubmitRef = useRef<() => Promise<void>>(null)
 
   // Cargar examen y crear/obtener intento
   useEffect(() => {
@@ -406,11 +408,11 @@ export default function TakeExamPage() {
         duration: 6000,
         action: {
           label: 'Reintentar',
-          onClick: () => handleSubmit(),
+          onClick: () => handleSubmitRef.current?.(),
         },
       })
     }
-  }, [attempt, exam, answers, examId, router, isSubmitting, handleSubmit])
+  }, [attempt, exam, answers, examId, router, isSubmitting])
 
   const handleSubmit = useCallback(async () => {
     if (!attempt || !exam || isSubmitting) return
@@ -421,6 +423,12 @@ export default function TakeExamPage() {
     const totalQuestions = exam.questions.length
 
     if (answeredQuestions.size < totalQuestions) {
+      // Si el usuario eligió "Volver al Examen", abortar este intento de submit una vez
+      if (abortUnansweredSubmit) {
+        setAbortUnansweredSubmit(false)
+        return
+      }
+
       const unanswered = totalQuestions - answeredQuestions.size
       setUnansweredCount(unanswered)
       setShowUnansweredDialog(true)
@@ -429,14 +437,17 @@ export default function TakeExamPage() {
 
     // Si todas las preguntas están respondidas, proceder directamente
     await confirmSubmit()
-  }, [attempt, exam, answers, isSubmitting, confirmSubmit])
+  }, [confirmSubmit, attempt, exam, answers, isSubmitting, abortUnansweredSubmit])
+
+  handleSubmitRef.current = handleSubmit
 
   // Timer countdown - optimizado para evitar re-renders innecesarios
+  // No poner handleSubmit en deps: cambia con answers y re-ejecutaría el efecto en cada respuesta, abriendo el modal
   useEffect(() => {
     if (timeRemaining === null || timeRemaining <= 0) {
       // Si el tiempo se agotó, auto-submit (solo si el intento aún está en progreso)
       if (timeRemaining === 0 && attempt && attempt.estado === 'en_progreso' && !isSubmitting) {
-        handleSubmit()
+        handleSubmitRef.current?.()
       }
       return
     }
@@ -451,7 +462,7 @@ export default function TakeExamPage() {
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [timeRemaining, attempt, isSubmitting, handleSubmit])
+  }, [timeRemaining, attempt, isSubmitting])
 
   // Auto-guardar respuestas con prevención de race condition
   useEffect(() => {
@@ -670,6 +681,20 @@ export default function TakeExamPage() {
   }
 
   const currentQ = exam.questions.at(currentQuestion) ?? exam.questions[0]
+  if (!currentQ) {
+    return (
+      <div className="flex items-center justify-center min-h-screen p-4">
+        <Card className="w-full max-w-2xl">
+          <CardContent className="pt-6">
+            <p className="text-muted-foreground">Este examen no tiene preguntas disponibles.</p>
+            <Button className="mt-4" onClick={() => router.push('/dashboard')}>
+              Volver al Dashboard
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
   const currentAnswer = answers.get(currentQ.question.id)
 
   return (
@@ -715,7 +740,16 @@ export default function TakeExamPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowUnansweredDialog(false)}>
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => {
+                setAbortUnansweredSubmit(true)
+                setShowUnansweredDialog(false)
+                // Forzar cierre en el siguiente tick por si Radix/React lo traga en el mismo evento
+                requestAnimationFrame(() => setShowUnansweredDialog(false))
+              }}
+            >
               Volver al Examen
             </Button>
             <Button
@@ -877,7 +911,10 @@ export default function TakeExamPage() {
         <div className="flex gap-2">
           {exam.questions.map((_, idx) => {
             const questionAtIndex = exam.questions.at(idx)
-            if (!questionAtIndex) return null
+            if (!questionAtIndex) {
+              const skip: ReactNode = null
+              return skip
+            }
             const hasAnswer = answers.has(questionAtIndex.question.id)
             let navButtonClassName = 'bg-muted hover:bg-muted/80'
             if (idx === currentQuestion) {

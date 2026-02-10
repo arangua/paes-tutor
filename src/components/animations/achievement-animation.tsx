@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Award, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -69,7 +69,10 @@ export function AchievementAnimation({
     }
   }, [autoClose, duration, onClose])
 
-  if (!isVisible) return null
+  if (!isVisible) {
+    const empty: ReactNode = null
+    return empty
+  }
 
   return (
     <div

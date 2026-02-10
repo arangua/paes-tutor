@@ -8,7 +8,7 @@ export function getRecordValue<
   T extends Record<string, unknown>,
   K extends string,
 >(record: T, key: K): T[K] | undefined {
-  // eslint-disable-next-line security/detect-object-injection -- key validated via hasOwn()
+   
   return hasOwn(record, key) ? (record[key] as T[K]) : undefined
 }
 

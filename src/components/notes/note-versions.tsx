@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -100,7 +100,7 @@ interface NoteVersionsProps {
  * Componente para ver y restaurar versiones de notas
  * Basado en estándares de Google Docs, Notion, Linear
  */
-// eslint-disable-next-line sonarjs/cognitive-complexity
+ 
 export function NoteVersions({
   noteId,
   open,
@@ -176,7 +176,7 @@ export function NoteVersions({
   useEffect(() => {
     if (!open || !noteId) return
 
-    // eslint-disable-next-line sonarjs/cognitive-complexity
+     
     const loadVersions = async (reset = true) => {
       if (reset) {
         setLoading(true)
@@ -253,7 +253,7 @@ export function NoteVersions({
   }, [debouncedSearchQuery, sortBy, filterNamed, dateFilter])
 
   // Filtrar, ordenar y paginar versiones
-  // eslint-disable-next-line sonarjs/cognitive-complexity
+   
   const filteredAndSortedVersions = useMemo(() => {
     let filtered = [...allVersions]
 
@@ -873,7 +873,7 @@ export function NoteVersions({
     }
   }
 
-  // eslint-disable-next-line sonarjs/cognitive-complexity
+   
   const handleBulkExport = async (format: 'txt' | 'md' | 'pdf' | 'json' | 'zip' | 'docx' | 'odt' | 'rtf') => {
     if (selectedVersions.size === 0) {
       toast.error('No hay versiones seleccionadas')
@@ -989,7 +989,7 @@ export function NoteVersions({
   }
 
   // Mejorar diff visual - función auxiliar para resaltar cambios palabra por palabra
-  // eslint-disable-next-line sonarjs/cognitive-complexity
+   
   const highlightWordDiff = (oldText: string, newText: string) => {
     const oldWords = oldText.split(/(\s+)/)
     const newWords = newText.split(/(\s+)/)
@@ -2802,7 +2802,10 @@ export function NoteVersions({
       >
         {(() => {
           const version = allVersions.find(v => v.id === hoveredVersion)
-          if (!version) return null
+          if (!version) {
+            const skip: ReactNode = null
+            return skip
+          }
           return (
             <>
               <h4 className="font-semibold text-sm mb-2 truncate">{version.title}</h4>

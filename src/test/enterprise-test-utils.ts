@@ -358,10 +358,10 @@ export function setupTestEnv(env: Record<string, string | undefined>): void {
   // Establecer nuevas variables
   Object.entries(env).forEach(([key, value]) => {
     if (value === undefined) {
-      // eslint-disable-next-line security/detect-object-injection
+       
       delete process.env[key] // key validated via test config object (not user input)
     } else {
-      // eslint-disable-next-line security/detect-object-injection
+       
       process.env[key] = value // key validated via test config object (not user input)
     }
   })

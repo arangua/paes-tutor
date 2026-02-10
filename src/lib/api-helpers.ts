@@ -260,7 +260,7 @@ export async function safeJsonParse<T = Record<string, unknown>>(
  * const { exams, pagination } = validation.data
  * ```
  */
-// eslint-disable-next-line sonarjs/cognitive-complexity
+ 
 export async function validateResponse<T>(
   response: Response,
   schema: ZodType<T>,

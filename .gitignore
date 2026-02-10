@@ -16,6 +16,7 @@
 # Generated test artifacts (do not commit)
 playwright-report/
 .tmp/
+docs/ci/_last_test_output.txt
 
 # migration backups
 /.migration-backups

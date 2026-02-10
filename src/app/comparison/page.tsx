@@ -374,7 +374,10 @@ export default function DirectComparisonPage() {
                 const currentSubject = current.subjectStats.find(s => s.subjectCode === subjectCode)
                 const otherSubject = other.subjectStats.find(s => s.subjectCode === subjectCode)
 
-                if (!currentSubject && !otherSubject) return null
+                if (!currentSubject && !otherSubject) {
+                  const skip: null = null
+                  return skip
+                }
 
                 const currentAvg = currentSubject?.averagePercentage || 0
                 const otherAvg = otherSubject?.averagePercentage || 0

@@ -59,7 +59,7 @@ function useGlobalUndoRedoInternal() {
 
     setIsUndoing(true)
     try {
-      // eslint-disable-next-line security/detect-object-injection
+       
       const action = history[currentIndex] // index controlled by canUndo/currentIndex bounds
       if (action) {
         await action.undo()
@@ -87,7 +87,7 @@ function useGlobalUndoRedoInternal() {
     setIsRedoing(true)
     try {
       const nextIndex = currentIndex + 1
-      // eslint-disable-next-line security/detect-object-injection
+       
       const action = history[nextIndex] // index controlled by canRedo/currentIndex bounds
       if (action) {
         await action.redo()

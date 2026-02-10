@@ -82,7 +82,7 @@ export function useCustomizableShortcuts(availableActions: ShortcutAction[]) {
       const updated = {
         ...customShortcuts,
         [actionId]: { // key validated via availableActions ids
-          // eslint-disable-next-line security/detect-object-injection
+           
           ...customShortcuts[actionId], // key validated via availableActions ids
           ...shortcut,
         },
