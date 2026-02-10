@@ -27,33 +27,8 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
-      - name: Run tests (coverage with watchdog) for Sonar
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -rf coverage || true
-          mkdir -p coverage
-
-          set +e
-          timeout --signal=SIGTERM 9m bash -lc \
-            "DEBUG=vitest:* NODE_OPTIONS='--trace-warnings' npm run test:smoke:coverage" \
-            2>&1 | tee vitest-ci.log
-          CODE=${PIPESTATUS[0]}
-          set -e
-
-          echo "vitest/timeout exit code: $CODE"
-
-          echo "---- vitest tail (last 120 lines) ----"
-          tail -n 120 vitest-ci.log || true
-          echo "--------------------------------------"
-
-          if [ -f coverage/lcov.info ] && [ -s coverage/lcov.info ]; then
-            echo "✅ Found coverage/lcov.info (non-empty). Proceeding."
-            wc -l coverage/lcov.info || true
-          else
-            echo "::error title=LCOV missing::coverage/lcov.info was not produced (or is empty)."
-            exit 1
-          fi
+      - name: Run tests with coverage (for Sonar)
+        run: npm run test:coverage
 
       - name: Assert LCOV exists
         shell: bash
